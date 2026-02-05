@@ -9,5 +9,19 @@ SESSION_MAX_AGE = "1209600"
 
 [[kv_namespaces]]
 binding = "DATA_KV"
-id = "TODO_REPLACE_WITH_PROD_KV_ID"
-preview_id = "TODO_REPLACE_WITH_DEV_KV_ID"
+id = "b63aaa698f6d4b75b7e36f2d9994c655"
+
+[observability]
+enabled = false
+head_sampling_rate = 1
+
+[observability.logs]
+enabled = true
+head_sampling_rate = 1
+persist = true
+invocation_logs = true
+
+[observability.traces]
+enabled = false
+persist = true
+head_sampling_rate = 1
