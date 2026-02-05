@@ -1,0 +1,13 @@
+node_modules
+.DS_Store
+.env
+.env.*
+apps/web/.env
+apps/web/dist
+apps/web/node_modules
+apps/worker/node_modules
+apps/worker/.wrangler
+wrangler.toml.dev.json
+
+# build output
+packages/types/dist

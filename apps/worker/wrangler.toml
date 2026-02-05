@@ -1,0 +1,13 @@
+name = "swefinder-worker"
+main = "src/index.ts"
+compatibility_date = "2025-12-01"
+compatibility_flags = ["nodejs_compat"]
+
+[vars]
+SESSION_COOKIE_NAME = "swefinder_session"
+SESSION_MAX_AGE = "1209600"
+
+[[kv_namespaces]]
+binding = "DATA_KV"
+id = "TODO_REPLACE_WITH_PROD_KV_ID"
+preview_id = "TODO_REPLACE_WITH_DEV_KV_ID"
