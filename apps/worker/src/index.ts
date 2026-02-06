@@ -168,6 +168,27 @@ export default {
         return withCors(await handleSharedPacket(request, env, packetMatch.groups?.token || ""), origin);
       }
 
+      if (env.ASSETS) {
+        const assetResponse = await env.ASSETS.fetch(request);
+        if (assetResponse.status !== 404) {
+          return assetResponse;
+        }
+
+        const acceptsHtml = (request.headers.get("accept") || "").includes("text/html");
+        if (request.method === "GET" && acceptsHtml) {
+          const indexUrl = new URL(request.url);
+          indexUrl.pathname = "/index.html";
+          const indexRequest = new Request(indexUrl.toString(), {
+            method: "GET",
+            headers: new Headers(request.headers),
+          });
+          const indexResponse = await env.ASSETS.fetch(indexRequest);
+          if (indexResponse.status !== 404) {
+            return indexResponse;
+          }
+        }
+      }
+
       return withCors(errorResponse("Not found", 404), origin);
     } catch (error) {
       console.error("Worker error", error);

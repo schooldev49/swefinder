@@ -6,4 +6,5 @@ export interface Env {
   FRONTEND_BASE_URL?: string;
   SESSION_COOKIE_NAME?: string;
   SESSION_MAX_AGE?: string;
+  ASSETS: Fetcher;
 }
