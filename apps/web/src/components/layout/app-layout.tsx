@@ -1,19 +1,16 @@
 import { Link, NavLink, Outlet, useLocation } from "react-router-dom";
 import { useEffect, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
-import { AlertTriangle, Menu, X } from "lucide-react";
+import { Menu, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useSession } from "@/hooks/use-session";
 import { buildGitHubLoginUrl } from "@/lib/auth";
 import { logout } from "@/lib/api";
 import { cn } from "@/lib/utils";
-import { isDemoMode } from "@/demo/mode";
-
-const links = [
+const baseLinks = [
   { to: "/projects", label: "Projects" },
   { to: "/jobs", label: "Jobs" },
-  { to: "/profile", label: "Profile" },
 ];
 
 export function AppLayout() {
@@ -21,10 +18,8 @@ export function AppLayout() {
   const queryClient = useQueryClient();
   const location = useLocation();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
-  const isDemo = isDemoMode();
-  const isAuthenticated = Boolean(user) && !isDemo;
-  const isGuest = !isAuthenticated && !isLoading;
-  const isLanding = location.pathname === "/";
+  const isAuthenticated = Boolean(user);
+  const navLinks = isAuthenticated ? [...baseLinks, { to: "/profile", label: "Profile" }] : baseLinks;
 
   const handleLogin = () => {
     window.location.href = buildGitHubLoginUrl(location.pathname);
@@ -58,7 +53,7 @@ export function AppLayout() {
               </button>
             </div>
             <nav className="hidden items-center gap-6 text-sm font-medium text-muted-foreground md:flex">
-              {links.map((link) => (
+              {navLinks.map((link) => (
                 <NavLink
                   key={link.to}
                   to={link.to}
@@ -98,7 +93,7 @@ export function AppLayout() {
           </div>
           {isMenuOpen ? (
             <nav className="mt-4 flex flex-col gap-1 text-sm font-medium text-muted-foreground md:hidden">
-              {links.map((link) => (
+              {navLinks.map((link) => (
                 <NavLink
                   key={link.to}
                   to={link.to}
@@ -123,23 +118,6 @@ export function AppLayout() {
             </nav>
           ) : null}
         </header>
-        {isGuest && !isLanding ? (
-          <div className="rounded-2xl border border-amber-400/40 bg-amber-500/10 px-4 py-3 text-sm text-amber-100 shadow-lg shadow-amber-900/10">
-            <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
-              <div className="flex items-center gap-2 font-medium">
-                <AlertTriangle className="h-4 w-4 shrink-0" />
-                Guest mode — data stays local and will not be saved.
-              </div>
-              <button
-                type="button"
-                className="text-left text-xs font-semibold uppercase tracking-[0.2em] text-amber-200/80 transition hover:text-amber-50"
-                onClick={handleLogin}
-              >
-                Sign in to sync
-              </button>
-            </div>
-          </div>
-        ) : null}
         <main className="flex-1">
           <Outlet />
         </main>

@@ -9,6 +9,8 @@ import { ProfilePage } from "@/pages/profile";
 import { ProtectedRoute } from "@/components/auth/protected-route";
 import { PublicProfilePage } from "@/pages/public-profile";
 import { PublicPacketPage } from "@/pages/public-packet";
+import { OnboardingPage } from "@/pages/onboarding";
+import { SecurityPage } from "@/pages/security";
 
 const router = createBrowserRouter([
   {
@@ -65,6 +67,14 @@ const router = createBrowserRouter([
   {
     path: "/users/:handle/:packetSlug",
     element: <PublicPacketPage />,
+  },
+  {
+    path: "/onboarding",
+    element: <OnboardingPage />,
+  },
+  {
+    path: "/security",
+    element: <SecurityPage />,
   },
 ]);
 

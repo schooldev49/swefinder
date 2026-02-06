@@ -1,18 +1,10 @@
 import { Link } from "react-router-dom";
-import { ArrowRight, CheckCircle2, CheckCircle, Code2, FileText, ShieldCheck, Sparkles } from "lucide-react";
+import { ArrowRight, CheckCircle2, CheckCircle, ShieldCheck } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { CodeSnippet } from "@/components/ui/code-snippet";
 import { useSession } from "@/hooks/use-session";
-import { buildGitHubLoginUrl } from "@/lib/auth";
-import { setDemoPreference } from "@/demo/mode";
-
-const steps = [
-  { title: "Connect GitHub", body: "Securely pull the repos, PRs, and notebooks that prove your skills.", icon: Code2 },
-  { title: "Paste the JD", body: "Highlight the requirements that actually matter for this role.", icon: FileText },
-  { title: "Generate Proof", body: "Get tailored bullets, evidence links, and an outreach note with one click.", icon: Sparkles },
-];
 
 const trustPoints = [
   "Requirements mapped to specific repo paths or demos.",
@@ -95,13 +87,11 @@ export function LandingPage() {
       </Link>
     </Button>
   ) : (
-    <Button
-      size="lg"
-      className="inline-flex items-center gap-2 bg-white text-slate-900 hover:bg-slate-100"
-      onClick={() => (window.location.href = buildGitHubLoginUrl())}
-    >
-      <GitHubMark className="h-4 w-4" />
-      Sign in with GitHub
+    <Button asChild size="lg" className="inline-flex items-center gap-2 bg-white text-slate-900 hover:bg-slate-100">
+      <Link to="/onboarding">
+        <GitHubMark className="h-4 w-4" />
+        Start with GitHub
+      </Link>
     </Button>
   );
 
@@ -122,24 +112,7 @@ export function LandingPage() {
             <p className="text-sm text-slate-400">Built for CS, SWE, and ML applicants who already have projects and want a verifier, not a résumé spinner.</p>
             <p className="text-sm text-slate-400">You pick the repos, confirm every claim, and send a curated packet instead of a generic blast.</p>
           </div>
-          <div className="flex flex-col gap-3 sm:flex-row">
-            {primaryCta}
-            <Button
-              asChild
-              variant="outline"
-              size="lg"
-              className="border-slate-700 text-slate-100 hover:bg-slate-800/80"
-            >
-              <Link
-                to="/jobs/job-demo?demo=1"
-                onClick={() => {
-                  setDemoPreference(true);
-                }}
-              >
-                See example packet
-              </Link>
-            </Button>
-          </div>
+          <div className="flex flex-col gap-3 sm:flex-row">{primaryCta}</div>
           <p className="text-xs text-muted-foreground">
             No résumés rewritten, no mass applying — just one GitHub login and evidence you can send to recruiters.
           </p>

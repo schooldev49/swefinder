@@ -1,0 +1,456 @@
+import { useEffect, useMemo, useState } from "react";
+import { Link, useNavigate } from "react-router-dom";
+import { useQuery } from "@tanstack/react-query";
+import { Loader2, Search } from "lucide-react";
+import { toast } from "sonner";
+import type { ApiRepoSummary } from "@/lib/api";
+import { fetchGitHubRepos } from "@/lib/api";
+import { useSession } from "@/hooks/use-session";
+import { buildGitHubLoginUrl } from "@/lib/auth";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import { Badge } from "@/components/ui/badge";
+
+const MAX_SELECTION = 5;
+const STEP_LABELS = ["Connect GitHub", "Select projects", "Enrich projects", "Paste JD"];
+const CONTEXT_OPTIONS = ["Personal", "Course", "Research", "Startup", "Open Source"];
+
+interface SelectedRepo extends ApiRepoSummary {
+  context?: string;
+  year?: number;
+  summary?: string;
+  external?: boolean;
+  externalUrl?: string;
+  customTitle?: string;
+}
+
+interface ProofPreview {
+  requirements: string[];
+  bullets: string[];
+  projects: SelectedRepo[];
+}
+
+export function OnboardingPage() {
+  const { data: user } = useSession();
+  const navigate = useNavigate();
+  const [currentStep, setCurrentStep] = useState(0);
+  const [hasConnected, setHasConnected] = useState(false);
+  const [includePrivateRepos, setIncludePrivateRepos] = useState(false);
+  const [selectedRepoIds, setSelectedRepoIds] = useState<Set<string>>(new Set());
+  const [selectedRepos, setSelectedRepos] = useState<SelectedRepo[]>([]);
+  const [searchTerm, setSearchTerm] = useState("");
+  const [jobDescription, setJobDescription] = useState("");
+  const [proofPreview, setProofPreview] = useState<ProofPreview | null>(null);
+  const [externalForm, setExternalForm] = useState({ title: "", url: "", description: "" });
+
+  const repoQuery = useQuery({
+    queryKey: ["onboarding-repos"],
+    queryFn: fetchGitHubRepos,
+    enabled: hasConnected,
+    staleTime: 60 * 1000,
+  });
+
+  useEffect(() => {
+    setHasConnected(Boolean(user));
+  }, [user]);
+
+  const filteredRepos = useMemo(() => {
+    if (!repoQuery.data) return [];
+    if (!searchTerm) return repoQuery.data;
+    return repoQuery.data.filter((repo) => repo.fullName.toLowerCase().includes(searchTerm.toLowerCase()));
+  }, [repoQuery.data, searchTerm]);
+
+  const stepStatus = (stepIndex: number) => {
+    if (currentStep === stepIndex) return "current";
+    if (currentStep > stepIndex) return "done";
+    return "upcoming";
+  };
+
+  const toggleRepoSelection = (repoId: string, checked: boolean) => {
+    setSelectedRepoIds((prev) => {
+      const next = new Set(prev);
+      if (checked) {
+        if (next.size >= MAX_SELECTION) {
+          toast.error(`You can only select up to ${MAX_SELECTION} repos at once.`);
+          return prev;
+        }
+        next.add(repoId);
+      } else {
+        next.delete(repoId);
+      }
+      return next;
+    });
+  };
+
+  const canProceed = () => {
+    switch (currentStep) {
+      case 0:
+        return hasConnected;
+      case 1:
+        return selectedRepoIds.size > 0;
+      case 2:
+        return selectedRepos.length > 0;
+      case 3:
+        return jobDescription.trim().length >= 80;
+      default:
+        return true;
+    }
+  };
+
+  const handleNext = () => {
+    if (currentStep === STEP_LABELS.length - 1) {
+      navigate("/projects");
+      return;
+    }
+    if (currentStep === 1) {
+      const picked = repoQuery.data
+        ?.filter((repo) => selectedRepoIds.has(repo.id))
+        .slice(0, MAX_SELECTION)
+        .map((repo) => {
+          const existing = selectedRepos.find((item) => item.id === repo.id);
+          if (existing) return existing;
+          return {
+            ...repo,
+            context: "Personal",
+            year: repo.updatedAt ? new Date(repo.updatedAt).getFullYear() : undefined,
+            summary: "",
+          } as SelectedRepo;
+        }) ?? [];
+      setSelectedRepos(picked);
+    }
+    setCurrentStep((prev) => Math.min(prev + 1, STEP_LABELS.length - 1));
+  };
+
+  const handleBack = () => {
+    setCurrentStep((prev) => Math.max(prev - 1, 0));
+  };
+
+  const addExternalProject = () => {
+    if (!externalForm.title || !externalForm.url) {
+      toast.error("Title and URL are required");
+      return;
+    }
+    const id = `external-${Date.now()}`;
+    setSelectedRepos((prev) => [
+      ...prev,
+      {
+        id,
+        name: externalForm.title,
+        fullName: externalForm.title,
+        description: externalForm.description,
+        htmlUrl: externalForm.url,
+        topics: [],
+        updatedAt: new Date().toISOString(),
+        stars: 0,
+        fork: false,
+        language: "external",
+        context: "External",
+        summary: externalForm.description,
+        external: true,
+        externalUrl: externalForm.url,
+      },
+    ]);
+    setExternalForm({ title: "", url: "", description: "" });
+    toast("External project added");
+  };
+
+  const updateSelectedRepo = (repoId: string, updates: Partial<SelectedRepo>) => {
+    setSelectedRepos((prev) => prev.map((repo) => (repo.id === repoId ? { ...repo, ...updates } : repo)));
+  };
+
+  const removeSelectedRepo = (repoId: string) => {
+    setSelectedRepos((prev) => prev.filter((repo) => repo.id !== repoId));
+    setSelectedRepoIds((prev) => {
+      const next = new Set(prev);
+      next.delete(repoId);
+      return next;
+    });
+  };
+
+  const handleGeneratePreview = () => {
+    if (!jobDescription.trim()) {
+      toast.error("Paste a job description first");
+      return;
+    }
+    const sentences = jobDescription
+      .split(/\n|\. /)
+      .map((sentence) => sentence.trim())
+      .filter(Boolean)
+      .slice(0, 3);
+    const requirements = sentences.length ? sentences : ["Prototype ML experiments", "Ship collaborative tooling"];
+    const bullets = selectedRepos.slice(0, 3).map((repo) => `Mapped ${repo.fullName} to ${requirements[0] ?? "the JD"}.`);
+    setProofPreview({ requirements, bullets, projects: selectedRepos });
+    toast("Preview generated");
+  };
+
+  const fillSampleJD = () => {
+    setJobDescription(`We're hiring an ML Research Intern to prototype classification models, measure experiments, and ship UX for real-time reviews. Must be comfortable owning projects end-to-end, collaborating cross-functionally, and explaining trade-offs to stakeholders.`);
+  };
+
+  return (
+    <div className="mx-auto flex max-w-6xl flex-col gap-6 px-4 py-10 lg:flex-row">
+      <aside className="lg:w-64">
+        <p className="text-xs uppercase tracking-[0.35em] text-muted-foreground">Create a Proof Packet</p>
+        <div className="mt-4 space-y-4 text-sm">
+          {STEP_LABELS.map((label, index) => (
+            <div key={label} className="flex items-center gap-3">
+              <div
+                className={`h-2 w-2 rounded-full ${
+                  stepStatus(index) === "done"
+                    ? "bg-accent"
+                    : stepStatus(index) === "current"
+                      ? "bg-white"
+                      : "bg-slate-700"
+                }`}
+              />
+              <span className={stepStatus(index) === "current" ? "text-white" : "text-muted-foreground"}>{label}</span>
+            </div>
+          ))}
+        </div>
+        <div className="mt-8 space-y-2 text-xs text-muted-foreground">
+          <p>Need help? Email security@proofcraft.app</p>
+          <p>
+            Want a refresher on access? <Link className="text-primary underline" to="/security">View security & access →</Link>
+          </p>
+        </div>
+      </aside>
+      <div className="flex-1 space-y-6">
+        {currentStep === 0 && (
+          <Card className="border-slate-800/80 bg-slate-950/60">
+            <CardHeader>
+              <CardTitle className="text-white">Connect GitHub</CardTitle>
+              <CardDescription>Turn your repos into evidence recruiters can actually verify.</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4 text-sm text-slate-200">
+              {hasConnected && user ? (
+                <>
+                  <p className="text-sm text-slate-300">Connected as <span className="font-semibold text-white">{user.githubLogin}</span>. Click “Next” to continue.</p>
+                  <p className="text-xs text-muted-foreground">
+                    Need to switch accounts? <Button variant="ghost" size="sm" className="px-1 text-primary" onClick={() => (window.location.href = buildGitHubLoginUrl())}>Reconnect GitHub</Button>
+                  </p>
+                </>
+              ) : (
+                <>
+                  <ul className="space-y-2 text-slate-300">
+                    <li>• Read-only access. We never push commits.</li>
+                    <li>• You pick which repos to import.</li>
+                    <li>• Disconnect or delete data any time.</li>
+                  </ul>
+                  <div className="flex flex-col gap-3 sm:flex-row">
+                    <Button size="lg" onClick={() => (window.location.href = buildGitHubLoginUrl())}>
+                      Sign in with GitHub
+                    </Button>
+                    <Button variant="outline" size="lg" onClick={() => toast("Email onboarding coming soon.")}>Use email instead</Button>
+                  </div>
+                  <div className="flex flex-col gap-2 text-xs text-muted-foreground">
+                    <div className="flex items-center gap-2">
+                      <Checkbox id="include-private" checked={includePrivateRepos} onCheckedChange={(value) => setIncludePrivateRepos(Boolean(value))} />
+                      <label htmlFor="include-private">Include private repos (requires extra GitHub scope)</label>
+                    </div>
+                    <p>Scopes requested: read:user, user:email, {includePrivateRepos ? "repo" : "public_repo"}. <Link className="text-primary underline" to="/security">View details →</Link></p>
+                  </div>
+                </>
+              )}
+            </CardContent>
+          </Card>
+        )}
+
+        {currentStep === 1 && (
+          <Card className="border-slate-800/80 bg-slate-950/60">
+            <CardHeader>
+              <CardTitle className="text-white">Select projects</CardTitle>
+              <CardDescription>Choose up to {MAX_SELECTION} repos that prove your skills. Add external demos later.</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="flex items-center gap-2 rounded-xl border border-slate-800/80 bg-slate-900/60 px-3">
+                <Search className="h-4 w-4 text-muted-foreground" />
+                <Input value={searchTerm} onChange={(event) => setSearchTerm(event.target.value)} placeholder="Search repositories" className="border-0 bg-transparent focus-visible:ring-0" />
+              </div>
+              {repoQuery.isLoading && (
+                <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                  <Loader2 className="h-4 w-4 animate-spin" /> Loading repos…
+                </div>
+              )}
+              {!repoQuery.isLoading && filteredRepos.length === 0 && (
+                <p className="text-sm text-muted-foreground">No repos yet. Connect GitHub or check your permissions.</p>
+              )}
+              <div className="grid gap-2">
+                {filteredRepos.map((repo) => (
+                  <label key={repo.id} className="flex cursor-pointer items-start gap-3 rounded-2xl border border-slate-800/60 bg-slate-950/40 px-3 py-2">
+                    <Checkbox checked={selectedRepoIds.has(repo.id)} onCheckedChange={(value) => toggleRepoSelection(repo.id, Boolean(value))} />
+                    <div className="space-y-1">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <p className="text-sm font-semibold text-white">{repo.fullName}</p>
+                        {repo.language && (
+                          <Badge variant="outline" className="text-[10px] uppercase tracking-wide">
+                            {repo.language}
+                          </Badge>
+                        )}
+                      </div>
+                      {repo.description && <p className="text-xs text-muted-foreground">{repo.description}</p>}
+                      <p className="text-[11px] text-muted-foreground">Updated {new Date(repo.updatedAt).toLocaleDateString()}</p>
+                    </div>
+                  </label>
+                ))}
+              </div>
+              <p className="text-xs text-muted-foreground">Only checked repos will be imported into ProofCraft. You can add more later from Projects.</p>
+            </CardContent>
+          </Card>
+        )}
+
+        {currentStep === 2 && (
+          <Card className="border-slate-800/80 bg-slate-950/60">
+            <CardHeader>
+              <CardTitle className="text-white">Add quick context</CardTitle>
+              <CardDescription>Tell ProofCraft why each repo matters. This stays editable later.</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              {selectedRepos.length === 0 && <p className="text-sm text-muted-foreground">No projects selected yet.</p>}
+              {selectedRepos.map((repo) => (
+                <div key={repo.id} className="space-y-3 rounded-2xl border border-slate-800/80 bg-slate-950/40 p-4">
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <div>
+                      <p className="text-sm font-semibold text-white">{repo.fullName}</p>
+                      <p className="text-[11px] text-muted-foreground">{repo.htmlUrl}</p>
+                    </div>
+                    <Button variant="ghost" size="sm" onClick={() => removeSelectedRepo(repo.id)}>
+                      Remove
+                    </Button>
+                  </div>
+                  <div className="grid gap-3 sm:grid-cols-2">
+                    <label className="space-y-1 text-xs text-muted-foreground">
+                      Context
+                      <select
+                        className="w-full rounded-xl border border-slate-800/80 bg-slate-950/60 px-3 py-2 text-sm text-white"
+                        value={repo.context}
+                        onChange={(event) => updateSelectedRepo(repo.id, { context: event.target.value })}
+                      >
+                        {CONTEXT_OPTIONS.map((option) => (
+                          <option key={option} value={option}>
+                            {option}
+                          </option>
+                        ))}
+                      </select>
+                    </label>
+                    <label className="space-y-1 text-xs text-muted-foreground">
+                      Year
+                      <Input
+                        type="number"
+                        min="2005"
+                        max={new Date().getFullYear()}
+                        value={repo.year ?? ""}
+                        onChange={(event) => updateSelectedRepo(repo.id, { year: Number(event.target.value) })}
+                      />
+                    </label>
+                  </div>
+                  <label className="space-y-1 text-xs text-muted-foreground">
+                    What did you build?
+                    <Textarea
+                      value={repo.summary ?? ""}
+                      onChange={(event) => updateSelectedRepo(repo.id, { summary: event.target.value })}
+                      rows={3}
+                      placeholder="Briefly describe the feature, dataset, or impact."
+                    />
+                  </label>
+                </div>
+              ))}
+              <div className="rounded-2xl border border-dashed border-slate-700/70 bg-slate-950/20 p-4">
+                <p className="text-sm font-semibold text-white">Add external project</p>
+                <p className="text-xs text-muted-foreground">Demo, notebook, or write-up that lives outside GitHub.</p>
+                <div className="mt-3 grid gap-3 sm:grid-cols-2">
+                  <Input placeholder="Title" value={externalForm.title} onChange={(event) => setExternalForm((prev) => ({ ...prev, title: event.target.value }))} />
+                  <Input placeholder="URL" value={externalForm.url} onChange={(event) => setExternalForm((prev) => ({ ...prev, url: event.target.value }))} />
+                </div>
+                <Textarea
+                  className="mt-3"
+                  rows={2}
+                  placeholder="Short description"
+                  value={externalForm.description}
+                  onChange={(event) => setExternalForm((prev) => ({ ...prev, description: event.target.value }))}
+                />
+                <Button className="mt-3" variant="outline" size="sm" onClick={addExternalProject}>
+                  + Add external project
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
+        {currentStep === 3 && (
+          <Card className="border-slate-800/80 bg-slate-950/60">
+            <CardHeader>
+              <CardTitle className="text-white">Paste a JD & preview</CardTitle>
+              <CardDescription>Give ProofCraft something real to map your projects to.</CardDescription>
+            </CardHeader>
+            <CardContent className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
+              <div className="space-y-3">
+                <Textarea
+                  rows={10}
+                  value={jobDescription}
+                  onChange={(event) => setJobDescription(event.target.value)}
+                  placeholder="Paste a job description or LinkedIn URL…"
+                />
+                <div className="flex flex-wrap gap-2">
+                  <Button variant="default" onClick={handleGeneratePreview}>
+                    Generate proof preview
+                  </Button>
+                  <Button variant="ghost" onClick={fillSampleJD}>
+                    Use sample listing
+                  </Button>
+                </div>
+              </div>
+              <div className="rounded-2xl border border-slate-800/80 bg-slate-950/40 p-4">
+                <p className="text-xs uppercase tracking-[0.35em] text-muted-foreground">Preview</p>
+                {!proofPreview ? (
+                  <p className="mt-3 text-sm text-muted-foreground">Generate to see requirements, bullets, and evidence here.</p>
+                ) : (
+                  <div className="mt-3 space-y-3 text-sm text-white">
+                    <div>
+                      <p className="text-xs uppercase tracking-wide text-muted-foreground">Key requirements</p>
+                      <ul className="mt-1 space-y-1 text-slate-200">
+                        {proofPreview.requirements.map((req) => (
+                          <li key={req}>• {req}</li>
+                        ))}
+                      </ul>
+                    </div>
+                    <div>
+                      <p className="text-xs uppercase tracking-wide text-muted-foreground">Bullets</p>
+                      <ul className="mt-1 space-y-1 text-slate-200">
+                        {proofPreview.bullets.map((bullet, index) => (
+                          <li key={`${bullet}-${index}`}>• {bullet}</li>
+                        ))}
+                      </ul>
+                    </div>
+                    <div>
+                      <p className="text-xs uppercase tracking-wide text-muted-foreground">Evidence</p>
+                      <ul className="mt-1 space-y-1 text-slate-200">
+                        {proofPreview.projects.map((project) => (
+                          <li key={project.id}>{project.fullName}</li>
+                        ))}
+                      </ul>
+                    </div>
+                    <Button asChild size="sm">
+                      <Link to="/projects">View full Proof Packet</Link>
+                    </Button>
+                  </div>
+                )}
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
+        <div className="flex items-center justify-between">
+          <Button variant="ghost" onClick={handleBack} disabled={currentStep === 0}>
+            Back
+          </Button>
+          <Button onClick={handleNext} disabled={!canProceed()}>
+            {currentStep === STEP_LABELS.length - 1 ? "Finish" : "Next"}
+          </Button>
+        </div>
+      </div>
+    </div>
+  );
+}

@@ -8,7 +8,8 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Loader2, PenSquare, RefreshCw } from "lucide-react";
+import { Textarea } from "@/components/ui/textarea";
+import { Loader2, RefreshCw } from "lucide-react";
 import { toast } from "sonner";
 import { useSession } from "@/hooks/use-session";
 
@@ -22,6 +23,9 @@ export function JobDetailPage() {
   const jobQuery = useQuery({ queryKey: ["job", jobId], queryFn: () => fetchJob(jobId), enabled: Boolean(jobId) });
   const projectsQuery = useQuery({ queryKey: ["projects"], queryFn: fetchProjects });
   const [selectedProjects, setSelectedProjects] = useState<Set<string>>(new Set());
+  const [bulletDrafts, setBulletDrafts] = useState<string[]>([]);
+  const [outreachDraft, setOutreachDraft] = useState("");
+  const [requirementNotes, setRequirementNotes] = useState<Record<string, string>>({});
 
   useEffect(() => {
     if (projectsQuery.data) {
@@ -49,6 +53,29 @@ export function JobDetailPage() {
       }
     });
     return Array.from(unique.values());
+  }, [proof]);
+
+  const filteredCitations = useMemo(() => {
+    return citations.filter((evidence) => {
+      if (!evidence.projectId) return true;
+      return selectedProjects.has(evidence.projectId);
+    });
+  }, [citations, selectedProjects]);
+
+  useEffect(() => {
+    if (!proof) {
+      setBulletDrafts([]);
+      setOutreachDraft("");
+      setRequirementNotes({});
+      return;
+    }
+    setBulletDrafts(proof.bullets);
+    setOutreachDraft(proof.outreachNote);
+    const mappedNotes: Record<string, string> = {};
+    proof.requirements.forEach((requirement) => {
+      mappedNotes[requirement.id] = requirement.notes || "";
+    });
+    setRequirementNotes(mappedNotes);
   }, [proof]);
 
   const statusMutation = useMutation({
@@ -142,42 +169,81 @@ export function JobDetailPage() {
           {job.shareSlug && (
             <ShareLinkCallout shareLink={shareLink} profileSlug={session?.profileSlug} jobSlug={job.shareSlug} />
           )}
+          {proof && (
+            <div className="rounded-2xl border border-slate-800/80 bg-slate-950/60 p-3 text-[11px] text-muted-foreground">
+              Edits below are local for drafting. Regenerate to pull fresh model output—evidence + citations stay untouched.
+            </div>
+          )}
           {proof ? (
             <div className="grid gap-6">
-              <section>
-                <h3 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">Key requirements</h3>
+              <section className="space-y-2">
+                <div className="flex flex-col gap-1 md:flex-row md:items-center md:justify-between">
+                  <h3 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">Key requirements</h3>
+                  <p className="text-xs text-muted-foreground">Requirement text stays locked; jot your own talking points below.</p>
+                </div>
                 <div className="mt-3 grid gap-3 md:grid-cols-2">
-                  {proof.requirements.map((requirement) => (
-                    <RequirementCard key={requirement.id} requirement={requirement} mappings={proof.mappings.filter((mapping) => mapping.requirementId === requirement.id)} />
-                  ))}
+                  {proof.requirements.map((requirement) => {
+                    const mappings = proof.mappings.filter((mapping) => {
+                      if (mapping.requirementId !== requirement.id) return false;
+                      const projectId = mapping.evidence.projectId;
+                      if (!projectId) return true;
+                      return selectedProjects.has(projectId);
+                    });
+                    return (
+                      <RequirementCard
+                        key={requirement.id}
+                        requirement={requirement}
+                        note={requirementNotes[requirement.id] ?? ""}
+                        onNoteChange={(value) =>
+                          setRequirementNotes((prev) => ({
+                            ...prev,
+                            [requirement.id]: value,
+                          }))
+                        }
+                        mappings={mappings}
+                      />
+                    );
+                  })}
                 </div>
               </section>
               <section>
                 <div className="flex items-center justify-between">
                   <h3 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">Resume bullets</h3>
-                  <p className="text-xs text-muted-foreground">Plain text, copy-ready lines tailored to this JD.</p>
+                  <p className="text-xs text-muted-foreground">Edit locally, copy fast. Reset to regenerate text.</p>
                 </div>
                 <div className="mt-3 space-y-3">
-                  {proof.bullets.map((bullet, index) => (
-                    <CopyRow key={index} text={bullet} label={`Bullet ${index + 1}`} />
+                  {bulletDrafts.map((bullet, index) => (
+                    <EditableCopyRow
+                      key={index}
+                      text={bullet}
+                      original={proof.bullets[index] ?? ""}
+                      label={`Bullet ${index + 1}`}
+                      onChange={(value) =>
+                        setBulletDrafts((prev) => {
+                          const next = [...prev];
+                          next[index] = value;
+                          return next;
+                        })
+                      }
+                    />
                   ))}
                 </div>
               </section>
               <section>
                 <h3 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">Outreach note</h3>
-                <p className="text-xs text-muted-foreground">Drop this into LinkedIn or email for tailored outreach.</p>
-                <CopyRow text={proof.outreachNote} label="Outreach" />
+                <p className="text-xs text-muted-foreground">Tweak the copy inline for email/DM but keep citations untouched.</p>
+                <EditableCopyRow text={outreachDraft} original={proof.outreachNote} label="Outreach" onChange={setOutreachDraft} multiline />
               </section>
               <section>
                 <div>
                   <h3 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">Evidence citations</h3>
                   <p className="text-xs text-muted-foreground">Every claim above links back to a repo file or doc so reviewers can audit it.</p>
                 </div>
-                {citations.length === 0 ? (
+                {filteredCitations.length === 0 ? (
                   <p className="mt-3 text-sm text-muted-foreground">No code references yet.</p>
                 ) : (
                   <div className="mt-3 space-y-3">
-                    {citations.map((evidence) => (
+                    {filteredCitations.map((evidence) => (
                       <div key={evidence.id} className="rounded-2xl border border-slate-800/80 bg-slate-950/60 p-4 text-xs text-slate-300">
                         <div className="mb-2 text-[10px] font-semibold uppercase tracking-[0.3em] text-slate-500">
                           {evidence.fileUrl || evidence.repoPath || evidence.projectFullName}
@@ -243,22 +309,30 @@ function ProjectSelector({ projects, selected, onChange }: { projects: Project[]
   );
 }
 
-function RequirementCard({ requirement, mappings }: { requirement: Requirement; mappings: EvidenceMappingWithEvidence[] }) {
+function RequirementCard({
+  requirement,
+  mappings,
+  note,
+  onNoteChange,
+}: {
+  requirement: Requirement;
+  mappings: EvidenceMappingWithEvidence[];
+  note: string;
+  onNoteChange: (value: string) => void;
+}) {
   return (
     <div className="rounded-2xl border border-slate-800/80 bg-slate-950/60 p-4 space-y-3">
-      <div className="flex items-start justify-between gap-2">
-        <div>
-          <p className="text-sm font-semibold text-white">{requirement.text}</p>
-          <div className="flex items-center gap-2 text-xs text-muted-foreground">
-            <Badge variant="outline" className="text-[10px] uppercase tracking-wide">
-              Priority {requirement.priority}
-            </Badge>
-            <span>Evidence: {mappings.length || "0"} project{mappings.length === 1 ? "" : "s"}</span>
-          </div>
+      <div className="space-y-2">
+        <div className="rounded-xl border border-slate-800/80 bg-slate-950/70 p-3">
+          <p className="text-[11px] uppercase tracking-[0.35em] text-muted-foreground">JD requirement</p>
+          <p className="mt-1 text-sm font-semibold text-white">{requirement.text}</p>
         </div>
-        <Button variant="ghost" size="sm" className="h-7 px-2 text-xs text-muted-foreground">
-          <PenSquare className="mr-1 h-3.5 w-3.5" /> Edit
-        </Button>
+        <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
+          <Badge variant="outline" className="text-[10px] uppercase tracking-wide">
+            Priority {requirement.priority}
+          </Badge>
+          <span>Evidence: {mappings.length || "0"} project{mappings.length === 1 ? "" : "s"}</span>
+        </div>
       </div>
       <div className="space-y-2">
         {mappings.length > 0 ? (
@@ -277,11 +351,33 @@ function RequirementCard({ requirement, mappings }: { requirement: Requirement; 
           <p className="text-xs text-muted-foreground">No mapped evidence yet.</p>
         )}
       </div>
+      <div className="space-y-1">
+        <p className="text-[11px] uppercase tracking-wide text-muted-foreground">Your emphasis (visible only to you)</p>
+        <Textarea
+          value={note}
+          onChange={(event) => onNoteChange(event.target.value)}
+          rows={3}
+          placeholder="Clarify how your repo covers this requirement or what to emphasize live."
+          className="bg-slate-950/80 text-sm"
+        />
+      </div>
     </div>
   );
 }
 
-function CopyRow({ text, label }: { text: string; label: string }) {
+function EditableCopyRow({
+  text,
+  original,
+  label,
+  onChange,
+  multiline,
+}: {
+  text: string;
+  original: string;
+  label: string;
+  onChange: (value: string) => void;
+  multiline?: boolean;
+}) {
   const [copied, setCopied] = useState(false);
   useEffect(() => {
     if (!copied) return;
@@ -294,15 +390,32 @@ function CopyRow({ text, label }: { text: string; label: string }) {
     setCopied(true);
   };
 
+  const resetDisabled = text === original;
+
   return (
-    <div className="flex items-start gap-3 rounded-2xl border border-slate-800/80 bg-slate-950/60 p-4">
-      <div className="flex-1 space-y-1">
-        <p className="text-xs uppercase tracking-wide text-muted-foreground">{label}</p>
-        <p className="text-sm text-white">{text}</p>
+    <div className="space-y-2 rounded-2xl border border-slate-800/80 bg-slate-950/60 p-4">
+      <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+        <div className="flex items-center gap-2">
+          <p className="text-xs uppercase tracking-wide text-muted-foreground">{label}</p>
+          {!resetDisabled && <Badge variant="outline">Edited</Badge>}
+        </div>
+        <div className="flex flex-wrap gap-2">
+          <Button variant="ghost" size="sm" onClick={handleCopy}>
+            {copied ? "Copied" : "Copy"}
+          </Button>
+          <Button variant="ghost" size="sm" disabled={resetDisabled} onClick={() => onChange(original)}>
+            Reset
+          </Button>
+        </div>
       </div>
-      <Button variant="ghost" size="sm" onClick={handleCopy}>
-        {copied ? "Copied" : "Copy"}
-      </Button>
+      <Textarea
+        value={text}
+        onChange={(event) => onChange(event.target.value)}
+        rows={multiline ? 5 : 3}
+        className="bg-slate-950/80 text-sm"
+        placeholder="Tighten phrasing or add context. Copy when ready."
+      />
+      <p className="text-[11px] text-muted-foreground">Only copied text is shared; packet citations stay read-only until you regenerate.</p>
     </div>
   );
 }
