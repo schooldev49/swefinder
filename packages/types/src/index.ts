@@ -12,6 +12,8 @@ export interface User {
   githubLogin: string;
   githubAvatarUrl: string;
   createdAt: string;
+  profileSlug?: string;
+  profilePublic?: boolean;
 }
 
 export type ProjectSourceType = "github" | "link";
@@ -33,6 +35,7 @@ export interface Project {
   createdAt?: string;
   updatedAt?: string;
   tags?: string[];
+  isShowcased?: boolean;
 }
 
 export interface Job {
@@ -45,6 +48,7 @@ export interface Job {
   createdAt: string;
   status: JobStatus;
   proofPacketId?: string;
+  shareToken?: string;
 }
 
 export interface Requirement {
@@ -64,6 +68,7 @@ export interface Evidence {
   id: string;
   projectId: string;
   projectFullName: string;
+  sourceType?: ProjectSourceType;
   title: string;
   description?: string;
   repoPath?: string;

@@ -9,10 +9,23 @@ const JOB_INDEX_PREFIX = "jobs:index:";
 const TOKEN_PREFIX = "token:";
 const PROOF_PREFIX = "proof:";
 const OAUTH_STATE_PREFIX = "oauth-state:";
+const USER_BY_SLUG_PREFIX = "user:slug:";
+const JOB_TOKEN_PREFIX = "job:token:";
 
 export async function saveUser(env: Env, user: User): Promise<User> {
-  await env.DATA_KV.put(`${USER_PREFIX}${user.id}`, JSON.stringify(user));
+  const key = `${USER_PREFIX}${user.id}`;
+  const existingRaw = await env.DATA_KV.get(key);
+  if (existingRaw) {
+    const existing = JSON.parse(existingRaw) as User;
+    if (existing.profileSlug && existing.profileSlug !== user.profileSlug) {
+      await env.DATA_KV.delete(`${USER_BY_SLUG_PREFIX}${existing.profileSlug}`);
+    }
+  }
+  await env.DATA_KV.put(key, JSON.stringify(user));
   await env.DATA_KV.put(`${USER_BY_GITHUB_PREFIX}${user.githubId}`, user.id);
+  if (user.profileSlug) {
+    await env.DATA_KV.put(`${USER_BY_SLUG_PREFIX}${user.profileSlug}`, user.id);
+  }
   return user;
 }
 
@@ -25,6 +38,12 @@ export async function getUserByGitHubId(env: Env, githubId: number): Promise<Use
 export async function getUserById(env: Env, userId: string): Promise<User | null> {
   const raw = await env.DATA_KV.get(`${USER_PREFIX}${userId}`);
   return raw ? (JSON.parse(raw) as User) : null;
+}
+
+export async function getUserBySlug(env: Env, slug: string): Promise<User | null> {
+  const userId = await env.DATA_KV.get(`${USER_BY_SLUG_PREFIX}${slug}`);
+  if (!userId) return null;
+  return getUserById(env, userId);
 }
 
 export async function saveProjects(env: Env, userId: string, projects: Project[]): Promise<Project[]> {
@@ -51,11 +70,17 @@ export async function saveJob(env: Env, job: Job): Promise<Job> {
     ids.unshift(job.id);
     await env.DATA_KV.put(indexKey, JSON.stringify(ids));
   }
+  if (job.shareToken) {
+    await env.DATA_KV.put(`${JOB_TOKEN_PREFIX}${job.shareToken}`, job.id);
+  }
   return job;
 }
 
 export async function updateJob(env: Env, job: Job): Promise<Job> {
   await env.DATA_KV.put(`${JOB_PREFIX}${job.id}`, JSON.stringify(job));
+  if (job.shareToken) {
+    await env.DATA_KV.put(`${JOB_TOKEN_PREFIX}${job.shareToken}`, job.id);
+  }
   return job;
 }
 
@@ -106,4 +131,8 @@ export async function consumeOAuthState(env: Env, state: string): Promise<string
     return redirect || null;
   }
   return null;
+}
+
+export async function getJobIdByToken(env: Env, token: string): Promise<string | null> {
+  return env.DATA_KV.get(`${JOB_TOKEN_PREFIX}${token}`);
 }

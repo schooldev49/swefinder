@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import type { ChangeEvent, FormEvent } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { fetchGitHubRepos, fetchProjects, saveProjects, type ApiRepoSummary, type ProjectPayload } from "@/lib/api";
@@ -15,6 +15,7 @@ import { Loader2, RefreshCw } from "lucide-react";
 import { toast } from "sonner";
 
 const CONTEXT_OPTIONS = ["Personal", "Course", "Open Source", "Startup", "Research"];
+const MAX_SHOWCASED = 4;
 
 type ExternalFormState = {
   title: string;
@@ -70,6 +71,7 @@ export function ProjectsPage() {
   const [isLoadingRepos, setIsLoadingRepos] = useState(false);
   const [showExternalForm, setShowExternalForm] = useState(false);
   const [externalForm, setExternalForm] = useState<ExternalFormState>(() => createEmptyExternalForm());
+  const showcasedCount = useMemo(() => projects.filter((project) => project.isShowcased).length, [projects]);
 
   useEffect(() => {
     if (savedProjects) {
@@ -130,6 +132,7 @@ export function ProjectsPage() {
         demoUrl: undefined,
         year: new Date(repo.updatedAt).getFullYear(),
         draft: true,
+        isShowcased: false,
       }));
     if (!newEntries.length) {
       toast("Already added", { description: "The selected repos are already in your project list." });
@@ -177,6 +180,7 @@ export function ProjectsPage() {
       primaryLanguage: topics[0],
       demoUrl: url,
       draft: true,
+      isShowcased: false,
     };
     setProjects((prev) => [newProject, ...prev]);
     setExternalForm(createEmptyExternalForm());
@@ -186,6 +190,14 @@ export function ProjectsPage() {
 
   const updateProject = (projectId: string, changes: Partial<EditableProject>) => {
     setProjects((prev) => prev.map((project) => (project.id === projectId ? { ...project, ...changes } : project)));
+  };
+
+  const toggleShowcased = (projectId: string, nextState: boolean) => {
+    if (nextState && showcasedCount >= MAX_SHOWCASED) {
+      toast("Limit reached", { description: "You can showcase up to 4 projects." });
+      return;
+    }
+    updateProject(projectId, { isShowcased: nextState });
   };
 
   const handleSave = () => {
@@ -201,6 +213,9 @@ export function ProjectsPage() {
           <div>
             <CardTitle className="text-white">Saved projects</CardTitle>
             <CardDescription>These projects—GitHub repos or public links—become the evidence pool for every Proof Packet.</CardDescription>
+            <p className="text-xs text-muted-foreground mt-1">
+              Showcased projects: {showcasedCount}/{MAX_SHOWCASED}
+            </p>
           </div>
           <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
             <Button variant="ghost" onClick={handleImportRepos} disabled={isLoadingRepos}>
@@ -316,6 +331,15 @@ export function ProjectsPage() {
                     </p>
                   </div>
                   <div className="flex flex-wrap gap-2">
+                    <Button
+                      type="button"
+                      variant={project.isShowcased ? "secondary" : "ghost"}
+                      size="sm"
+                      onClick={() => toggleShowcased(project.id, !project.isShowcased)}
+                      disabled={!project.isShowcased && showcasedCount >= MAX_SHOWCASED}
+                    >
+                      {project.isShowcased ? "Showcased" : "Showcase"}
+                    </Button>
                     {project.topics?.slice(0, 3).map((topic) => (
                       <Badge key={topic} variant="outline">
                         {topic}

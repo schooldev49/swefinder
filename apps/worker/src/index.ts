@@ -1,15 +1,42 @@
-import type { EvidenceMappingWithEvidence, Job, ProofPacket, Project, Requirement } from "@swefinder/types";
+import type { EvidenceMappingWithEvidence, Job, ProofPacket, Project, Requirement, User } from "@swefinder/types";
 import { callLLM } from "./llm/callLLM";
 import { buildBulletsAndOutreachPrompt, buildEvidenceMappingPrompt, buildRequirementsPrompt } from "./llm/prompts";
 import type { Env } from "./env";
 import { decryptToken, encryptToken } from "./crypto";
 import { errorResponse, getAllowedOrigin, handleOptions, jsonResponse, parseJsonBody, withCors } from "./utils";
-import { consumeOAuthState, getEncryptedToken, getJob, getProofPacket, getUserByGitHubId, getUserById, listJobs, listProjects, saveEncryptedToken, saveJob, saveProjects, saveProofPacket, saveUser, storeOAuthState, updateJob } from "./storage";
+import {
+  consumeOAuthState,
+  getEncryptedToken,
+  getJob,
+  getJobIdByToken,
+  getProofPacket,
+  getUserByGitHubId,
+  getUserById,
+  getUserBySlug,
+  listJobs,
+  listProjects,
+  saveEncryptedToken,
+  saveJob,
+  saveProjects,
+  saveProofPacket,
+  saveUser,
+  storeOAuthState,
+  updateJob,
+} from "./storage";
 import { exchangeCodeForToken, fetchGitHubUserProfile, fetchUserRepos } from "./github";
 import { createSession, destroySession, getSession } from "./session";
 
 interface CreateProjectsPayload {
-  projects: Array<Partial<Project> & { fullName: string; htmlUrl: string; lastUpdated: string; topics?: string[] }>; // minimal typing
+  projects: Array<
+    Partial<Project> & {
+      fullName: string;
+      htmlUrl?: string;
+      lastUpdated?: string;
+      topics?: string[];
+      sourceType?: Project["sourceType"];
+      externalUrl?: string;
+    }
+  >;
 }
 
 interface CreateJobPayload {
@@ -93,6 +120,14 @@ export default {
         return withCors(await handleListJobs(request, env), origin);
       }
 
+      if (url.pathname === "/api/profile" && request.method === "GET") {
+        return withCors(await handleGetProfile(request, env), origin);
+      }
+
+      if (url.pathname === "/api/profile" && request.method === "POST") {
+        return withCors(await handleUpdateProfile(request, env), origin);
+      }
+
       const jobIdMatch = url.pathname.match(/^\/api\/jobs\/(?<jobId>[^\/]+)/);
       if (jobIdMatch) {
         const jobId = jobIdMatch.groups?.jobId || "";
@@ -105,6 +140,16 @@ export default {
         if (url.pathname.endsWith(`/api/jobs/${jobId}/generate`) && request.method === "POST") {
           return withCors(await handleGenerateProofPacket(request, env, jobId), origin);
         }
+      }
+
+      const profileSlugMatch = url.pathname.match(/^\/share\/profile\/(?<slug>[a-z0-9-]+)/i);
+      if (profileSlugMatch && request.method === "GET") {
+        return withCors(await handlePublicProfile(request, env, profileSlugMatch.groups?.slug || ""), origin);
+      }
+
+      const packetMatch = url.pathname.match(/^\/share\/packet\/(?<token>[a-zA-Z0-9-]+)/);
+      if (packetMatch && request.method === "GET") {
+        return withCors(await handleSharedPacket(request, env, packetMatch.groups?.token || ""), origin);
       }
 
       return withCors(errorResponse("Not found", 404), origin);
@@ -161,6 +206,7 @@ async function handleGitHubCallback(request: Request, env: Env): Promise<Respons
   } else {
     user = { ...user, githubLogin: profile.login, githubAvatarUrl: profile.avatar_url };
   }
+  await ensureProfileDefaults(env, user, profile.login);
   await saveUser(env, user);
 
   const encrypted = await encryptToken(env, tokenResponse.access_token);
@@ -249,6 +295,10 @@ async function handleSaveProjects(request: Request, env: Env): Promise<Response>
     return errorResponse("Invalid project payload", 400);
   }
   const normalized: Project[] = payload.projects.map((project) => normalizeProjectPayload(project, user.id));
+  const showcasedCount = normalized.filter((project) => project.isShowcased).length;
+  if (showcasedCount > 4) {
+    throw new HttpError("You can showcase at most 4 projects", 400);
+  }
   await saveProjects(env, user.id, normalized);
   return jsonResponse(normalized);
 }
@@ -268,6 +318,7 @@ async function handleCreateJob(request: Request, env: Env): Promise<Response> {
     rawDescription: payload.rawDescription,
     status: "DRAFT",
     createdAt: new Date().toISOString(),
+    shareToken: crypto.randomUUID(),
   };
   await saveJob(env, job);
   return jsonResponse(job);
@@ -277,6 +328,36 @@ async function handleListJobs(request: Request, env: Env): Promise<Response> {
   const { user } = await requireUser(request, env);
   const jobs = await listJobs(env, user.id);
   return jsonResponse(jobs);
+}
+
+async function handleGetProfile(request: Request, env: Env): Promise<Response> {
+  const { user } = await requireUser(request, env);
+  const projects = await listProjects(env, user.id);
+  return jsonResponse({ user, projects });
+}
+
+interface ProfileSettingsPayload {
+  profileSlug?: string;
+  profilePublic?: boolean;
+}
+
+async function handleUpdateProfile(request: Request, env: Env): Promise<Response> {
+  const { user } = await requireUser(request, env);
+  const payload = await parseJsonBody<ProfileSettingsPayload>(request);
+  if (payload.profileSlug !== undefined) {
+    const slug = payload.profileSlug.trim().toLowerCase();
+    validateProfileSlug(slug);
+    const existing = await getUserBySlug(env, slug);
+    if (existing && existing.id !== user.id) {
+      throw new HttpError("That slug is already in use", 400);
+    }
+    user.profileSlug = slug;
+  }
+  if (typeof payload.profilePublic === "boolean") {
+    user.profilePublic = payload.profilePublic;
+  }
+  await saveUser(env, user);
+  return jsonResponse(user);
 }
 
 async function handleGetJob(request: Request, env: Env, jobId: string): Promise<Response> {
@@ -385,6 +466,7 @@ function buildEvidenceFromMapping(mapping: any, projects: Project[]): EvidenceMa
     id: crypto.randomUUID(),
     projectId: project?.id || crypto.randomUUID(),
     projectFullName: mapping.projectFullName || project?.fullName || "",
+    sourceType: project?.sourceType,
     title: mapping.title || project?.fullName || "Evidence",
     description: mapping.description || project?.description,
     repoPath: mapping.repoPath,
@@ -401,6 +483,30 @@ async function runLLMForBullets(requirements: Requirement[], mappings: EvidenceM
     userPrompt: buildBulletsAndOutreachPrompt({ requirements, mappings }),
   });
   return JSON.parse(response.raw) as { bullets: string[]; outreachNote: string; summary: string };
+}
+
+async function handlePublicProfile(request: Request, env: Env, slug: string): Promise<Response> {
+  const user = await getUserBySlug(env, slug.toLowerCase());
+  if (!user || !user.profilePublic) {
+    throw new HttpError("Profile not available", 404);
+  }
+  const projects = await listProjects(env, user.id);
+  const showcased = projects.filter((project) => project.isShowcased);
+  return jsonResponse({ user, projects: showcased });
+}
+
+async function handleSharedPacket(request: Request, env: Env, token: string): Promise<Response> {
+  const jobId = await getJobIdByToken(env, token);
+  if (!jobId) {
+    throw new HttpError("Packet not found", 404);
+  }
+  const job = await getJob(env, jobId);
+  if (!job) {
+    throw new HttpError("Job not found", 404);
+  }
+  const proof = await getProofPacket(env, jobId);
+  const user = await getUserById(env, job.userId);
+  return jsonResponse({ job, proofPacket: proof, user });
 }
 
 function normalizeProjectPayload(
@@ -448,6 +554,7 @@ function normalizeProjectPayload(
     createdAt: project.createdAt || now,
     updatedAt: now,
     tags: project.tags ?? [],
+    isShowcased: Boolean(project.isShowcased),
   };
 }
 
@@ -471,4 +578,42 @@ function validateProjectUrl(url: string): string {
     throw new HttpError("Project URL is too long", 400);
   }
   return parsed.toString();
+}
+
+function validateProfileSlug(slug: string) {
+  if (!slug || !/^[a-z0-9-]{3,30}$/.test(slug)) {
+    throw new HttpError("Slug must be 3-30 lowercase letters, numbers, or dashes", 400);
+  }
+}
+
+async function ensureProfileDefaults(env: Env, user: User, login: string) {
+  if (!user.profileSlug) {
+    const base = login.toLowerCase().replace(/[^a-z0-9-]/g, "-").replace(/-+/g, "-").replace(/^-|-$/g, "");
+    user.profileSlug = await generateAvailableSlug(env, base || `user-${user.id.slice(0, 6)}`);
+  }
+  if (typeof user.profilePublic !== "boolean") {
+    user.profilePublic = false;
+  }
+}
+
+async function generateAvailableSlug(env: Env, base: string): Promise<string> {
+  // Normalize: lowercase, remove special chars, trim
+  let candidate = base.toLowerCase().replace(/[^a-z0-9]/g, '-') || "user";
+  if (candidate.length < 3) {
+    candidate = `${candidate}-${Math.random().toString(36).substring(2, 7)}`;
+  }
+
+  const MAX_RETRIES = 10;
+  
+  for (let i = 0; i < MAX_RETRIES; i++) {
+    // Strategy: Try the base, then try adding a random short string
+    // This is often faster than sequential numbers (1, 2, 3...)
+    const slug = i === 0 ? candidate : `${candidate}-${Math.random().toString(36).substring(2, 5)}`;
+    
+    const existing = await getUserBySlug(env, slug);
+    if (!existing) return slug;
+  }
+
+  // Fallback: If we still haven't found one, use a timestamp to guarantee uniqueness
+  return `${candidate}-${Date.now().toString(36)}`;
 }
