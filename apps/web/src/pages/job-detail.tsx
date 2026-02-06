@@ -7,7 +7,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Loader2, RefreshCw } from "lucide-react";
+import { Loader2, PenSquare, RefreshCw } from "lucide-react";
 import { toast } from "sonner";
 
 const STATUS_ORDER: Job["status"][] = ["DRAFT", "PROOF_GENERATED", "APPLIED", "INTERVIEW", "REJECTED", "OFFER"];
@@ -76,6 +76,8 @@ export function JobDetailPage() {
   }
 
   const nextStatus = getNextStatus(job.status);
+  const statusMeta = getStatusMeta(job.status);
+  const lastUpdated = job.proofPacketId ? proof?.createdAt || job.createdAt : job.createdAt;
 
   return (
     <div className="grid gap-6">
@@ -89,12 +91,13 @@ export function JobDetailPage() {
                 View posting
               </a>
             )}
+            {lastUpdated && <p className="text-xs text-muted-foreground">Last updated {new Date(lastUpdated).toLocaleDateString()}</p>}
           </div>
           <div className="flex flex-wrap items-center gap-3">
-            <Badge variant="outline">{job.status}</Badge>
+            <Badge variant={statusMeta.variant}>{statusMeta.label}</Badge>
             {nextStatus && (
               <Button size="sm" variant="secondary" onClick={() => statusMutation.mutate(nextStatus)} disabled={statusMutation.isPending}>
-                Move to {nextStatus.toLowerCase()}
+                Mark as {nextStatus.toLowerCase()}
               </Button>
             )}
           </div>
@@ -139,7 +142,10 @@ export function JobDetailPage() {
                 </div>
               </section>
               <section>
-                <h3 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">Resume bullets</h3>
+                <div className="flex items-center justify-between">
+                  <h3 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">Resume bullets</h3>
+                  <p className="text-xs text-muted-foreground">Plain text, ATS-safe lines ready to paste.</p>
+                </div>
                 <div className="mt-3 space-y-3">
                   {proof.bullets.map((bullet, index) => (
                     <CopyRow key={index} text={bullet} label={`Bullet ${index + 1}`} />
@@ -148,10 +154,14 @@ export function JobDetailPage() {
               </section>
               <section>
                 <h3 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">Outreach note</h3>
+                <p className="text-xs text-muted-foreground">Drop this into LinkedIn or email for tailored outreach.</p>
                 <CopyRow text={proof.outreachNote} label="Outreach" />
               </section>
               <section>
-                <h3 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">Evidence citations</h3>
+                <div>
+                  <h3 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">Evidence citations</h3>
+                  <p className="text-xs text-muted-foreground">Every claim above links back to a repo file or doc so reviewers can audit it.</p>
+                </div>
                 {citations.length === 0 ? (
                   <p className="mt-3 text-sm text-muted-foreground">No code references yet.</p>
                 ) : (
@@ -163,7 +173,7 @@ export function JobDetailPage() {
                         </div>
                         {evidence.description && <p className="text-sm text-white">{evidence.description}</p>}
                         {evidence.fileUrl && (
-                          <a href={evidence.fileUrl} target="_blank" rel="noreferrer" className="text-accent">
+                          <a href={evidence.fileUrl} target="_blank" rel="noopener noreferrer nofollow" className="text-accent">
                             View source
                           </a>
                         )}
@@ -192,28 +202,26 @@ function ProjectSelector({ projects, selected, onChange }: { projects: Project[]
 
   return (
     <div className="rounded-2xl border border-slate-800/80 bg-slate-950/60 p-4">
-      <p className="text-xs uppercase tracking-wide text-muted-foreground">Projects in scope</p>
+      <p className="text-xs uppercase tracking-wide text-muted-foreground">Projects included in this packet</p>
+      <p className="text-[11px] text-muted-foreground">Only checked projects will feed requirements and bullets.</p>
       <div className="mt-3 grid gap-2 md:grid-cols-2">
         {projects.map((project) => (
-          <label key={project.id} className="flex cursor-pointer items-start gap-3 rounded-xl border border-transparent px-3 py-2 hover:border-slate-700">
+          <label
+            key={project.id}
+            className="flex cursor-pointer items-start gap-3 rounded-xl border border-transparent px-3 py-2 hover:border-slate-700"
+          >
             <Checkbox checked={selected.has(project.id)} onCheckedChange={(value) => toggleProject(project.id, Boolean(value))} />
-            <div>
-              <div className="flex items-center gap-2">
+            <div className="space-y-1">
+              <div className="flex flex-wrap items-center gap-2">
                 <p className="text-sm font-medium text-white">{project.fullName}</p>
                 <Badge variant={project.sourceType === "link" ? "outline" : "default"} className="text-[10px]">
                   {project.sourceType === "link" ? "Link" : "GitHub"}
                 </Badge>
               </div>
-              <p className="text-xs text-muted-foreground">{project.description}</p>
+              {project.description && <p className="text-xs text-muted-foreground">{project.description}</p>}
               {project.htmlUrl && (
-                <a href={project.htmlUrl} target="_blank" rel="noopener noreferrer nofollow" className="text-xs text-accent">
-                  {(() => {
-                    try {
-                      return new URL(project.htmlUrl).hostname;
-                    } catch {
-                      return project.htmlUrl;
-                    }
-                  })()}
+                <a href={project.htmlUrl} target="_blank" rel="noopener noreferrer nofollow" className="text-[11px] text-accent">
+                  {getHost(project.htmlUrl)}
                 </a>
               )}
             </div>
@@ -226,17 +234,29 @@ function ProjectSelector({ projects, selected, onChange }: { projects: Project[]
 
 function RequirementCard({ requirement, mappings }: { requirement: Requirement; mappings: EvidenceMappingWithEvidence[] }) {
   return (
-    <div className="rounded-2xl border border-slate-800/80 bg-slate-950/60 p-4">
-      <p className="text-sm font-semibold text-white">{requirement.text}</p>
-      <p className="text-xs text-muted-foreground">Priority {requirement.priority}</p>
-      <div className="mt-3 space-y-2">
+    <div className="rounded-2xl border border-slate-800/80 bg-slate-950/60 p-4 space-y-3">
+      <div className="flex items-start justify-between gap-2">
+        <div>
+          <p className="text-sm font-semibold text-white">{requirement.text}</p>
+          <div className="flex items-center gap-2 text-xs text-muted-foreground">
+            <Badge variant="outline" className="text-[10px] uppercase tracking-wide">
+              Priority {requirement.priority}
+            </Badge>
+            <span>Evidence: {mappings.length || "0"} project{mappings.length === 1 ? "" : "s"}</span>
+          </div>
+        </div>
+        <Button variant="ghost" size="sm" className="h-7 px-2 text-xs text-muted-foreground">
+          <PenSquare className="mr-1 h-3.5 w-3.5" /> Edit
+        </Button>
+      </div>
+      <div className="space-y-2">
         {mappings.length > 0 ? (
           mappings.map((mapping) => (
             <div key={mapping.id} className="rounded-lg border border-slate-800/80 p-3 text-xs text-muted-foreground">
               <p className="font-semibold text-white">{mapping.evidence.projectFullName}</p>
-              <p>{mapping.evidence.description}</p>
+              {mapping.evidence.description && <p>{mapping.evidence.description}</p>}
               {mapping.evidence.fileUrl && (
-                <a href={mapping.evidence.fileUrl} target="_blank" rel="noreferrer" className="text-primary underline">
+                <a href={mapping.evidence.fileUrl} target="_blank" rel="noreferrer" className="text-accent">
                   Proof link
                 </a>
               )}
@@ -280,4 +300,30 @@ function getNextStatus(current: Job["status"]): Job["status"] | null {
   const idx = STATUS_ORDER.indexOf(current);
   if (idx === -1 || idx + 1 >= STATUS_ORDER.length) return null;
   return STATUS_ORDER[idx + 1];
+}
+
+function getStatusMeta(status: Job["status"]): { label: string; variant: "default" | "outline" | "success" | "warning" } {
+  switch (status) {
+    case "PROOF_GENERATED":
+      return { label: "Proof ready", variant: "default" };
+    case "APPLIED":
+      return { label: "Applied", variant: "success" };
+    case "INTERVIEW":
+      return { label: "Interview", variant: "success" };
+    case "REJECTED":
+      return { label: "Rejected", variant: "warning" };
+    case "OFFER":
+      return { label: "Offer", variant: "success" };
+    default:
+      return { label: "Draft", variant: "outline" };
+  }
+}
+
+function getHost(url?: string) {
+  if (!url) return "";
+  try {
+    return new URL(url).hostname;
+  } catch {
+    return url;
+  }
 }

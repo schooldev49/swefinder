@@ -200,7 +200,7 @@ export function ProjectsPage() {
         <CardHeader className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
           <div>
             <CardTitle className="text-white">Saved projects</CardTitle>
-            <CardDescription>These repos are the evidence pool for every Proof Packet you generate.</CardDescription>
+            <CardDescription>These projects—GitHub repos or public links—become the evidence pool for every Proof Packet.</CardDescription>
           </div>
           <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
             <Button variant="ghost" onClick={handleImportRepos} disabled={isLoadingRepos}>
@@ -244,6 +244,7 @@ export function ProjectsPage() {
                       className="mt-2"
                       required
                     />
+                    <p className="mt-1 text-[11px] text-muted-foreground">Public links only. No login walls or localhost.</p>
                   </div>
                 </div>
                 <div>
@@ -357,6 +358,7 @@ export function ProjectsPage() {
                       className="mt-2"
                       placeholder="https://"
                     />
+                    <p className="mt-1 text-[11px] text-muted-foreground">Must be public. Recruiters will click to verify.</p>
                   </div>
                 </div>
                 <div className="mt-4">
