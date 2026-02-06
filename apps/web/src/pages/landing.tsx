@@ -5,6 +5,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { useSession } from "@/hooks/use-session";
 import { buildGitHubLoginUrl } from "@/lib/auth";
+import { setDemoPreference } from "@/demo/mode";
 
 const steps = [
   { title: "Connect GitHub", body: "Securely pull the repos, PRs, and notebooks that prove your skills.", icon: Code2 },
@@ -82,8 +83,20 @@ export function LandingPage() {
           </div>
           <div className="flex flex-col gap-3 sm:flex-row">
             {primaryCta}
-            <Button asChild variant="outline" size="lg" className="border-slate-700 text-slate-100 hover:bg-slate-800/80">
-              <Link to="/jobs/job-demo?demo=1">See example packet</Link>
+            <Button
+              asChild
+              variant="outline"
+              size="lg"
+              className="border-slate-700 text-slate-100 hover:bg-slate-800/80"
+            >
+              <Link
+                to="/jobs/job-demo?demo=1"
+                onClick={() => {
+                  setDemoPreference(true);
+                }}
+              >
+                See example packet
+              </Link>
             </Button>
           </div>
           <p className="text-xs text-muted-foreground">
