@@ -248,24 +248,7 @@ async function handleSaveProjects(request: Request, env: Env): Promise<Response>
   if (!payload.projects || !Array.isArray(payload.projects)) {
     return errorResponse("Invalid project payload", 400);
   }
-  const normalized: Project[] = payload.projects.map((project) => {
-    if (!project.fullName || !project.htmlUrl || !project.lastUpdated) {
-      throw new HttpError("Each project requires fullName, htmlUrl, and lastUpdated", 400);
-    }
-    return {
-      id: project.id || crypto.randomUUID(),
-      userId: user.id,
-      fullName: project.fullName,
-      htmlUrl: project.htmlUrl,
-      description: project.description,
-      primaryLanguage: project.primaryLanguage,
-      topics: project.topics || [],
-      lastUpdated: project.lastUpdated,
-      demoUrl: project.demoUrl,
-      context: project.context,
-      year: project.year,
-    };
-  });
+  const normalized: Project[] = payload.projects.map((project) => normalizeProjectPayload(project, user.id));
   await saveProjects(env, user.id, normalized);
   return jsonResponse(normalized);
 }
@@ -418,4 +401,74 @@ async function runLLMForBullets(requirements: Requirement[], mappings: EvidenceM
     userPrompt: buildBulletsAndOutreachPrompt({ requirements, mappings }),
   });
   return JSON.parse(response.raw) as { bullets: string[]; outreachNote: string; summary: string };
+}
+
+function normalizeProjectPayload(
+  project: Partial<Project> & { id?: string; htmlUrl?: string; fullName?: string; sourceType?: string },
+  userId: string
+): Project {
+  const now = new Date().toISOString();
+  const sourceType: Project["sourceType"] = project.sourceType === "link" ? "link" : "github";
+  const baseName = (project.fullName || project.htmlUrl || project.externalUrl || "").trim();
+  if (!baseName) {
+    throw new HttpError("Each project requires a name", 400);
+  }
+  const topics = project.topics?.filter(Boolean) ?? [];
+  let htmlUrl = project.htmlUrl?.trim();
+  let externalUrl = project.externalUrl?.trim();
+  if (sourceType === "link") {
+    const rawUrl = externalUrl || htmlUrl;
+    if (!rawUrl) {
+      throw new HttpError("Link projects require a URL", 400);
+    }
+    const sanitized = validateProjectUrl(rawUrl);
+    externalUrl = sanitized;
+    htmlUrl = sanitized;
+  } else {
+    if (!htmlUrl) {
+      throw new HttpError("GitHub projects require a repository URL", 400);
+    }
+    htmlUrl = validateProjectUrl(htmlUrl);
+  }
+
+  return {
+    id: project.id || crypto.randomUUID(),
+    userId,
+    sourceType,
+    fullName: baseName,
+    htmlUrl,
+    externalUrl,
+    description: project.description,
+    primaryLanguage: project.primaryLanguage,
+    topics,
+    lastUpdated: project.lastUpdated || now,
+    demoUrl: project.demoUrl,
+    context: project.context,
+    year: project.year,
+    createdAt: project.createdAt || now,
+    updatedAt: now,
+    tags: project.tags ?? [],
+  };
+}
+
+function validateProjectUrl(url: string): string {
+  let parsed: URL;
+  try {
+    parsed = new URL(url);
+  } catch {
+    throw new HttpError("Invalid project URL", 400);
+  }
+  if (!["https:", "http:"].includes(parsed.protocol)) {
+    throw new HttpError("Project URL must use http or https", 400);
+  }
+  if (parsed.protocol === "http:" && parsed.hostname !== "localhost") {
+    throw new HttpError("Project URL must use https", 400);
+  }
+  if (!parsed.hostname) {
+    throw new HttpError("Project URL missing hostname", 400);
+  }
+  if (url.length > 2048) {
+    throw new HttpError("Project URL is too long", 400);
+  }
+  return parsed.toString();
 }

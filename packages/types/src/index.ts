@@ -14,11 +14,15 @@ export interface User {
   createdAt: string;
 }
 
+export type ProjectSourceType = "github" | "link";
+
 export interface Project {
   id: string;
   userId: string;
-  fullName: string;
-  htmlUrl: string;
+  sourceType: ProjectSourceType;
+  fullName: string; // repo full name or custom title
+  htmlUrl: string; // repo URL or canonical project URL
+  externalUrl?: string; // optional additional link for external projects
   description?: string;
   primaryLanguage?: string;
   topics: string[];
@@ -26,6 +30,9 @@ export interface Project {
   demoUrl?: string;
   context?: string;
   year?: number;
+  createdAt?: string;
+  updatedAt?: string;
+  tags?: string[];
 }
 
 export interface Job {

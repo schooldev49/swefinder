@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useParams } from "react-router-dom";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { EvidenceMappingWithEvidence, Job, Project, Requirement } from "@swefinder/types";
@@ -28,6 +28,22 @@ export function JobDetailPage() {
 
   const job = jobQuery.data?.job;
   const proof = jobQuery.data?.proofPacket;
+
+  const citations = useMemo(() => {
+    if (!proof) return [];
+    const unique = new Map<string, EvidenceMappingWithEvidence["evidence"]>();
+    proof.mappings.forEach((mapping) => {
+      const sourceKey =
+        mapping.evidence.fileUrl ||
+        mapping.evidence.repoPath ||
+        `${mapping.evidence.projectFullName}-${mapping.evidence.title ?? ""}`;
+      if (!sourceKey) return;
+      if (!unique.has(sourceKey)) {
+        unique.set(sourceKey, mapping.evidence);
+      }
+    });
+    return Array.from(unique.values());
+  }, [proof]);
 
   const statusMutation = useMutation({
     mutationFn: (status: Job["status"]) => updateJobStatus(jobId, status),
@@ -134,6 +150,28 @@ export function JobDetailPage() {
                 <h3 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">Outreach note</h3>
                 <CopyRow text={proof.outreachNote} label="Outreach" />
               </section>
+              <section>
+                <h3 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">Evidence citations</h3>
+                {citations.length === 0 ? (
+                  <p className="mt-3 text-sm text-muted-foreground">No code references yet.</p>
+                ) : (
+                  <div className="mt-3 space-y-3">
+                    {citations.map((evidence) => (
+                      <div key={evidence.id} className="rounded-2xl border border-slate-800/80 bg-slate-950/60 p-4 text-xs text-slate-300">
+                        <div className="mb-2 text-[10px] font-semibold uppercase tracking-[0.3em] text-slate-500">
+                          {evidence.fileUrl || evidence.repoPath || evidence.projectFullName}
+                        </div>
+                        {evidence.description && <p className="text-sm text-white">{evidence.description}</p>}
+                        {evidence.fileUrl && (
+                          <a href={evidence.fileUrl} target="_blank" rel="noreferrer" className="text-accent">
+                            View source
+                          </a>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </section>
             </div>
           ) : (
             <p className="text-sm text-muted-foreground">No proof yet. Run generation once you have projects selected.</p>
@@ -160,8 +198,24 @@ function ProjectSelector({ projects, selected, onChange }: { projects: Project[]
           <label key={project.id} className="flex cursor-pointer items-start gap-3 rounded-xl border border-transparent px-3 py-2 hover:border-slate-700">
             <Checkbox checked={selected.has(project.id)} onCheckedChange={(value) => toggleProject(project.id, Boolean(value))} />
             <div>
-              <p className="text-sm font-medium text-white">{project.fullName}</p>
+              <div className="flex items-center gap-2">
+                <p className="text-sm font-medium text-white">{project.fullName}</p>
+                <Badge variant={project.sourceType === "link" ? "outline" : "default"} className="text-[10px]">
+                  {project.sourceType === "link" ? "Link" : "GitHub"}
+                </Badge>
+              </div>
               <p className="text-xs text-muted-foreground">{project.description}</p>
+              {project.htmlUrl && (
+                <a href={project.htmlUrl} target="_blank" rel="noopener noreferrer nofollow" className="text-xs text-accent">
+                  {(() => {
+                    try {
+                      return new URL(project.htmlUrl).hostname;
+                    } catch {
+                      return project.htmlUrl;
+                    }
+                  })()}
+                </a>
+              )}
             </div>
           </label>
         ))}

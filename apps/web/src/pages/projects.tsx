@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import type { ChangeEvent, FormEvent } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { fetchGitHubRepos, fetchProjects, saveProjects, type ApiRepoSummary, type ProjectPayload } from "@/lib/api";
 import { Button } from "@/components/ui/button";
@@ -15,6 +16,49 @@ import { toast } from "sonner";
 
 const CONTEXT_OPTIONS = ["Personal", "Course", "Open Source", "Startup", "Research"];
 
+type ExternalFormState = {
+  title: string;
+  url: string;
+  description: string;
+  techStack: string;
+  context: string;
+  year: string;
+};
+
+const createEmptyExternalForm = (): ExternalFormState => ({
+  title: "",
+  url: "",
+  description: "",
+  techStack: "",
+  context: "",
+  year: "",
+});
+
+const generateProjectId = () =>
+  typeof crypto !== "undefined" && typeof crypto.randomUUID === "function" ? crypto.randomUUID() : `project-${Date.now()}`;
+
+const isValidHttpUrl = (value: string) => {
+  try {
+    const parsed = new URL(value);
+    if (!["https:", "http:"].includes(parsed.protocol)) return false;
+    if (parsed.protocol === "http:" && parsed.hostname !== "localhost") return false;
+    return Boolean(parsed.hostname);
+  } catch {
+    return false;
+  }
+};
+
+const getProjectHost = (value?: string) => {
+  if (!value) return "";
+  try {
+    return new URL(value).hostname;
+  } catch {
+    return "";
+  }
+};
+
+const formatUpdated = (value?: string) => (value ? new Date(value).toLocaleDateString() : "Recently added");
+
 type EditableProject = ProjectPayload & { draft?: boolean };
 
 export function ProjectsPage() {
@@ -24,10 +68,12 @@ export function ProjectsPage() {
   const [repos, setRepos] = useState<ApiRepoSummary[]>([]);
   const [selectedRepoIds, setSelectedRepoIds] = useState<Set<string>>(new Set());
   const [isLoadingRepos, setIsLoadingRepos] = useState(false);
+  const [showExternalForm, setShowExternalForm] = useState(false);
+  const [externalForm, setExternalForm] = useState<ExternalFormState>(() => createEmptyExternalForm());
 
   useEffect(() => {
     if (savedProjects) {
-      setProjects(savedProjects.map(({ userId, ...rest }) => rest));
+      setProjects(savedProjects.map(({ userId, ...rest }) => ({ ...rest, sourceType: rest.sourceType ?? "github" })));
     }
   }, [savedProjects]);
 
@@ -35,7 +81,7 @@ export function ProjectsPage() {
     mutationFn: (payload: EditableProject[]) => saveProjects(payload),
     onSuccess: async (data) => {
       await queryClient.invalidateQueries({ queryKey: ["projects"] });
-      setProjects(data.map(({ userId, ...rest }) => rest));
+      setProjects(data.map(({ userId, ...rest }) => ({ ...rest, sourceType: rest.sourceType ?? "github" })));
       toast("Projects saved", { description: "Your proof-ready projects are up to date." });
     },
     onError: (error: Error) => {
@@ -73,6 +119,7 @@ export function ProjectsPage() {
       .filter((repo) => !existingIds.has(repo.id))
       .map((repo) => ({
         id: repo.id,
+        sourceType: "github",
         fullName: repo.fullName,
         htmlUrl: repo.htmlUrl,
         description: repo.description,
@@ -93,12 +140,56 @@ export function ProjectsPage() {
     toast("Projects staged", { description: `${newEntries.length} repo(s) ready to save.` });
   };
 
+  const handleExternalInput =
+    (field: keyof ExternalFormState) =>
+    (event: ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
+      const value = event.target.value;
+      setExternalForm((prev) => ({ ...prev, [field]: value }));
+    };
+
+  const handleExternalSubmit = (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    const title = externalForm.title.trim();
+    const url = externalForm.url.trim();
+    if (!title || !url) {
+      toast("Missing info", { description: "Add a project title and URL." });
+      return;
+    }
+    if (!isValidHttpUrl(url)) {
+      toast("Invalid URL", { description: "Use a valid https:// link." });
+      return;
+    }
+    const topics = externalForm.techStack
+      .split(",")
+      .map((token) => token.trim())
+      .filter(Boolean);
+    const newProject: EditableProject = {
+      id: generateProjectId(),
+      sourceType: "link",
+      fullName: title,
+      htmlUrl: url,
+      externalUrl: url,
+      description: externalForm.description.trim() || undefined,
+      topics,
+      lastUpdated: new Date().toISOString(),
+      context: externalForm.context || undefined,
+      year: externalForm.year ? Number(externalForm.year) : undefined,
+      primaryLanguage: topics[0],
+      demoUrl: url,
+      draft: true,
+    };
+    setProjects((prev) => [newProject, ...prev]);
+    setExternalForm(createEmptyExternalForm());
+    setShowExternalForm(false);
+    toast("Project added", { description: "External project staged. Don't forget to save changes." });
+  };
+
   const updateProject = (projectId: string, changes: Partial<EditableProject>) => {
     setProjects((prev) => prev.map((project) => (project.id === projectId ? { ...project, ...changes } : project)));
   };
 
   const handleSave = () => {
-    saveMutation.mutate(projects.map(({ draft, ...payload }) => payload));
+    saveMutation.mutate(projects.map(({ draft, ...payload }) => ({ ...payload, sourceType: payload.sourceType ?? "github" })));
   };
 
   const emptyState = !isLoading && projects.length === 0;
@@ -111,23 +202,117 @@ export function ProjectsPage() {
             <CardTitle className="text-white">Saved projects</CardTitle>
             <CardDescription>These repos are the evidence pool for every Proof Packet you generate.</CardDescription>
           </div>
-          <div className="flex gap-3">
+          <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
             <Button variant="ghost" onClick={handleImportRepos} disabled={isLoadingRepos}>
               {isLoadingRepos ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <RefreshCw className="mr-2 h-4 w-4" />}Import GitHub repos
             </Button>
-            <Button onClick={handleSave} disabled={saveMutation.isPending}>Save changes</Button>
+            <Button variant="outline" onClick={() => setShowExternalForm((prev) => !prev)}>
+              {showExternalForm ? "Cancel external project" : "Add external project"}
+            </Button>
+            <Button onClick={handleSave} disabled={saveMutation.isPending}>
+              Save changes
+            </Button>
           </div>
         </CardHeader>
         <CardContent className="space-y-4">
           {isLoading && <div className="h-24 animate-pulse rounded-xl bg-slate-900/60" />}
           {emptyState && <p className="text-sm text-muted-foreground">No projects yet. Import a few GitHub repos to get started.</p>}
+          {showExternalForm && (
+            <div className="rounded-2xl border border-dashed border-slate-700 bg-slate-950/60 p-5">
+              <h3 className="text-sm font-semibold text-white">Add external project</h3>
+              <p className="text-xs text-muted-foreground">
+                Link to a live demo, notebook, or write-up that proves your work. These links go straight into Proof Packets.
+              </p>
+              <form className="mt-4 space-y-4" onSubmit={handleExternalSubmit}>
+                <div className="grid gap-4 md:grid-cols-2">
+                  <div>
+                    <Label>Project title</Label>
+                    <Input
+                      value={externalForm.title}
+                      onChange={handleExternalInput("title")}
+                      placeholder="Streamlit model monitor"
+                      className="mt-2"
+                      required
+                    />
+                  </div>
+                  <div>
+                    <Label>Project URL</Label>
+                    <Input
+                      value={externalForm.url}
+                      onChange={handleExternalInput("url")}
+                      placeholder="https://"
+                      className="mt-2"
+                      required
+                    />
+                  </div>
+                </div>
+                <div>
+                  <Label>Short description</Label>
+                  <Textarea
+                    value={externalForm.description}
+                    onChange={handleExternalInput("description")}
+                    rows={3}
+                    className="mt-2"
+                    placeholder="Explain what you built and why it matters."
+                  />
+                </div>
+                <div>
+                  <Label>Tech stack (comma separated)</Label>
+                  <Input
+                    value={externalForm.techStack}
+                    onChange={handleExternalInput("techStack")}
+                    placeholder="React, FastAPI, Postgres"
+                    className="mt-2"
+                  />
+                </div>
+                <div className="grid gap-4 md:grid-cols-2">
+                  <div>
+                    <Label>Context</Label>
+                    <select
+                      className="mt-2 w-full rounded-lg border border-border bg-transparent px-3 py-2 text-sm"
+                      value={externalForm.context}
+                      onChange={handleExternalInput("context")}
+                    >
+                      <option value="">Select</option>
+                      {CONTEXT_OPTIONS.map((option) => (
+                        <option key={option} className="bg-slate-900" value={option}>
+                          {option}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                  <div>
+                    <Label>Year</Label>
+                    <Input
+                      type="number"
+                      value={externalForm.year}
+                      onChange={handleExternalInput("year")}
+                      className="mt-2"
+                      placeholder="2024"
+                    />
+                  </div>
+                </div>
+                <div className="flex justify-end">
+                  <Button type="submit">Add to projects</Button>
+                </div>
+              </form>
+            </div>
+          )}
           <div className="grid gap-4">
             {projects.map((project) => (
               <div key={project.id} className="rounded-2xl border border-slate-800/80 bg-slate-950/60 p-5">
                 <div className="flex flex-wrap items-center justify-between gap-3">
                   <div>
-                    <p className="text-base font-semibold text-white">{project.fullName}</p>
-                    <p className="text-xs text-muted-foreground">Updated {new Date(project.lastUpdated).toLocaleDateString()}</p>
+                    <div className="flex flex-wrap items-center gap-2">
+                      <p className="text-base font-semibold text-white">{project.fullName}</p>
+                      <Badge variant={project.sourceType === "link" ? "outline" : "default"}>
+                        {project.sourceType === "link" ? "Link" : "GitHub"}
+                      </Badge>
+                    </div>
+                    <p className="text-xs text-muted-foreground">
+                      Updated {formatUpdated(project.lastUpdated)}
+                      {project.htmlUrl ? ` • ${getProjectHost(project.htmlUrl)}` : ""}
+                    </p>
                   </div>
                   <div className="flex flex-wrap gap-2">
                     {project.topics?.slice(0, 3).map((topic) => (
@@ -189,7 +374,9 @@ export function ProjectsPage() {
           </div>
         </CardContent>
         <CardFooter>
-          <p className="text-xs text-muted-foreground">Every project must map back to a public repo so recruiters can verify the claim.</p>
+          <p className="text-xs text-muted-foreground">
+            Every project needs a public link (GitHub repo, demo, notebook) so recruiters can verify the claim.
+          </p>
         </CardFooter>
       </Card>
 

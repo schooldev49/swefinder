@@ -120,15 +120,28 @@ export function NewJobPage() {
 }
 
 function ProjectRow({ project, checked, onCheckedChange }: { project: Project; checked: boolean; onCheckedChange: (checked: boolean) => void }) {
+  const host = (() => {
+    try {
+      return project.htmlUrl ? new URL(project.htmlUrl).hostname : "";
+    } catch {
+      return "";
+    }
+  })();
   return (
     <div className="flex items-start gap-3 rounded-2xl border border-slate-800/80 bg-slate-950/40 p-4">
       <Checkbox checked={checked} onCheckedChange={(value) => onCheckedChange(Boolean(value))} className="mt-1" />
       <div className="flex-1">
         <div className="flex flex-wrap items-center gap-2">
           <p className="font-medium text-white">{project.fullName}</p>
+          <Badge variant={project.sourceType === "link" ? "outline" : "default"}>{project.sourceType === "link" ? "Link" : "GitHub"}</Badge>
           {project.primaryLanguage && <Badge variant="outline">{project.primaryLanguage}</Badge>}
         </div>
         <p className="text-xs text-muted-foreground">{project.description}</p>
+        {host && (
+          <a href={project.htmlUrl} target="_blank" rel="noopener noreferrer nofollow" className="text-xs text-accent">
+            {host}
+          </a>
+        )}
       </div>
     </div>
   );
