@@ -207,9 +207,10 @@ async function handleGitHubLogin(request: Request, env: Env): Promise<Response> 
   const redirectTo = url.searchParams.get("redirect") || null;
   await storeOAuthState(env, state, redirectTo);
   const githubAuthUrl = new URL("https://github.com/login/oauth/authorize");
+  const wantsPrivate = url.searchParams.get("private") === "1";
   githubAuthUrl.searchParams.set("client_id", env.GITHUB_CLIENT_ID);
   githubAuthUrl.searchParams.set("redirect_uri", redirectUri);
-  githubAuthUrl.searchParams.set("scope", "read:user repo");
+  githubAuthUrl.searchParams.set("scope", wantsPrivate ? "read:user repo" : "read:user public_repo");
   githubAuthUrl.searchParams.set("state", state);
   return new Response(null, {
     status: 302,

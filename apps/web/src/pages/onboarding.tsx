@@ -227,9 +227,19 @@ export function OnboardingPage() {
             <CardContent className="space-y-4 text-sm text-slate-200">
               {hasConnected && user ? (
                 <>
-                  <p className="text-sm text-slate-300">Connected as <span className="font-semibold text-white">{user.githubLogin}</span>. Click “Next” to continue.</p>
+                  <p className="text-sm text-slate-300">
+                    Connected as <span className="font-semibold text-white">{user.githubLogin}</span>. Click “Next” to continue.
+                  </p>
                   <p className="text-xs text-muted-foreground">
-                    Need to switch accounts? <Button variant="ghost" size="sm" className="px-1 text-primary" onClick={() => (window.location.href = buildGitHubLoginUrl())}>Reconnect GitHub</Button>
+                    Need to switch accounts?{" "}
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="px-1 text-primary"
+                      onClick={() => (window.location.href = buildGitHubLoginUrl(undefined, { includePrivateRepos }))}
+                    >
+                      Reconnect GitHub
+                    </Button>
                   </p>
                 </>
               ) : (
@@ -240,7 +250,10 @@ export function OnboardingPage() {
                     <li>• Disconnect or delete data any time.</li>
                   </ul>
                   <div className="flex flex-col gap-3 sm:flex-row">
-                    <Button size="lg" onClick={() => (window.location.href = buildGitHubLoginUrl())}>
+                    <Button
+                      size="lg"
+                      onClick={() => (window.location.href = buildGitHubLoginUrl(undefined, { includePrivateRepos }))}
+                    >
                       Sign in with GitHub
                     </Button>
                     <Button variant="outline" size="lg" onClick={() => toast("Email onboarding coming soon.")}>Use email instead</Button>
