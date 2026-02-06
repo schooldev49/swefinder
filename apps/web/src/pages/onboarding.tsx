@@ -124,6 +124,25 @@ export function OnboardingPage() {
     setCurrentStep((prev) => Math.min(prev + 1, STEP_LABELS.length - 1));
   };
 
+  const [authError, setAuthError] = useState<string | null>(null);
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const message = params.get("authError");
+    if (message) {
+      setAuthError(message);
+      params.delete("authError");
+      const next = `${window.location.pathname}?${params.toString()}`;
+      window.history.replaceState({}, "", next.endsWith("?") ? next.slice(0, -1) : next);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (authError) {
+      toast.error(authError);
+    }
+  }, [authError]);
+
   const handleBack = () => {
     setCurrentStep((prev) => Math.max(prev - 1, 0));
   };

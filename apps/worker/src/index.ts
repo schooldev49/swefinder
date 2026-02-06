@@ -224,6 +224,21 @@ async function handleGitHubCallback(request: Request, env: Env): Promise<Respons
   const url = new URL(request.url);
   const code = url.searchParams.get("code");
   const state = url.searchParams.get("state");
+  const error = url.searchParams.get("error");
+  if (error) {
+    const description = url.searchParams.get("error_description") || "Authorization was denied.";
+    const storedRedirect = state ? await consumeOAuthState(env, state) : null;
+    const destination = storedRedirect || env.FRONTEND_BASE_URL || "/";
+    const friendly = new URL(destination, url.origin);
+    friendly.searchParams.set("authError", description);
+    return new Response(null, {
+      status: 302,
+      headers: {
+        Location: friendly.toString(),
+      },
+    });
+  }
+
   if (!code || !state) {
     return errorResponse("Missing code or state", 400);
   }
