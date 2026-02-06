@@ -62,11 +62,42 @@ const formatUpdated = (value?: string) => (value ? new Date(value).toLocaleDateS
 
 type EditableProject = ProjectPayload & { draft?: boolean };
 
+type PageItem = { type: "page"; value: number } | { type: "ellipsis"; key: string };
+
+function buildPageItems(totalPages: number, currentPage: number): PageItem[] {
+  if (totalPages <= 7) {
+    return Array.from({ length: totalPages }, (_, index) => ({ type: "page", value: index + 1 }));
+  }
+
+  const items: PageItem[] = [];
+  items.push({ type: "page", value: 1 });
+
+  const windowStart = Math.max(2, currentPage - 1);
+  const windowEnd = Math.min(totalPages - 1, currentPage + 1);
+
+  if (windowStart > 2) {
+    items.push({ type: "ellipsis", key: "start-ellipsis" });
+  }
+
+  for (let page = windowStart; page <= windowEnd; page += 1) {
+    items.push({ type: "page", value: page });
+  }
+
+  if (windowEnd < totalPages - 1) {
+    items.push({ type: "ellipsis", key: "end-ellipsis" });
+  }
+
+  items.push({ type: "page", value: totalPages });
+  return items;
+}
+
 export function ProjectsPage() {
   const queryClient = useQueryClient();
   const { data: savedProjects, isLoading } = useQuery({ queryKey: ["projects"], queryFn: fetchProjects });
   const [projects, setProjects] = useState<EditableProject[]>([]);
   const [repos, setRepos] = useState<ApiRepoSummary[]>([]);
+  const [repoSearchTerm, setRepoSearchTerm] = useState("");
+  const [repoPage, setRepoPage] = useState(1);
   const [selectedRepoIds, setSelectedRepoIds] = useState<Set<string>>(new Set());
   const [isLoadingRepos, setIsLoadingRepos] = useState(false);
   const [showExternalForm, setShowExternalForm] = useState(false);
@@ -223,6 +254,28 @@ export function ProjectsPage() {
   };
 
   const emptyState = !isLoading && projects.length === 0;
+  const reposPerPage = 15;
+  const filteredRepos = useMemo(() => {
+    if (!repoSearchTerm) return repos;
+    const term = repoSearchTerm.toLowerCase();
+    return repos.filter((repo) => {
+      return (
+        repo.fullName.toLowerCase().includes(term) ||
+        (repo.description || "").toLowerCase().includes(term) ||
+        (repo.language || "").toLowerCase().includes(term)
+      );
+    });
+  }, [repos, repoSearchTerm]);
+  const totalRepoPages = Math.max(1, Math.ceil(filteredRepos.length / reposPerPage));
+  const safeRepoPage = Math.min(repoPage, totalRepoPages);
+  const pagedRepos = useMemo(() => {
+    const start = (safeRepoPage - 1) * reposPerPage;
+    return filteredRepos.slice(start, start + reposPerPage);
+  }, [filteredRepos, safeRepoPage, reposPerPage]);
+
+  useEffect(() => {
+    setRepoPage(1);
+  }, [repoSearchTerm, repos]);
 
   return (
     <div className="space-y-6">
@@ -431,7 +484,13 @@ export function ProjectsPage() {
             <CardDescription>Select repos then add them to your project list.</CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
-            <div className="flex justify-end">
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+              <Input
+                value={repoSearchTerm}
+                onChange={(event) => setRepoSearchTerm(event.target.value)}
+                placeholder="Filter repos..."
+                className="sm:max-w-xs"
+              />
               <Button variant="secondary" onClick={addSelectedRepos} disabled={selectedRepoIds.size === 0}>
                 Add selected ({selectedRepoIds.size})
               </Button>
@@ -446,7 +505,7 @@ export function ProjectsPage() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {repos.map((repo) => (
+                {pagedRepos.map((repo) => (
                   <TableRow key={repo.id} className={cn(selectedRepoIds.has(repo.id) && "bg-slate-900/60")}
                   >
                     <TableCell>
@@ -464,6 +523,47 @@ export function ProjectsPage() {
                 ))}
               </TableBody>
             </Table>
+            {totalRepoPages > 1 && (
+              <div className="flex flex-wrap items-center justify-between gap-2 text-xs text-muted-foreground">
+                <span>
+                  Page {safeRepoPage} of {totalRepoPages}
+                </span>
+                <div className="flex flex-wrap gap-2">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    disabled={safeRepoPage === 1}
+                    onClick={() => setRepoPage((page) => Math.max(1, page - 1))}
+                  >
+                    Previous
+                  </Button>
+                  {buildPageItems(totalRepoPages, safeRepoPage).map((item) =>
+                    item.type === "page" ? (
+                      <Button
+                        key={item.value}
+                        variant={item.value === safeRepoPage ? "secondary" : "ghost"}
+                        size="sm"
+                        onClick={() => setRepoPage(item.value)}
+                      >
+                        {item.value}
+                      </Button>
+                    ) : (
+                      <span key={item.key} className="px-2 text-muted-foreground">
+                        ...
+                      </span>
+                    )
+                  )}
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    disabled={safeRepoPage === totalRepoPages}
+                    onClick={() => setRepoPage((page) => Math.min(totalRepoPages, page + 1))}
+                  >
+                    Next
+                  </Button>
+                </div>
+              </div>
+            )}
           </CardContent>
         </Card>
       )}

@@ -33,6 +33,35 @@ interface ProofPreview {
   projects: SelectedRepo[];
 }
 
+type PageItem = { type: "page"; value: number } | { type: "ellipsis"; key: string };
+
+function buildPageItems(totalPages: number, currentPage: number): PageItem[] {
+  if (totalPages <= 7) {
+    return Array.from({ length: totalPages }, (_, index) => ({ type: "page", value: index + 1 }));
+  }
+
+  const items: PageItem[] = [];
+  items.push({ type: "page", value: 1 });
+
+  const windowStart = Math.max(2, currentPage - 1);
+  const windowEnd = Math.min(totalPages - 1, currentPage + 1);
+
+  if (windowStart > 2) {
+    items.push({ type: "ellipsis", key: "start-ellipsis" });
+  }
+
+  for (let page = windowStart; page <= windowEnd; page += 1) {
+    items.push({ type: "page", value: page });
+  }
+
+  if (windowEnd < totalPages - 1) {
+    items.push({ type: "ellipsis", key: "end-ellipsis" });
+  }
+
+  items.push({ type: "page", value: totalPages });
+  return items;
+}
+
 export function OnboardingPage() {
   const { data: user } = useSession();
   const navigate = useNavigate();
@@ -43,7 +72,8 @@ export function OnboardingPage() {
   const [selectedRepoIds, setSelectedRepoIds] = useState<Set<string>>(new Set());
   const [selectedRepos, setSelectedRepos] = useState<SelectedRepo[]>([]);
   const [searchTerm, setSearchTerm] = useState("");
-  const [visibleRepoCount, setVisibleRepoCount] = useState(15);
+  const [repoPage, setRepoPage] = useState(1);
+  const reposPerPage = 15;
   const [jobDescription, setJobDescription] = useState("");
   const [proofPreview, setProofPreview] = useState<ProofPreview | null>(null);
   const [externalForm, setExternalForm] = useState({ title: "", url: "", description: "" });
@@ -65,10 +95,15 @@ export function OnboardingPage() {
     return repoQuery.data.filter((repo) => repo.fullName.toLowerCase().includes(searchTerm.toLowerCase()));
   }, [repoQuery.data, searchTerm]);
 
-  const visibleRepos = useMemo(() => filteredRepos.slice(0, visibleRepoCount), [filteredRepos, visibleRepoCount]);
+  const totalRepoPages = Math.max(1, Math.ceil(filteredRepos.length / reposPerPage));
+  const safeRepoPage = Math.min(repoPage, totalRepoPages);
+  const visibleRepos = useMemo(() => {
+    const start = (safeRepoPage - 1) * reposPerPage;
+    return filteredRepos.slice(start, start + reposPerPage);
+  }, [filteredRepos, safeRepoPage, reposPerPage]);
 
   useEffect(() => {
-    setVisibleRepoCount(15);
+    setRepoPage(1);
   }, [searchTerm]);
 
   const stepStatus = (stepIndex: number) => {
@@ -349,11 +384,45 @@ export function OnboardingPage() {
                   </label>
                 ))}
               </div>
-              {visibleRepoCount < filteredRepos.length && (
-                <div className="flex justify-center">
-                  <Button variant="outline" size="sm" onClick={() => setVisibleRepoCount((count) => count + 15)}>
-                    Load more repositories ({filteredRepos.length - visibleRepoCount})
-                  </Button>
+              {totalRepoPages > 1 && (
+                <div className="flex flex-wrap items-center justify-between gap-2 text-xs text-muted-foreground">
+                  <span>
+                    Page {safeRepoPage} of {totalRepoPages}
+                  </span>
+                  <div className="flex flex-wrap gap-2">
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      disabled={safeRepoPage === 1}
+                      onClick={() => setRepoPage((page) => Math.max(1, page - 1))}
+                    >
+                      Previous
+                    </Button>
+                    {buildPageItems(totalRepoPages, safeRepoPage).map((item) =>
+                      item.type === "page" ? (
+                        <Button
+                          key={item.value}
+                          variant={item.value === safeRepoPage ? "secondary" : "ghost"}
+                          size="sm"
+                          onClick={() => setRepoPage(item.value)}
+                        >
+                          {item.value}
+                        </Button>
+                      ) : (
+                        <span key={item.key} className="px-2 text-muted-foreground">
+                          ...
+                        </span>
+                      )
+                    )}
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      disabled={safeRepoPage === totalRepoPages}
+                      onClick={() => setRepoPage((page) => Math.min(totalRepoPages, page + 1))}
+                    >
+                      Next
+                    </Button>
+                  </div>
                 </div>
               )}
               <p className="text-xs text-muted-foreground">Only checked repos will be imported into ProofCraft. You can add more later from Projects.</p>

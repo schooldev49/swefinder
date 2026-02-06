@@ -1,10 +1,12 @@
 import { Link } from "react-router-dom";
+import { useQuery } from "@tanstack/react-query";
 import { ArrowRight, CheckCircle2, CheckCircle, ShieldCheck } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { CodeSnippet } from "@/components/ui/code-snippet";
 import { useSession } from "@/hooks/use-session";
+import { fetchProjects } from "@/lib/api";
 
 const trustPoints = [
   "Requirements mapped to specific repo paths or demos.",
@@ -79,8 +81,15 @@ const previewCitations = [
 export function LandingPage() {
   const { data: user } = useSession();
   const isAuthenticated = Boolean(user);
+  const projectsQuery = useQuery({
+    queryKey: ["projects"],
+    queryFn: fetchProjects,
+    enabled: isAuthenticated,
+    staleTime: 60 * 1000,
+  });
+  const hasProjects = Boolean(projectsQuery.data && projectsQuery.data.length > 0);
 
-  const primaryCta = isAuthenticated ? (
+  const primaryCta = isAuthenticated && hasProjects ? (
     <Button asChild size="lg">
       <Link to="/projects">
         Go to dashboard <ArrowRight className="ml-2 h-4 w-4" />
@@ -90,7 +99,7 @@ export function LandingPage() {
     <Button asChild size="lg" className="inline-flex items-center gap-2 bg-white text-slate-900 hover:bg-slate-100">
       <Link to="/onboarding">
         <GitHubMark className="h-4 w-4" />
-        Start with GitHub
+        {isAuthenticated ? "Continue onboarding" : "Start with GitHub"}
       </Link>
     </Button>
   );
