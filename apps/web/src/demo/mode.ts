@@ -1,3 +1,4 @@
+/* eslint-disable react-hooks/set-state-in-effect */
 import { useEffect, useState } from "react";
 import { useLocation } from "react-router-dom";
 
@@ -13,14 +14,14 @@ export function isDemoMode(): boolean {
   if (hasQueryDemo(window.location.search)) {
     try {
       window.localStorage?.setItem(DEMO_STORAGE_KEY, "true");
-    } catch (error) {
+    } catch {
       // ignore storage errors
     }
     return true;
   }
   try {
     return window.localStorage?.getItem(DEMO_STORAGE_KEY) === "true";
-  } catch (error) {
+  } catch {
     return false;
   }
 }
@@ -29,7 +30,7 @@ export function exitDemoMode() {
   if (typeof window === "undefined") return;
   try {
     window.localStorage?.removeItem(DEMO_STORAGE_KEY);
-  } catch (error) {
+  } catch {
     // ignore
   }
   const url = new URL(window.location.href);

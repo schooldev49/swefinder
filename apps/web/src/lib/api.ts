@@ -55,6 +55,21 @@ async function apiFetch<T>(path: string, init?: RequestInit): Promise<T> {
   return data.data as T;
 }
 
+async function shareFetch<T>(path: string): Promise<T> {
+  const response = await fetch(path, {
+    headers: {
+      "Content-Type": "application/json",
+    },
+  });
+  const data = await response.json().catch(() => {
+    throw new Error("Invalid server response");
+  });
+  if (!data.success) {
+    throw new Error(data.error || "Request failed");
+  }
+  return data.data as T;
+}
+
 export function fetchCurrentUser() {
   if (isDemoMode()) {
     return demoApi.fetchCurrentUser();
@@ -137,4 +152,47 @@ export function logout() {
     return demoApi.logout();
   }
   return apiFetch<void>("/logout", { method: "POST" });
+}
+
+export interface ProfileResponse {
+  user: User;
+  projects: Project[];
+}
+
+export interface UpdateProfilePayload {
+  profileSlug?: string;
+  profilePublic?: boolean;
+}
+
+export function fetchProfile() {
+  if (isDemoMode()) {
+    return demoApi.fetchProfile();
+  }
+  return apiFetch<ProfileResponse>("/profile");
+}
+
+export function updateProfile(payload: UpdateProfilePayload) {
+  if (isDemoMode()) {
+    return demoApi.updateProfile(payload);
+  }
+  return apiFetch<User>("/profile", {
+    method: "POST",
+    body: JSON.stringify(payload),
+  });
+}
+
+export function fetchPublicProfile(slug: string) {
+  if (isDemoMode()) {
+    return demoApi.fetchPublicProfile(slug);
+  }
+  return shareFetch<{ user: User; projects: Project[] }>(`/share/users/${slug}`);
+}
+
+export function fetchSharedPacket(handle: string, packetSlug: string) {
+  if (isDemoMode()) {
+    return demoApi.fetchSharedPacket(handle, packetSlug);
+  }
+  return shareFetch<{ user: User; job: Job; proofPacket: ProofPacket | null }>(
+    `/share/users/${handle}/packets/${packetSlug}`
+  );
 }

@@ -10,6 +10,7 @@ import { cn } from "@/lib/utils";
 const links = [
   { to: "/projects", label: "Projects" },
   { to: "/jobs", label: "Jobs" },
+  { to: "/profile", label: "Profile" },
 ];
 
 export function AppLayout() {

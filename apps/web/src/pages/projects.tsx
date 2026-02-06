@@ -75,7 +75,13 @@ export function ProjectsPage() {
 
   useEffect(() => {
     if (savedProjects) {
-      setProjects(savedProjects.map(({ userId, ...rest }) => ({ ...rest, sourceType: rest.sourceType ?? "github" })));
+      setProjects(
+        savedProjects.map((project) => {
+          const { userId, ...rest } = project;
+          void userId;
+          return { ...rest, sourceType: rest.sourceType ?? "github" };
+        })
+      );
     }
   }, [savedProjects]);
 
@@ -83,7 +89,13 @@ export function ProjectsPage() {
     mutationFn: (payload: EditableProject[]) => saveProjects(payload),
     onSuccess: async (data) => {
       await queryClient.invalidateQueries({ queryKey: ["projects"] });
-      setProjects(data.map(({ userId, ...rest }) => ({ ...rest, sourceType: rest.sourceType ?? "github" })));
+      setProjects(
+        data.map((project) => {
+          const { userId, ...rest } = project;
+          void userId;
+          return { ...rest, sourceType: rest.sourceType ?? "github" };
+        })
+      );
       toast("Projects saved", { description: "Your proof-ready projects are up to date." });
     },
     onError: (error: Error) => {
@@ -201,7 +213,13 @@ export function ProjectsPage() {
   };
 
   const handleSave = () => {
-    saveMutation.mutate(projects.map(({ draft, ...payload }) => ({ ...payload, sourceType: payload.sourceType ?? "github" })));
+    saveMutation.mutate(
+      projects.map((project) => {
+        const { draft, ...payload } = project;
+        void draft;
+        return { ...payload, sourceType: payload.sourceType ?? "github" };
+      })
+    );
   };
 
   const emptyState = !isLoading && projects.length === 0;

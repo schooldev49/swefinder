@@ -8,6 +8,7 @@ import {
   consumeOAuthState,
   getEncryptedToken,
   getJob,
+  getJobIdBySlug,
   getJobIdByToken,
   getProofPacket,
   getUserByGitHubId,
@@ -145,6 +146,21 @@ export default {
       const profileSlugMatch = url.pathname.match(/^\/share\/profile\/(?<slug>[a-z0-9-]+)/i);
       if (profileSlugMatch && request.method === "GET") {
         return withCors(await handlePublicProfile(request, env, profileSlugMatch.groups?.slug || ""), origin);
+      }
+
+      const userProfileMatch = url.pathname.match(/^\/share\/users\/(?<slug>[a-z0-9-]+)$/i);
+      if (userProfileMatch && request.method === "GET") {
+        return withCors(await handlePublicProfile(request, env, userProfileMatch.groups?.slug || ""), origin);
+      }
+
+      const userPacketMatch = url.pathname.match(
+        /^\/share\/users\/(?<slug>[a-z0-9-]+)\/(?:(?:packets)\/)?(?<packetSlug>[a-z0-9-]+)/i
+      );
+      if (userPacketMatch && request.method === "GET") {
+        return withCors(
+          await handleSharedPacketBySlug(request, env, userPacketMatch.groups?.slug || "", userPacketMatch.groups?.packetSlug || ""),
+          origin
+        );
       }
 
       const packetMatch = url.pathname.match(/^\/share\/packet\/(?<token>[a-zA-Z0-9-]+)/);
@@ -309,6 +325,7 @@ async function handleCreateJob(request: Request, env: Env): Promise<Response> {
   if (!payload.title || !payload.rawDescription) {
     return errorResponse("title and rawDescription are required", 400);
   }
+  const shareSlug = await generateJobShareSlug(env, user.id, payload.title, payload.company);
   const job: Job = {
     id: crypto.randomUUID(),
     userId: user.id,
@@ -319,6 +336,7 @@ async function handleCreateJob(request: Request, env: Env): Promise<Response> {
     status: "DRAFT",
     createdAt: new Date().toISOString(),
     shareToken: crypto.randomUUID(),
+    shareSlug,
   };
   await saveJob(env, job);
   return jsonResponse(job);
@@ -327,7 +345,8 @@ async function handleCreateJob(request: Request, env: Env): Promise<Response> {
 async function handleListJobs(request: Request, env: Env): Promise<Response> {
   const { user } = await requireUser(request, env);
   const jobs = await listJobs(env, user.id);
-  return jsonResponse(jobs);
+  const hydrated = await Promise.all(jobs.map((job) => ensureJobShareSlug(env, job)));
+  return jsonResponse(hydrated);
 }
 
 async function handleGetProfile(request: Request, env: Env): Promise<Response> {
@@ -366,8 +385,9 @@ async function handleGetJob(request: Request, env: Env, jobId: string): Promise<
   if (!job || job.userId !== user.id) {
     throw new HttpError("Job not found", 404);
   }
+  const hydratedJob = await ensureJobShareSlug(env, job);
   const proof = await getProofPacket(env, jobId);
-  return jsonResponse({ job, proofPacket: proof });
+  return jsonResponse({ job: hydratedJob, proofPacket: proof });
 }
 
 async function handleUpdateJobStatus(request: Request, env: Env, jobId: string): Promise<Response> {
@@ -392,6 +412,7 @@ async function handleGenerateProofPacket(request: Request, env: Env, jobId: stri
   if (!job || job.userId !== user.id) {
     throw new HttpError("Job not found", 404);
   }
+  await ensureJobShareSlug(env, job);
   const projects = await listProjects(env, user.id);
   const selectedIds = Array.isArray(payload.selectedProjectIds) ? payload.selectedProjectIds : [];
   if (selectedIds.length === 0) {
@@ -504,8 +525,30 @@ async function handleSharedPacket(request: Request, env: Env, token: string): Pr
   if (!job) {
     throw new HttpError("Job not found", 404);
   }
+  await ensureJobShareSlug(env, job);
   const proof = await getProofPacket(env, jobId);
   const user = await getUserById(env, job.userId);
+  return jsonResponse({ job, proofPacket: proof, user });
+}
+
+async function handleSharedPacketBySlug(request: Request, env: Env, slug: string, jobSlug: string): Promise<Response> {
+  if (!slug || !jobSlug) {
+    throw new HttpError("Packet not found", 404);
+  }
+  const user = await getUserBySlug(env, slug.toLowerCase());
+  if (!user) {
+    throw new HttpError("Packet not found", 404);
+  }
+  const jobId = await getJobIdBySlug(env, user.id, jobSlug);
+  if (!jobId) {
+    throw new HttpError("Packet not found", 404);
+  }
+  const job = await getJob(env, jobId);
+  if (!job) {
+    throw new HttpError("Packet not found", 404);
+  }
+  await ensureJobShareSlug(env, job);
+  const proof = await getProofPacket(env, job.id);
   return jsonResponse({ job, proofPacket: proof, user });
 }
 
@@ -616,4 +659,35 @@ async function generateAvailableSlug(env: Env, base: string): Promise<string> {
 
   // Fallback: If we still haven't found one, use a timestamp to guarantee uniqueness
   return `${candidate}-${Date.now().toString(36)}`;
+}
+
+function slugify(value: string): string {
+  return value
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "")
+    .slice(0, 60);
+}
+
+async function generateJobShareSlug(env: Env, userId: string, title: string, company?: string): Promise<string> {
+  const baseInput = `${title || "role"} ${company || ""}`.trim() || title || "role";
+  const base = slugify(baseInput) || `role-${Date.now().toString(36)}`;
+  for (let attempt = 0; attempt < 10; attempt++) {
+    const suffix = attempt === 0 ? "" : `-${Math.random().toString(36).slice(2, 6)}`;
+    const candidate = `${base}${suffix}`.replace(/-+/g, "-").replace(/^-|-$/g, "");
+    const existing = await getJobIdBySlug(env, userId, candidate);
+    if (!existing) {
+      return candidate;
+    }
+  }
+  return `${base}-${crypto.randomUUID().slice(0, 8)}`;
+}
+
+async function ensureJobShareSlug(env: Env, job: Job): Promise<Job> {
+  if (job.shareSlug) {
+    return job;
+  }
+  job.shareSlug = await generateJobShareSlug(env, job.userId, job.title, job.company);
+  await updateJob(env, job);
+  return job;
 }

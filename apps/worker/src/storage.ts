@@ -11,6 +11,9 @@ const PROOF_PREFIX = "proof:";
 const OAUTH_STATE_PREFIX = "oauth-state:";
 const USER_BY_SLUG_PREFIX = "user:slug:";
 const JOB_TOKEN_PREFIX = "job:token:";
+const JOB_SLUG_PREFIX = "job:slug:";
+
+const jobSlugKey = (userId: string, slug: string) => `${JOB_SLUG_PREFIX}${userId}:${slug}`;
 
 export async function saveUser(env: Env, user: User): Promise<User> {
   const key = `${USER_PREFIX}${user.id}`;
@@ -73,6 +76,9 @@ export async function saveJob(env: Env, job: Job): Promise<Job> {
   if (job.shareToken) {
     await env.DATA_KV.put(`${JOB_TOKEN_PREFIX}${job.shareToken}`, job.id);
   }
+  if (job.shareSlug) {
+    await env.DATA_KV.put(jobSlugKey(job.userId, job.shareSlug), job.id);
+  }
   return job;
 }
 
@@ -80,6 +86,9 @@ export async function updateJob(env: Env, job: Job): Promise<Job> {
   await env.DATA_KV.put(`${JOB_PREFIX}${job.id}`, JSON.stringify(job));
   if (job.shareToken) {
     await env.DATA_KV.put(`${JOB_TOKEN_PREFIX}${job.shareToken}`, job.id);
+  }
+  if (job.shareSlug) {
+    await env.DATA_KV.put(jobSlugKey(job.userId, job.shareSlug), job.id);
   }
   return job;
 }
@@ -135,4 +144,8 @@ export async function consumeOAuthState(env: Env, state: string): Promise<string
 
 export async function getJobIdByToken(env: Env, token: string): Promise<string | null> {
   return env.DATA_KV.get(`${JOB_TOKEN_PREFIX}${token}`);
+}
+
+export async function getJobIdBySlug(env: Env, userId: string, slug: string): Promise<string | null> {
+  return env.DATA_KV.get(jobSlugKey(userId, slug));
 }

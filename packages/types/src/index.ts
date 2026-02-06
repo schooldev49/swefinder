@@ -49,6 +49,7 @@ export interface Job {
   status: JobStatus;
   proofPacketId?: string;
   shareToken?: string;
+  shareSlug?: string;
 }
 
 export interface Requirement {

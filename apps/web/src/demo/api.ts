@@ -1,5 +1,12 @@
 import type { Job, ProofPacket, Project, User } from "@swefinder/types";
-import type { ApiRepoSummary, CreateJobPayload, GeneratePayload, ProjectPayload } from "@/lib/api";
+import type {
+  ApiRepoSummary,
+  CreateJobPayload,
+  GeneratePayload,
+  ProfileResponse,
+  ProjectPayload,
+  UpdateProfilePayload,
+} from "@/lib/api";
 import { demoJob, demoJobs, demoProof, demoProjects, demoRepos, demoUser } from "./data";
 
 function sleep(ms = 300) {
@@ -30,9 +37,16 @@ export async function fetchGitHubRepos(): Promise<ApiRepoSummary[]> {
   return clone(demoRepos);
 }
 
-export async function createJob(_payload: CreateJobPayload): Promise<Job> {
+export async function createJob(payload: CreateJobPayload): Promise<Job> {
   await sleep();
-  return clone(demoJob);
+  return clone({
+    ...demoJob,
+    id: `${demoJob.id}-${Math.random().toString(36).slice(2, 6)}`,
+    title: payload.title,
+    company: payload.company || demoJob.company,
+    jobUrl: payload.jobUrl || demoJob.jobUrl,
+    rawDescription: payload.rawDescription,
+  });
 }
 
 export async function fetchJobs(): Promise<Job[]> {
@@ -45,14 +59,52 @@ export async function fetchJob(): Promise<{ job: Job; proofPacket: ProofPacket |
   return clone({ job: demoJob, proofPacket: demoProof });
 }
 
-export async function generateProof(_jobId: string, _payload: GeneratePayload): Promise<ProofPacket> {
+export async function generateProof(jobId: string, payload: GeneratePayload): Promise<ProofPacket> {
   await sleep();
-  return clone(demoProof);
+  const projectCount = payload.selectedProjectIds?.length ?? 0;
+  return clone({
+    ...demoProof,
+    jobId,
+    summary: projectCount ? `Generated from ${projectCount} selected project(s)` : demoProof.summary,
+  });
 }
 
-export async function updateJobStatus(_jobId: string, status: Job["status"]): Promise<Job> {
+export async function updateJobStatus(jobId: string, status: Job["status"]): Promise<Job> {
   await sleep();
-  return clone({ ...demoJob, status });
+  return clone({ ...demoJob, id: jobId, status });
+}
+
+export async function fetchProfile(): Promise<ProfileResponse> {
+  await sleep();
+  return clone({ user: demoUser, projects: demoProjects });
+}
+
+export async function updateProfile(payload: UpdateProfilePayload): Promise<User> {
+  await sleep();
+  if (payload.profileSlug !== undefined) {
+    demoUser.profileSlug = payload.profileSlug;
+  }
+  if (typeof payload.profilePublic === "boolean") {
+    demoUser.profilePublic = payload.profilePublic;
+  }
+  return clone(demoUser);
+}
+
+export async function fetchPublicProfile(): Promise<ProfileResponse> {
+  await sleep();
+  return clone({ user: demoUser, projects: demoProjects.filter((project) => project.isShowcased) });
+}
+
+export async function fetchSharedPacket(
+  handle: string,
+  packetSlug: string
+): Promise<{ user: User; job: Job; proofPacket: ProofPacket | null }> {
+  await sleep();
+  return clone({
+    user: { ...demoUser, profileSlug: handle || demoUser.profileSlug },
+    job: { ...demoJob, shareSlug: packetSlug || demoJob.shareSlug },
+    proofPacket: demoProof,
+  });
 }
 
 export async function logout() {

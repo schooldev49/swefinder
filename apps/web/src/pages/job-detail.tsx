@@ -1,5 +1,6 @@
+/* eslint-disable react-hooks/set-state-in-effect */
 import { useEffect, useMemo, useState } from "react";
-import { useParams } from "react-router-dom";
+import { Link, useParams } from "react-router-dom";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { EvidenceMappingWithEvidence, Job, Project, Requirement } from "@swefinder/types";
 import { fetchJob, fetchProjects, generateProof, updateJobStatus } from "@/lib/api";
@@ -9,6 +10,7 @@ import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Loader2, PenSquare, RefreshCw } from "lucide-react";
 import { toast } from "sonner";
+import { useSession } from "@/hooks/use-session";
 
 const STATUS_ORDER: Job["status"][] = ["DRAFT", "PROOF_GENERATED", "APPLIED", "INTERVIEW", "REJECTED", "OFFER"];
 
@@ -16,6 +18,7 @@ export function JobDetailPage() {
   const { id } = useParams();
   const jobId = id ?? "";
   const queryClient = useQueryClient();
+  const { data: session } = useSession();
   const jobQuery = useQuery({ queryKey: ["job", jobId], queryFn: () => fetchJob(jobId), enabled: Boolean(jobId) });
   const projectsQuery = useQuery({ queryKey: ["projects"], queryFn: fetchProjects });
   const [selectedProjects, setSelectedProjects] = useState<Set<string>>(new Set());
@@ -28,6 +31,9 @@ export function JobDetailPage() {
 
   const job = jobQuery.data?.job;
   const proof = jobQuery.data?.proofPacket;
+  const origin = typeof window !== "undefined" ? window.location.origin : "";
+  const shareLink =
+    session?.profileSlug && job?.shareSlug ? `${origin}/users/${session.profileSlug}/${job.shareSlug}` : "";
 
   const citations = useMemo(() => {
     if (!proof) return [];
@@ -130,6 +136,9 @@ export function JobDetailPage() {
               selected={selectedProjects}
               onChange={setSelectedProjects}
             />
+          )}
+          {job.shareSlug && (
+            <ShareLinkCallout shareLink={shareLink} profileSlug={session?.profileSlug} jobSlug={job.shareSlug} />
           )}
           {proof ? (
             <div className="grid gap-6">
@@ -292,6 +301,51 @@ function CopyRow({ text, label }: { text: string; label: string }) {
       <Button variant="ghost" size="sm" onClick={handleCopy}>
         {copied ? "Copied" : "Copy"}
       </Button>
+    </div>
+  );
+}
+
+function ShareLinkCallout({
+  shareLink,
+  profileSlug,
+  jobSlug,
+}: {
+  shareLink: string;
+  profileSlug?: string;
+  jobSlug?: string;
+}) {
+  const handleCopy = async () => {
+    if (!shareLink) return;
+    await navigator.clipboard.writeText(shareLink);
+    toast("Share link copied", { description: shareLink });
+  };
+  return (
+    <div className="rounded-2xl border border-slate-800/80 bg-slate-950/60 p-4">
+      <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+        <div>
+          <p className="text-xs uppercase tracking-wide text-muted-foreground">Shareable Proof Packet URL</p>
+          <p className="font-mono text-sm text-white">
+            {profileSlug && jobSlug ? `/users/${profileSlug}/${jobSlug}` : "Set your proof profile handle first"}
+          </p>
+          {!profileSlug && (
+            <p className="text-xs text-amber-400">
+              Configure your handle on the{" "}
+              <Link to="/profile" className="underline">
+                Profile page
+              </Link>{" "}
+              to unlock share links.
+            </p>
+          )}
+        </div>
+        <div className="flex items-center gap-2">
+          <Button variant="ghost" size="sm" asChild>
+            <Link to="/profile">Profile</Link>
+          </Button>
+          <Button variant="outline" size="sm" onClick={handleCopy} disabled={!shareLink}>
+            Copy link
+          </Button>
+        </div>
+      </div>
     </div>
   );
 }

@@ -7,6 +7,8 @@ export const demoUser: User = {
   githubLogin: "demo-student",
   githubAvatarUrl: "https://avatars.githubusercontent.com/u/9919?v=4",
   createdAt: new Date("2024-09-01T12:00:00Z").toISOString(),
+  profileSlug: "demo-student",
+  profilePublic: true,
 };
 
 export const demoRepos: ApiRepoSummary[] = [
@@ -64,6 +66,7 @@ export const demoProjects: Project[] = [
     demoUrl: "https://huggingface.co/spaces/demo-student/toxicity",
     createdAt: demoRepos[0].updatedAt,
     updatedAt: demoRepos[0].updatedAt,
+    isShowcased: true,
   },
   {
     id: "project-webrtc",
@@ -80,6 +83,7 @@ export const demoProjects: Project[] = [
     demoUrl: "https://demo-student.github.io/realtime-collab-board",
     createdAt: demoRepos[1].updatedAt,
     updatedAt: demoRepos[1].updatedAt,
+    isShowcased: true,
   },
   {
     id: "project-external",
@@ -96,6 +100,7 @@ export const demoProjects: Project[] = [
     demoUrl: "https://demo-student.notion.site/autonomous-drone-proof",
     createdAt: new Date("2024-10-05").toISOString(),
     updatedAt: new Date("2024-10-05").toISOString(),
+    isShowcased: true,
   },
 ];
 
@@ -146,6 +151,8 @@ export const demoJob: Job = {
   status: "PROOF_GENERATED",
   createdAt: new Date("2025-01-15T09:00:00Z").toISOString(),
   proofPacketId: "proof-demo",
+  shareToken: "demo-token",
+  shareSlug: "ml-research-intern-nova",
 };
 
 export const demoProof: ProofPacket = {
