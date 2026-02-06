@@ -10,6 +10,14 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { CodeSnippet } from "@/components/ui/code-snippet";
 
+
+const trustPoints = [
+  "Requirements mapped to specific repo paths or demos.",
+  "User-provided metrics stay labeled and auditable.",
+  "Proof Packet supplements — never replaces — your résumé.",
+  "Every packet is manually curated before sending.",
+];
+
 export function PublicPacketPage() {
   const { handle, packetSlug } = useParams();
   const packetQuery = useQuery({
@@ -138,6 +146,25 @@ function PacketView({
           </CardContent>
         </Card>
       )}
+
+            <section className="border-t border-slate-800 bg-slate-900/40">
+              <div className="mx-auto grid max-w-6xl gap-8 px-4 py-14 sm:px-6 md:grid-cols-2">
+                <div>
+                  <p className="text-xs font-semibold uppercase tracking-[0.35em] text-slate-400">Hard safety rules</p>
+                  <h2 className="mt-4 text-3xl font-semibold text-white">Honesty-first by design</h2>
+                  <p className="mt-3 text-sm text-slate-300">
+                    No hallucinated metrics. No inflated claims. Every bullet links back to the README, PR, or artifact that proves it, and Proof Packets stay separate from your résumé.
+                  </p>
+                </div>
+                <ul className="space-y-4">
+                  {trustPoints.map((point) => (
+                    <li key={point} className="flex items-start gap-3 text-sm text-slate-300">
+                      <CheckCircle2 className="mt-0.5 h-4 w-4 text-accent" /> {point}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            </section>
     </div>
   );
 }
