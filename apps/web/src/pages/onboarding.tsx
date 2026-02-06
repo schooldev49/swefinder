@@ -351,7 +351,7 @@ export function OnboardingPage() {
           <Card className="border-slate-800/80 bg-slate-950/60">
             <CardHeader>
               <CardTitle className="text-white">Select projects</CardTitle>
-              <CardDescription>Choose up to {MAX_SELECTION} repos that prove your skills. Add external demos later.</CardDescription>
+              <CardDescription>Choose up to {MAX_SELECTION} repos that prove your skills (avoid tutorial repos). Add external demos later.</CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="flex items-center gap-2 rounded-xl border border-slate-800/80 bg-slate-900/60 px-3">
