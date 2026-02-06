@@ -6,6 +6,7 @@ import { useSession } from "@/hooks/use-session";
 import { buildGitHubLoginUrl } from "@/lib/auth";
 import { logout } from "@/lib/api";
 import { cn } from "@/lib/utils";
+import { isDemoMode, setDemoPreference } from "@/demo/mode";
 
 const links = [
   { to: "/projects", label: "Projects" },
@@ -23,6 +24,10 @@ export function AppLayout() {
   };
 
   const handleLogout = async () => {
+    const wasDemo = isDemoMode();
+    if (wasDemo) {
+      setDemoPreference(false);
+    }
     await logout();
     await queryClient.invalidateQueries({ queryKey: ["session"] });
   };

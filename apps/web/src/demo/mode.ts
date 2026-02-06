@@ -48,3 +48,12 @@ export function useDemoMode() {
 
   return demo;
 }
+
+export function setDemoPreference(enabled: boolean) {
+  if (typeof window === "undefined") return;
+  try {
+    window.localStorage?.setItem(DEMO_STORAGE_KEY, enabled ? "true" : "false");
+  } catch {
+    // ignore
+  }
+}
