@@ -1,10 +1,10 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Loader2, Search } from "lucide-react";
 import { toast } from "sonner";
 import type { ApiRepoSummary } from "@/lib/api";
-import { fetchGitHubRepos } from "@/lib/api";
+import { fetchGitHubRepos, logout } from "@/lib/api";
 import { useSession } from "@/hooks/use-session";
 import { buildGitHubLoginUrl } from "@/lib/auth";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -36,12 +36,14 @@ interface ProofPreview {
 export function OnboardingPage() {
   const { data: user } = useSession();
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const [currentStep, setCurrentStep] = useState(0);
   const [hasConnected, setHasConnected] = useState(false);
   const [includePrivateRepos, setIncludePrivateRepos] = useState(false);
   const [selectedRepoIds, setSelectedRepoIds] = useState<Set<string>>(new Set());
   const [selectedRepos, setSelectedRepos] = useState<SelectedRepo[]>([]);
   const [searchTerm, setSearchTerm] = useState("");
+  const [visibleRepoCount, setVisibleRepoCount] = useState(15);
   const [jobDescription, setJobDescription] = useState("");
   const [proofPreview, setProofPreview] = useState<ProofPreview | null>(null);
   const [externalForm, setExternalForm] = useState({ title: "", url: "", description: "" });
@@ -62,6 +64,12 @@ export function OnboardingPage() {
     if (!searchTerm) return repoQuery.data;
     return repoQuery.data.filter((repo) => repo.fullName.toLowerCase().includes(searchTerm.toLowerCase()));
   }, [repoQuery.data, searchTerm]);
+
+  const visibleRepos = useMemo(() => filteredRepos.slice(0, visibleRepoCount), [filteredRepos, visibleRepoCount]);
+
+  useEffect(() => {
+    setVisibleRepoCount(15);
+  }, [searchTerm]);
 
   const stepStatus = (stepIndex: number) => {
     if (currentStep === stepIndex) return "current";
@@ -145,6 +153,22 @@ export function OnboardingPage() {
 
   const handleBack = () => {
     setCurrentStep((prev) => Math.max(prev - 1, 0));
+  };
+
+  const handleReconnect = async () => {
+    await logout();
+    await queryClient.invalidateQueries({ queryKey: ["session"] });
+    window.location.href = buildGitHubLoginUrl({
+      redirectPath: window.location.pathname,
+      includePrivateRepos,
+    });
+  };
+
+  const handleConnect = () => {
+    window.location.href = buildGitHubLoginUrl({
+      redirectPath: window.location.pathname,
+      includePrivateRepos,
+    });
   };
 
   const addExternalProject = () => {
@@ -255,7 +279,7 @@ export function OnboardingPage() {
                       variant="ghost"
                       size="sm"
                       className="px-1 text-primary"
-                      onClick={() => (window.location.href = buildGitHubLoginUrl(undefined, { includePrivateRepos }))}
+                      onClick={handleReconnect}
                     >
                       Reconnect GitHub
                     </Button>
@@ -269,10 +293,7 @@ export function OnboardingPage() {
                     <li>• Disconnect or delete data any time.</li>
                   </ul>
                   <div className="flex flex-col gap-3 sm:flex-row">
-                    <Button
-                      size="lg"
-                      onClick={() => (window.location.href = buildGitHubLoginUrl(undefined, { includePrivateRepos }))}
-                    >
+                    <Button size="lg" onClick={handleConnect}>
                       Sign in with GitHub
                     </Button>
                     <Button variant="outline" size="lg" onClick={() => toast("Email onboarding coming soon.")}>Use email instead</Button>
@@ -310,7 +331,7 @@ export function OnboardingPage() {
                 <p className="text-sm text-muted-foreground">No repos yet. Connect GitHub or check your permissions.</p>
               )}
               <div className="grid gap-2">
-                {filteredRepos.map((repo) => (
+                {visibleRepos.map((repo) => (
                   <label key={repo.id} className="flex cursor-pointer items-start gap-3 rounded-2xl border border-slate-800/60 bg-slate-950/40 px-3 py-2">
                     <Checkbox checked={selectedRepoIds.has(repo.id)} onCheckedChange={(value) => toggleRepoSelection(repo.id, Boolean(value))} />
                     <div className="space-y-1">
@@ -328,6 +349,13 @@ export function OnboardingPage() {
                   </label>
                 ))}
               </div>
+              {visibleRepoCount < filteredRepos.length && (
+                <div className="flex justify-center">
+                  <Button variant="outline" size="sm" onClick={() => setVisibleRepoCount((count) => count + 15)}>
+                    Load more repositories ({filteredRepos.length - visibleRepoCount})
+                  </Button>
+                </div>
+              )}
               <p className="text-xs text-muted-foreground">Only checked repos will be imported into ProofCraft. You can add more later from Projects.</p>
             </CardContent>
           </Card>
