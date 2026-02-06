@@ -17,64 +17,71 @@ const trustPoints = [
 
 const previewRequirements = [
   {
-    title: "Prototype ML experiments",
+    title: "Design ML experiments and communicate findings",
     project: "ml-research-notebooks",
     link: "Repo README",
-    cite: "pipelines/features.py#L42-L63",
+    cite: "src/eval/metrics.py#L42-L86",
     snippet: {
-      summary: "Feature extractor defends against empty batches + logs tensor shapes.",
-      filePath: "pipelines/features.py",
-      lines: "42-63",
+      summary: "Typed evaluation helper with guardrails, metrics logging, and failure-case export for auditability.",
+      filePath: "src/eval/metrics.py",
+      lines: "42-86",
       language: "python",
-      code: `def extract_features(batch):
-    if not batch:
-        raise ValueError("empty batch passed to extract_features")
+      code: `def evaluate_model(model: torch.nn.Module, loader: DataLoader) -> dict[str, float]:
+    \"\"\"Run evaluation with guardrails and log audit artifacts.\"\"\"
+    results = evaluate(model, loader)
+    if results.total_examples == 0:
+        raise ValueError(\"empty evaluation set\")
 
-    tensor = tokenizer(batch, padding=True, truncation=True, return_tensors="pt")
-    if tensor["input_ids"].shape[0] != len(batch):
-        logger.warning("shape mismatch: expected %s rows", len(batch))
-    return encoder(tensor.to(device))`,
+    metrics = {
+        \"f1\": results.f1,
+        \"ece\": results.ece,
+        \"latency_ms\": results.p95_latency_ms,
+    }
+    log_metrics(metrics)
+    save_failure_cases(results.hard_negatives, \"artifacts/failures.csv\")
+    return metrics`,
     },
   },
   {
-    title: "Ship real-time collaboration UI",
+    title: "Ship production-ready real-time UIs",
     project: "realtime-collab-board",
-    link: "Live demo",
-    cite: "src/hooks/useRoom.ts#L12-L33",
+    link: "Repo README",
+    cite: "src/hooks/useRoom.ts#L12-L37",
     snippet: {
-      summary: "CRDT hook that downgrades gracefully when WebRTC drops.",
+      summary: "CRDT hook that tracks connection state and falls back to cached state on dropouts.",
       filePath: "src/hooks/useRoom.ts",
-      lines: "12-33",
+      lines: "12-37",
       language: "tsx",
       code: `export function useRoom(roomId: string) {
   const [doc] = useState(() => new Y.Doc());
+  const [online, setOnline] = useState(false);
   useEffect(() => {
     const provider = new WebrtcProvider(roomId, doc);
-    provider.awareness.setLocalStateField("cursor", getLocalCursor());
+    provider.on("status", ({ status }) => setOnline(status === "connected"));
     return () => provider.destroy();
   }, [roomId]);
 
-  return doc;
+  return { doc, online };
 }`,
     },
   },
 ];
 
 const previewBullets = [
-  "Fine-tuned a RoBERTa toxicity classifier (94% F1) with HF Accelerate and tracked results in W&B.",
-  "Built a WebRTC board with CRDT sync so reviewers annotate experiments together.",
+  "Fine-tuned a RoBERTa toxicity classifier on 1.2M comments, reaching 94% F1 and logging calibration + latency tradeoffs in a reproducible eval notebook.",
+  "Built a WebRTC whiteboard with CRDT sync and connection fallback states, enabling 4–6 reviewers to annotate model outputs in real time.",
 ];
 
 const previewCitations = [
   {
-    label: "ml-research-notebooks/train.py",
-    note: "Logging F1 + latency for each RoBERTa run.",
-    href: "/",
+    label: "src/eval/metrics.py#L42-L86",
+    note: "Typed evaluation helper that logs metrics and saves failure cases.",
+    href: "https://github.com/demo-student/ml-research-notebooks/blob/main/src/eval/metrics.py#L42-L86",
   },
   {
-    label: "realtime-collab-board/src/hooks/useRoom.ts",
-    note: "CRDT sync logic for WebRTC board reviewers.",
-    href: "/",
+    label: "src/hooks/useRoom.ts#L12-L37",
+    note: "CRDT session hook with online/offline state tracking.",
+    href: "https://github.com/demo-student/realtime-collab-board/blob/main/src/hooks/useRoom.ts#L12-L37",
   },
 ];
 
