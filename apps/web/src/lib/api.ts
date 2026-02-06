@@ -1,4 +1,6 @@
 import type { Job, ProofPacket, Project, User } from "@swefinder/types";
+import * as demoApi from "@/demo/api";
+import { isDemoMode } from "@/demo/mode";
 
 export interface ApiRepoSummary {
   id: string;
@@ -54,16 +56,25 @@ async function apiFetch<T>(path: string, init?: RequestInit): Promise<T> {
 }
 
 export function fetchCurrentUser() {
+  if (isDemoMode()) {
+    return demoApi.fetchCurrentUser();
+  }
   return apiFetch<User | null>("/me");
 }
 
 export type ProjectPayload = Omit<Project, "userId">;
 
 export function fetchProjects() {
+  if (isDemoMode()) {
+    return demoApi.fetchProjects();
+  }
   return apiFetch<Project[]>("/projects");
 }
 
 export function saveProjects(projects: ProjectPayload[]) {
+  if (isDemoMode()) {
+    return demoApi.saveProjects(projects);
+  }
   return apiFetch<Project[]>("/projects", {
     method: "POST",
     body: JSON.stringify({ projects }),
@@ -71,10 +82,16 @@ export function saveProjects(projects: ProjectPayload[]) {
 }
 
 export function fetchGitHubRepos() {
+  if (isDemoMode()) {
+    return demoApi.fetchGitHubRepos();
+  }
   return apiFetch<ApiRepoSummary[]>("/github/repos");
 }
 
 export function createJob(payload: CreateJobPayload) {
+  if (isDemoMode()) {
+    return demoApi.createJob(payload);
+  }
   return apiFetch<Job>("/jobs", {
     method: "POST",
     body: JSON.stringify(payload),
@@ -82,14 +99,23 @@ export function createJob(payload: CreateJobPayload) {
 }
 
 export function fetchJobs() {
+  if (isDemoMode()) {
+    return demoApi.fetchJobs();
+  }
   return apiFetch<Job[]>("/jobs");
 }
 
 export function fetchJob(jobId: string) {
+  if (isDemoMode()) {
+    return demoApi.fetchJob();
+  }
   return apiFetch<{ job: Job; proofPacket: ProofPacket | null }>(`/jobs/${jobId}`);
 }
 
 export function generateProof(jobId: string, payload: GeneratePayload) {
+  if (isDemoMode()) {
+    return demoApi.generateProof(jobId, payload);
+  }
   return apiFetch<ProofPacket>(`/jobs/${jobId}/generate`, {
     method: "POST",
     body: JSON.stringify(payload),
@@ -97,6 +123,9 @@ export function generateProof(jobId: string, payload: GeneratePayload) {
 }
 
 export function updateJobStatus(jobId: string, status: Job["status"]) {
+  if (isDemoMode()) {
+    return demoApi.updateJobStatus(jobId, status);
+  }
   return apiFetch<Job>(`/jobs/${jobId}/status`, {
     method: "PATCH",
     body: JSON.stringify({ status }),
@@ -104,5 +133,8 @@ export function updateJobStatus(jobId: string, status: Job["status"]) {
 }
 
 export function logout() {
+  if (isDemoMode()) {
+    return demoApi.logout();
+  }
   return apiFetch<void>("/logout", { method: "POST" });
 }

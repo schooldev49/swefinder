@@ -13,6 +13,10 @@
     "build:web": "npm --workspace apps/web run build",
     "dev:worker": "npm --workspace apps/worker run dev",
     "deploy:worker": "npm --workspace apps/worker run deploy",
-    "lint": "npm --workspaces run lint"
+    "lint": "npm --workspaces run lint",
+    "dev": "concurrently \"npm run dev:worker\" \"npm run dev:web\""
+  },
+  "dependencies": {
+    "concurrently": "^9.2.1"
   }
 }
