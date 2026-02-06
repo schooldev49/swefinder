@@ -90,7 +90,7 @@ export async function updateProfile(payload: UpdateProfilePayload): Promise<User
   return clone(demoUser);
 }
 
-export async function fetchPublicProfile(): Promise<ProfileResponse> {
+export async function fetchPublicProfile(_slug?: string): Promise<ProfileResponse> {
   await sleep();
   return clone({ user: demoUser, projects: demoProjects.filter((project) => project.isShowcased) });
 }
