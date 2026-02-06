@@ -69,12 +69,12 @@ const previewCitations = [
   {
     label: "ml-research-notebooks/train.py",
     note: "Logging F1 + latency for each RoBERTa run.",
-    href: "https://github.com/demo-student/ml-research-notebooks/blob/main/train.py",
+    href: "/",
   },
   {
     label: "realtime-collab-board/src/hooks/useRoom.ts",
     note: "CRDT sync logic for WebRTC board reviewers.",
-    href: "https://github.com/demo-student/realtime-collab-board/blob/main/src/hooks/useRoom.ts",
+    href: "/",
   },
 ];
 
