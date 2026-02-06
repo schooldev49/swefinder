@@ -1,7 +1,7 @@
 import { useMemo } from "react";
 import { useParams } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
-import { CheckCircle2 } from "lucide-react";
+import { ArrowRight, CheckCircle2 } from "lucide-react";
 import type { Evidence, EvidenceMappingWithEvidence } from "@swefinder/types";
 import { fetchSharedPacket } from "@/lib/api";
 import { PublicShareLayout } from "@/components/layout/public-share-layout";
@@ -177,6 +177,7 @@ function RequirementPublicCard({
                   View proof
                 </a>
               )}
+              {mapping.evidence.codeSnippet ? <EvidenceSnippetBlock snippet={mapping.evidence.codeSnippet} /> : null}
             </div>
           ))
         )}
@@ -202,6 +203,37 @@ function SectionHeading({ title, subtitle }: { title: string; subtitle?: string 
       <h3 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">{title}</h3>
       {subtitle && <p className="text-xs text-muted-foreground">{subtitle}</p>}
     </div>
+  );
+}
+
+function EvidenceSnippetBlock({
+  snippet,
+}: {
+  snippet: NonNullable<Awaited<ReturnType<typeof fetchSharedPacket>>["proofPacket"]>["mappings"][number]["evidence"]["codeSnippet"];
+}) {
+  if (!snippet) return null;
+  return (
+    <details className="mt-2 rounded-xl border border-slate-900/80 bg-slate-950/30 p-2 text-[11px] text-slate-300 [&[open]>summary_svg]:rotate-90">
+      <summary className="flex cursor-pointer list-none items-center justify-between gap-2 text-[10px] font-semibold uppercase tracking-[0.3em] text-slate-500">
+        View code sample
+        <ArrowRight className="h-3 w-3 transition-transform duration-200" aria-hidden="true" />
+      </summary>
+      <div className="mt-2 space-y-2">
+        <p className="text-slate-100">{snippet.summary}</p>
+        <p className="font-mono text-[10px] text-slate-500">
+          {snippet.filePath}
+          {snippet.lineStart && snippet.lineEnd ? ` · L${snippet.lineStart}–${snippet.lineEnd}` : ""}
+        </p>
+        <pre className="max-h-64 overflow-auto rounded-lg bg-slate-950/60 p-3 font-mono text-[11px] text-slate-100">
+          <code>{snippet.code}</code>
+        </pre>
+        {snippet.url && (
+          <a href={snippet.url} target="_blank" rel="noopener noreferrer nofollow" className="text-primary underline">
+            Open on GitHub
+          </a>
+        )}
+      </div>
+    </details>
   );
 }
 

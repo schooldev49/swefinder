@@ -119,7 +119,7 @@ const requirements: Requirement[] = [
   },
 ];
 
-function mapping(project: Project, requirementId: string): EvidenceMappingWithEvidence {
+function mapping(project: Project, requirementId: string, snippet?: NonNullable<EvidenceMappingWithEvidence["evidence"]["codeSnippet"]>): EvidenceMappingWithEvidence {
   return {
     id: `${requirementId}-${project.id}`,
     requirementId,
@@ -136,6 +136,7 @@ function mapping(project: Project, requirementId: string): EvidenceMappingWithEv
       demoUrl: project.demoUrl,
       context: project.context,
       year: project.year,
+      codeSnippet: snippet,
     },
   };
 }
@@ -161,7 +162,44 @@ export const demoProof: ProofPacket = {
   title: "Proof Packet – ML Research Intern @ Nova Robotics",
   summary: "Paired HuggingFace-based toxicity classifier results with a CRDT-enabled collaboration surface to mirror Nova's evaluation workflow.",
   requirements,
-  mappings: [mapping(demoProjects[0], "req-ml"), mapping(demoProjects[1], "req-realtime")],
+  mappings: [
+    mapping(demoProjects[0], "req-ml", {
+      summary: "Feature extractor that guards against empty batches and logs tensor shapes.",
+      language: "python",
+      filePath: "pipelines/features.py",
+      lineStart: 42,
+      lineEnd: 63,
+      url: "https://github.com/demo-student/ml-research-notebooks/blob/main/pipelines/features.py#L42-L63",
+      code: `def extract_features(batch: list[dict[str, Any]]) -> torch.Tensor:
+    if not batch:
+        raise ValueError("empty batch passed to extract_features")
+
+    tensor = tokenizer(batch, padding=True, truncation=True, return_tensors="pt")
+    if tensor["input_ids"].shape[0] != len(batch):
+        logger.warning("shape mismatch: expected %s rows", len(batch))
+    tensor = tensor.to(device)
+    return encoder(tensor)`,
+    }),
+    mapping(demoProjects[1], "req-realtime", {
+      summary: "CRDT awareness hook that falls back to offline cache.",
+      language: "tsx",
+      filePath: "src/hooks/useRoom.ts",
+      lineStart: 12,
+      lineEnd: 33,
+      url: "https://github.com/demo-student/realtime-collab-board/blob/main/src/hooks/useRoom.ts#L12-L33",
+      code: `export function useRoom(roomId: string) {
+  const [doc] = useState(() => new Y.Doc());
+  useEffect(() => {
+    const provider = new WebrtcProvider(roomId, doc, { signaling: SIGNALING_URLS });
+    provider.on("status", ({ status }) => setOnline(status === "connected"));
+    provider.awareness.setLocalStateField("cursor", getLocalCursor());
+    return () => provider.destroy();
+  }, [roomId]);
+
+  return doc;
+}`,
+    }),
+  ],
   bullets: [
     "Fine-tuned a RoBERTa toxicity classifier on 1.2M comments with HF Accelerate, delivering 94% F1 tracked in W&B reports.",
     "Built a WebRTC whiteboard with Yjs CRDT sync so reviewers could annotate model outputs in real time.",

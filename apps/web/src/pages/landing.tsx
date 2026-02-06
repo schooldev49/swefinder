@@ -21,8 +21,48 @@ const trustPoints = [
 ];
 
 const previewRequirements = [
-  { title: "Prototype ML experiments", project: "ml-research-notebooks", link: "Repo README", cite: "ml-research-notebooks/train.py" },
-  { title: "Ship real-time collaboration UI", project: "realtime-collab-board", link: "Live demo", cite: "realtime-collab-board/src/hooks/useRoom.ts" },
+  {
+    title: "Prototype ML experiments",
+    project: "ml-research-notebooks",
+    link: "Repo README",
+    cite: "pipelines/features.py#L42-L63",
+    snippet: {
+      summary: "Feature extractor defends against empty batches + logs tensor shapes.",
+      filePath: "pipelines/features.py",
+      lines: "42-63",
+      language: "python",
+      code: `def extract_features(batch):
+    if not batch:
+        raise ValueError("empty batch passed to extract_features")
+
+    tensor = tokenizer(batch, padding=True, truncation=True, return_tensors="pt")
+    if tensor["input_ids"].shape[0] != len(batch):
+        logger.warning("shape mismatch: expected %s rows", len(batch))
+    return encoder(tensor.to(device))`,
+    },
+  },
+  {
+    title: "Ship real-time collaboration UI",
+    project: "realtime-collab-board",
+    link: "Live demo",
+    cite: "src/hooks/useRoom.ts#L12-L33",
+    snippet: {
+      summary: "CRDT hook that downgrades gracefully when WebRTC drops.",
+      filePath: "src/hooks/useRoom.ts",
+      lines: "12-33",
+      language: "tsx",
+      code: `export function useRoom(roomId: string) {
+  const [doc] = useState(() => new Y.Doc());
+  useEffect(() => {
+    const provider = new WebrtcProvider(roomId, doc);
+    provider.awareness.setLocalStateField("cursor", getLocalCursor());
+    return () => provider.destroy();
+  }, [roomId]);
+
+  return doc;
+}`,
+    },
+  },
 ];
 
 const previewBullets = [
@@ -129,6 +169,7 @@ export function LandingPage() {
                       <p className="mt-1 break-all text-[10px] uppercase tracking-[0.3em] text-slate-500">
                         Source <span className="mx-1 text-[11px] font-mono text-slate-300">{req.cite}</span>
                       </p>
+                      {req.snippet ? <InlineSnippet snippet={req.snippet} /> : null}
                     </div>
                   ))}
                 </div>
@@ -152,6 +193,30 @@ export function LandingPage() {
               <EvidenceCitations citations={previewCitations} />
             </CardContent>
           </Card>
+        </div>
+      </section>
+
+      <section className="mx-auto max-w-6xl px-4 pb-8 sm:px-6">
+        <div className="rounded-3xl border border-slate-800/70 bg-slate-950/60 p-6 shadow-xl shadow-slate-950/30">
+          <h2 className="text-2xl font-semibold text-white">Show original builds, skip tutorials</h2>
+          <p className="mt-3 text-sm text-slate-300">
+            Hiring managers skim for creative projects with clear structure, thoughtful comments, and clean commits — not half-finished tutorials. ProofCraft nudges you to surface
+            the same signals: original repos, README context, and short code excerpts that highlight real decisions.
+          </p>
+          <ul className="mt-4 space-y-2 text-sm text-slate-300">
+            <li className="flex items-start gap-2">
+              <CheckCircle className="mt-0.5 h-4 w-4 text-accent" /> Showcase a few serious projects with READMEs, tests, or notebooks that explain your approach.
+            </li>
+            <li className="flex items-start gap-2">
+              <CheckCircle className="mt-0.5 h-4 w-4 text-accent" /> Avoid tutorial repos and anything that signals poor judgment (scraping sketchy sites, sloppy comments).
+            </li>
+            <li className="flex items-start gap-2">
+              <CheckCircle className="mt-0.5 h-4 w-4 text-accent" /> Use 10–20 line snippets to spotlight decisions, edge cases, or thoughtful comments — not walls of boilerplate.
+            </li>
+          </ul>
+          <p className="mt-3 text-xs uppercase tracking-[0.35em] text-slate-500">
+            built for reviewers who only spend ~30 seconds before deciding to dive deeper.
+          </p>
         </div>
       </section>
 
@@ -229,5 +294,37 @@ function EvidenceCitations({ citations }: { citations: typeof previewCitations }
         ))}
       </ul>
     </div>
+  );
+}
+
+function InlineSnippet({
+  snippet,
+}: {
+  snippet: {
+    summary: string;
+    code: string;
+    filePath?: string;
+    lines?: string;
+    language?: string;
+  };
+}) {
+  return (
+    <details className="mt-2 rounded-2xl border border-slate-800/80 bg-slate-950/50 p-2 text-xs text-slate-300 [&[open]>summary_svg]:rotate-90">
+      <summary className="flex cursor-pointer list-none items-center justify-between gap-2 text-[11px] font-semibold uppercase tracking-[0.2em] text-slate-400">
+        View code sample
+        <ArrowRight className="h-3 w-3 transition-transform duration-200" aria-hidden="true" />
+      </summary>
+      <div className="mt-2 space-y-2">
+        <p className="text-slate-200">{snippet.summary}</p>
+        {(snippet.filePath || snippet.lines) && (
+          <p className="font-mono text-[11px] text-slate-500">
+            {snippet.filePath} {snippet.lines ? `· L${snippet.lines}` : ""}
+          </p>
+        )}
+        <pre className="max-h-48 overflow-auto rounded-xl bg-slate-950/80 p-3 text-[11px] text-slate-100">
+          <code>{snippet.code}</code>
+        </pre>
+      </div>
+    </details>
   );
 }

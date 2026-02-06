@@ -24,6 +24,7 @@ export function AppLayout() {
   const isDemo = isDemoMode();
   const isAuthenticated = Boolean(user) && !isDemo;
   const isGuest = !isAuthenticated && !isLoading;
+  const isLanding = location.pathname === "/";
 
   const handleLogin = () => {
     window.location.href = buildGitHubLoginUrl(location.pathname);
@@ -122,7 +123,7 @@ export function AppLayout() {
             </nav>
           ) : null}
         </header>
-        {isGuest ? (
+        {isGuest && !isLanding ? (
           <div className="rounded-2xl border border-amber-400/40 bg-amber-500/10 px-4 py-3 text-sm text-amber-100 shadow-lg shadow-amber-900/10">
             <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
               <div className="flex items-center gap-2 font-medium">

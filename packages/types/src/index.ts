@@ -78,6 +78,7 @@ export interface Evidence {
   year?: number;
   context?: string;
   metrics?: Record<string, EvidenceMetric>;
+  codeSnippet?: EvidenceSnippet;
 }
 
 export interface EvidenceMapping {
@@ -90,6 +91,16 @@ export interface EvidenceMapping {
 
 export interface EvidenceMappingWithEvidence extends EvidenceMapping {
   evidence: Evidence;
+}
+
+export interface EvidenceSnippet {
+  summary: string;
+  code: string;
+  language?: string;
+  filePath?: string;
+  lineStart?: number;
+  lineEnd?: number;
+  url?: string;
 }
 
 export interface ProofPacket {
