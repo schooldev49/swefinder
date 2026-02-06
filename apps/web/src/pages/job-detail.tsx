@@ -117,7 +117,9 @@ export function JobDetailPage() {
         <CardHeader className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
           <div>
             <CardTitle className="text-white">Proof Packet</CardTitle>
-            <CardDescription>Evidence-first summary ready to drop into your application.</CardDescription>
+            <CardDescription>
+              Evidence-first summary you curate before sharing—so startups know you reviewed every proof point yourself.
+            </CardDescription>
           </div>
           <div className="flex items-center gap-3">
             <Button
@@ -153,7 +155,7 @@ export function JobDetailPage() {
               <section>
                 <div className="flex items-center justify-between">
                   <h3 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">Resume bullets</h3>
-                  <p className="text-xs text-muted-foreground">Plain text, ATS-safe lines ready to paste.</p>
+                  <p className="text-xs text-muted-foreground">Plain text, copy-ready lines tailored to this JD.</p>
                 </div>
                 <div className="mt-3 space-y-3">
                   {proof.bullets.map((bullet, index) => (
@@ -326,6 +328,9 @@ function ShareLinkCallout({
           <p className="text-xs uppercase tracking-wide text-muted-foreground">Shareable Proof Packet URL</p>
           <p className="font-mono text-sm text-white">
             {profileSlug && jobSlug ? `/users/${profileSlug}/${jobSlug}` : "Set your proof profile handle first"}
+          </p>
+          <p className="text-xs text-muted-foreground">
+            This link always reflects the projects you selected, so reviewers know you curated it for their team.
           </p>
           {!profileSlug && (
             <p className="text-xs text-amber-400">

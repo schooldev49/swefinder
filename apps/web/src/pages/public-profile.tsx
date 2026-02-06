@@ -35,11 +35,14 @@ export function PublicProfilePage() {
                   <p className="text-sm text-muted-foreground">
                     Curated projects shared via ProofCraft. Each link opens a repo, demo, or doc you can verify in seconds.
                   </p>
+                  <p className="text-sm text-muted-foreground">
+                    Candidates pick the evidence themselves, so you’re seeing the exact work they’re proud to stand behind.
+                  </p>
                 </div>
               </div>
               <div className="rounded-xl border border-slate-800/80 bg-slate-950/60 px-4 py-3 text-xs text-muted-foreground">
                 Looking for a job-specific Proof Packet? Ask the candidate for{" "}
-                <span className="text-white">/users/{profileQuery.data.user.profileSlug}/&lt;job&gt;</span>.
+                <span className="text-white">/users/{profileQuery.data.user.profileSlug}/&lt;job&gt;</span> — each packet is assembled just for that opening.
               </div>
             </div>
           </header>

@@ -9,13 +9,14 @@ import { buildGitHubLoginUrl } from "@/lib/auth";
 const steps = [
   { title: "Connect GitHub", body: "Securely pull the repos, PRs, and notebooks that prove your skills.", icon: Code2 },
   { title: "Paste the JD", body: "Highlight the requirements that actually matter for this role.", icon: FileText },
-  { title: "Generate Proof", body: "Get ATS-safe bullets, evidence links, and an outreach note with one click.", icon: Sparkles },
+  { title: "Generate Proof", body: "Get tailored bullets, evidence links, and an outreach note with one click.", icon: Sparkles },
 ];
 
 const trustPoints = [
   "Requirements mapped to specific repo paths or demos.",
   "User-provided metrics stay labeled and auditable.",
   "Proof Packet supplements — never replaces — your résumé.",
+  "Every packet is manually curated before sending.",
 ];
 
 const previewRequirements = [
@@ -74,9 +75,10 @@ export function LandingPage() {
               Turn your GitHub projects into proof employers trust.
             </h1>
             <p className="text-base text-slate-300 md:text-lg">
-              ProofCraft maps your real commits and demos to each requirement, then generates ATS-ready bullets and a proof sheet you can attach in seconds.
+              ProofCraft maps your real commits and demos to each requirement, then generates JD-ready bullets and a proof sheet you can attach in seconds.
             </p>
             <p className="text-sm text-slate-400">Built for CS, SWE, and ML applicants who already have projects and want a verifier, not a résumé spinner.</p>
+            <p className="text-sm text-slate-400">You pick the repos, confirm every claim, and send a curated packet instead of a generic blast.</p>
           </div>
           <div className="flex flex-col gap-3 sm:flex-row">
             {primaryCta}

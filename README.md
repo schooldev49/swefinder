@@ -1,6 +1,6 @@
 # ProofCraft
 
-ProofCraft is a vertical slice of a proof-based job application assistant. Candidates sign in with GitHub, stage the repos that actually prove their skills, paste a job description, and generate a JD-specific "Proof Packet" with ATS-safe bullets, requirement→evidence mappings, and an outreach note.
+ProofCraft is a vertical slice of a proof-based job application assistant. Candidates sign in with GitHub, stage the repos that actually prove their skills, paste a job description, and generate a JD-specific "Proof Packet" with plain-text resume bullets, requirement→evidence mappings, and an outreach note.
 
 ## Repo structure
 
@@ -93,7 +93,7 @@ Visit `http://localhost:5173`. The frontend proxies `/api/*` calls to the worker
 
 - GitHub metrics are pulled directly from the API; user-provided numbers are flagged with `source: "user"`.
 - Proof packets only surface claims tied to repos or explicit inputs. When the LLM has no evidence for a requirement, it must say so.
-- Resume bullets are plain-text, ATS-safe strings designed to be pasted into a chronological resume.
+- Resume bullets are plain-text strings designed to be pasted into a chronological resume.
 
 ## Troubleshooting
 

@@ -37,5 +37,5 @@ export function buildBulletsAndOutreachPrompt(params: {
     rationale: mapping.rationale,
   }));
   const mappingsJson = JSON.stringify(mappingSummaries, null, 2);
-  return `SYSTEM:\n${HONESTY_PLEDGE}\n\nTASK:\nUsing the validated requirement-to-evidence links, craft 3-6 ATS-safe resume bullets and one outreach note. Each bullet must cite a specific repo or artifact and avoid invented metrics. The outreach note must reference exactly one link. Respond with JSON: {"bullets":[""],"outreachNote":"string","summary":"2 sentence summary"}.\n\nREQUIREMENTS:\n${requirementsJson}\n\nEVIDENCE LINKAGE:\n${mappingsJson}`;
+  return `SYSTEM:\n${HONESTY_PLEDGE}\n\nTASK:\nUsing the validated requirement-to-evidence links, craft 3-6 plain-text resume bullets and one outreach note. Each bullet must cite a specific repo or artifact and avoid invented metrics. The outreach note must reference exactly one link. Respond with JSON: {"bullets":[""],"outreachNote":"string","summary":"2 sentence summary"}.\n\nREQUIREMENTS:\n${requirementsJson}\n\nEVIDENCE LINKAGE:\n${mappingsJson}`;
 }

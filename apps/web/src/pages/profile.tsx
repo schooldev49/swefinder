@@ -82,7 +82,7 @@ export function ProfilePage() {
       <Card className="border-slate-800/80 bg-slate-950/40">
         <CardHeader>
           <CardTitle className="text-white">Proof profile</CardTitle>
-          <CardDescription>Pick a handle, decide if it’s public, and share the link anywhere.</CardDescription>
+          <CardDescription>Pick a handle, decide visibility, and share a link that shows you curated the proof yourself.</CardDescription>
         </CardHeader>
         <CardContent className="space-y-6">
           <div className="space-y-2">
@@ -135,7 +135,7 @@ export function ProfilePage() {
         <CardHeader>
           <CardTitle className="text-white">Shareable links</CardTitle>
           <CardDescription>
-            Give recruiters a single profile URL, or share job-specific Proof Packets when you apply.
+            Give recruiters a single profile URL, or share job-specific Proof Packets that highlight the work you selected for that team.
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-8">

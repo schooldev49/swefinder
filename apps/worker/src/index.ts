@@ -500,7 +500,7 @@ function buildEvidenceFromMapping(mapping: any, projects: Project[]): EvidenceMa
 
 async function runLLMForBullets(requirements: Requirement[], mappings: EvidenceMappingWithEvidence[]) {
   const response = await callLLM({
-    systemPrompt: "You craft ATS-safe bullets and outreach notes.",
+    systemPrompt: "You craft plain-text resume bullets and outreach notes grounded in real evidence.",
     userPrompt: buildBulletsAndOutreachPrompt({ requirements, mappings }),
   });
   return JSON.parse(response.raw) as { bullets: string[]; outreachNote: string; summary: string };

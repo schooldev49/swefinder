@@ -81,7 +81,7 @@ These are non-negotiable and must be wired into both prompt and code:
    - We output:
      - JD-specific bullets that go into a standard reverse-chronological résumé.
      - A separate 1-page **Proof Packet** view clearly labeled as an add-on, not a replacement for the résumé.
-5. **ATS-safe bullets**
+5. **Plain-text resume bullets**
    - Bullets must be plain, single-column-friendly text (no icons/tables/fancy layouts).
    - Proof Packet can use nicer layout, but keep HTML/CSS simple.
 
@@ -234,7 +234,7 @@ export interface ProofPacket {
   summary: string;
   requirements: Requirement[];
   mappings: EvidenceMappingWithEvidence[];
-  bullets: string[]; // plain text, ATS-safe
+  bullets: string[]; // plain text resume bullets
   outreachNote: string;
   createdAt: string;
 }

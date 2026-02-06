@@ -1,6 +1,7 @@
 import { useMemo } from "react";
 import { useParams } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
+import { CheckCircle2 } from "lucide-react";
 import type { Evidence, EvidenceMappingWithEvidence } from "@swefinder/types";
 import { fetchSharedPacket } from "@/lib/api";
 import { PublicShareLayout } from "@/components/layout/public-share-layout";
@@ -69,7 +70,9 @@ function PacketView({
         <Card className="border-slate-900/80 bg-slate-950/80">
           <CardHeader>
             <CardTitle className="text-white">Proof Packet contents</CardTitle>
-            <CardDescription>Use this to cross-check the JD against the candidate’s real work.</CardDescription>
+            <CardDescription>
+              Curated by the candidate for this specific role—every line links to code or docs you can spot-check in under a minute.
+            </CardDescription>
           </CardHeader>
           <CardContent className="space-y-8">
             <section>
@@ -85,18 +88,20 @@ function PacketView({
               </div>
             </section>
             <section>
-              <SectionHeading title="Resume-ready bullets" subtitle="Plain text lines aligned to this JD." />
-              <div className="mt-4 space-y-3">
+              <SectionHeading title="JD-specific bullets" />
+              <ul className="mt-4 space-y-3">
                 {proof.bullets.map((bullet, index) => (
-                  <div key={index} className="rounded-2xl border border-slate-900/80 bg-slate-950/60 p-4">
-                    <p className="text-xs uppercase tracking-wide text-muted-foreground">Bullet {index + 1}</p>
-                    <p className="text-sm text-white">{bullet}</p>
-                  </div>
+                  <li key={index} className="rounded-2xl border border-slate-900/80 bg-slate-950/60 p-4">
+                    <div className="flex items-start gap-3">
+                      <CheckCircle2 className="mt-0.5 h-4 w-4 text-primary" aria-hidden="true" />
+                      <p className="text-sm text-white">{bullet}</p>
+                    </div>
+                  </li>
                 ))}
-              </div>
+              </ul>
             </section>
             <section>
-              <SectionHeading title="Outreach note" subtitle="Candidate’s short intro referencing a proof link." />
+              <SectionHeading title="Outreach note" />
               <div className="rounded-2xl border border-slate-900/80 bg-slate-950/60 p-4 text-sm text-white">
                 {proof.outreachNote}
               </div>
@@ -191,11 +196,11 @@ function buildCitationList(mappings: EvidenceMappingWithEvidence[]): Evidence[] 
   return Array.from(seen.values());
 }
 
-function SectionHeading({ title, subtitle }: { title: string; subtitle: string }) {
+function SectionHeading({ title, subtitle }: { title: string; subtitle?: string }) {
   return (
     <div>
       <h3 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">{title}</h3>
-      <p className="text-xs text-muted-foreground">{subtitle}</p>
+      {subtitle && <p className="text-xs text-muted-foreground">{subtitle}</p>}
     </div>
   );
 }
