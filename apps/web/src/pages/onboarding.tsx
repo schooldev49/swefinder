@@ -193,10 +193,11 @@ export function OnboardingPage() {
   const handleReconnect = async () => {
     await logout();
     await queryClient.invalidateQueries({ queryKey: ["session"] });
-    window.location.href = buildGitHubLoginUrl({
+    const returnTo = buildGitHubLoginUrl({
       redirectPath: window.location.pathname,
       includePrivateRepos,
     });
+    window.location.href = `https://github.com/logout?return_to=${encodeURIComponent(returnTo)}`;
   };
 
   const handleConnect = () => {
