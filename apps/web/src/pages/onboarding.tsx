@@ -193,11 +193,11 @@ export function OnboardingPage() {
   const handleReconnect = async () => {
     await logout();
     await queryClient.invalidateQueries({ queryKey: ["session"] });
-    const returnTo = buildGitHubLoginUrl({
+    toast.message("To switch GitHub accounts, log out at github.com first.");
+    window.location.href = buildGitHubLoginUrl({
       redirectPath: window.location.pathname,
       includePrivateRepos,
     });
-    window.location.href = `https://github.com/logout?return_to=${encodeURIComponent(returnTo)}`;
   };
 
   const handleConnect = () => {
@@ -317,7 +317,7 @@ export function OnboardingPage() {
                       className="px-1 text-primary"
                       onClick={handleReconnect}
                     >
-                      Reconnect GitHub
+                      Re-auth with GitHub
                     </Button>
                   </p>
                 </>
