@@ -8,7 +8,7 @@ import { useSession } from "@/hooks/use-session";
 import { buildGitHubLoginUrl } from "@/lib/auth";
 import { logout } from "@/lib/api";
 import { cn } from "@/lib/utils";
-import { setDemoPreference } from "@/demo/mode";
+import { isDemoMode } from "@/demo/mode";
 
 const links = [
   { to: "/projects", label: "Projects" },
@@ -21,7 +21,9 @@ export function AppLayout() {
   const queryClient = useQueryClient();
   const location = useLocation();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
-  const isGuest = !user && !isLoading;
+  const isDemo = isDemoMode();
+  const isAuthenticated = Boolean(user) && !isDemo;
+  const isGuest = !isAuthenticated && !isLoading;
 
   const handleLogin = () => {
     window.location.href = buildGitHubLoginUrl(location.pathname);
@@ -29,18 +31,12 @@ export function AppLayout() {
 
   const handleLogout = async () => {
     await logout();
-    setDemoPreference(true);
     await queryClient.invalidateQueries({ queryKey: ["session"] });
   };
 
   useEffect(() => {
     setIsMenuOpen(false);
   }, [location.pathname]);
-
-  useEffect(() => {
-    if (isLoading) return;
-    setDemoPreference(!user);
-  }, [user, isLoading]);
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-slate-950 via-slate-950 to-slate-900">
@@ -76,7 +72,7 @@ export function AppLayout() {
             <div className="flex items-center gap-3">
               {isLoading ? (
                 <div className="h-8 w-28 animate-pulse rounded-full bg-slate-800" />
-              ) : user ? (
+              ) : isAuthenticated && user ? (
                 <div className="flex items-center gap-3">
                   <Button
                     variant="ghost"
@@ -115,7 +111,7 @@ export function AppLayout() {
                   {link.label}
                 </NavLink>
               ))}
-              {user ? (
+              {isAuthenticated ? (
                 <NavLink
                   to="/projects"
                   className="rounded-xl px-3 py-2 text-left text-white transition-colors hover:bg-slate-800 md:hidden"
