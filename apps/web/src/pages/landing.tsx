@@ -65,8 +65,8 @@ export function LandingPage() {
   );
 
   return (
-    <div className="space-y-20 py-4">
-      <section className="mx-auto grid w-full max-w-6xl items-center gap-12 px-6 py-20 md:grid-cols-[minmax(0,1.2fr)_minmax(0,1fr)]">
+    <div className="space-y-16 overflow-hidden py-6 sm:space-y-20">
+      <section className="mx-auto grid w-full max-w-6xl items-center gap-10 px-4 py-12 sm:px-6 lg:py-20 md:grid-cols-[minmax(0,1.2fr)_minmax(0,1fr)]">
         <div className="space-y-7">
           <div className="inline-flex items-center gap-2 rounded-full border border-accent/40 bg-accent/10 px-4 py-1 text-xs font-semibold uppercase tracking-[0.2em] text-accent">
             <ShieldCheck className="h-4 w-4" /> Evidence-first job packets
@@ -103,10 +103,10 @@ export function LandingPage() {
             No résumés rewritten, no mass applying — just one GitHub login and evidence you can send to recruiters.
           </p>
         </div>
-        <div className="relative">
+        <div className="relative w-full">
           <div className="absolute inset-x-4 top-6 -z-10 rounded-3xl bg-slate-800/30 blur-3xl" aria-hidden="true" />
-          <Card className="rounded-3xl border-slate-800/80 bg-slate-950/80 shadow-2xl">
-            <CardContent className="space-y-6 p-6">
+          <Card className="w-full max-w-xl rounded-3xl border-slate-800/80 bg-slate-950/80 shadow-2xl sm:max-w-none">
+            <CardContent className="space-y-6 p-5 sm:p-6">
               <div className="flex items-center justify-between text-sm text-slate-400">
                 <span>Proof Packet</span>
                 <Badge variant="outline" className="border-slate-700 text-xs">
@@ -126,7 +126,7 @@ export function LandingPage() {
                       <p className="font-medium text-slate-100">{req.title}</p>
                       <p className="text-xs text-slate-400">{req.project}</p>
                       <span className="text-xs text-accent">{req.link}</span>
-                      <p className="mt-1 text-[10px] uppercase tracking-[0.3em] text-slate-500">
+                      <p className="mt-1 break-all text-[10px] uppercase tracking-[0.3em] text-slate-500">
                         Source <span className="mx-1 text-[11px] font-mono text-slate-300">{req.cite}</span>
                       </p>
                     </div>
@@ -156,7 +156,7 @@ export function LandingPage() {
       </section>
 
       <section className="border-t border-slate-800/60 bg-slate-950/50">
-        <div className="mx-auto max-w-6xl px-6 py-12">
+        <div className="mx-auto max-w-6xl px-4 py-12 sm:px-6">
           <div className="mb-8 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
             <div>
               <p className="text-xs font-semibold uppercase tracking-[0.35em] text-slate-400">How it works</p>
@@ -178,7 +178,7 @@ export function LandingPage() {
       </section>
 
       <section className="border-t border-slate-800 bg-slate-900/40">
-        <div className="mx-auto grid max-w-6xl gap-8 px-6 py-14 md:grid-cols-2">
+        <div className="mx-auto grid max-w-6xl gap-8 px-4 py-14 sm:px-6 md:grid-cols-2">
           <div>
             <p className="text-xs font-semibold uppercase tracking-[0.35em] text-slate-400">Hard safety rules</p>
             <h2 className="mt-4 text-3xl font-semibold text-white">Honesty-first by design</h2>
@@ -220,8 +220,8 @@ function EvidenceCitations({ citations }: { citations: typeof previewCitations }
       <ul className="space-y-2 text-[11px] text-slate-300">
         {citations.map((citation) => (
           <li key={citation.label} className="rounded-2xl border border-slate-800/80 bg-slate-950/60 p-3">
-            <div className="text-[10px] font-semibold uppercase tracking-[0.3em] text-slate-500">{citation.label}</div>
-            <p className="text-xs text-slate-200">{citation.note}</p>
+            <div className="text-[10px] font-semibold uppercase tracking-[0.3em] text-slate-500 break-all">{citation.label}</div>
+            <p className="text-xs text-slate-200 break-words">{citation.note}</p>
             <a href={citation.href} target="_blank" rel="noreferrer" className="text-accent">
               Open file
             </a>

@@ -20,9 +20,13 @@ export function isDemoMode(): boolean {
     return true;
   }
   try {
-    return window.localStorage?.getItem(DEMO_STORAGE_KEY) === "true";
+    const stored = window.localStorage?.getItem(DEMO_STORAGE_KEY);
+    if (stored === null) {
+      return true;
+    }
+    return stored === "true";
   } catch {
-    return false;
+    return true;
   }
 }
 

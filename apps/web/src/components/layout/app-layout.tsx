@@ -1,14 +1,14 @@
 import { Link, NavLink, Outlet, useLocation } from "react-router-dom";
 import { useEffect, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
-import { Menu, X } from "lucide-react";
+import { AlertTriangle, Menu, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useSession } from "@/hooks/use-session";
 import { buildGitHubLoginUrl } from "@/lib/auth";
 import { logout } from "@/lib/api";
 import { cn } from "@/lib/utils";
-import { isDemoMode, setDemoPreference } from "@/demo/mode";
+import { setDemoPreference } from "@/demo/mode";
 
 const links = [
   { to: "/projects", label: "Projects" },
@@ -21,23 +21,26 @@ export function AppLayout() {
   const queryClient = useQueryClient();
   const location = useLocation();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const isGuest = !user && !isLoading;
 
   const handleLogin = () => {
     window.location.href = buildGitHubLoginUrl(location.pathname);
   };
 
   const handleLogout = async () => {
-    const wasDemo = isDemoMode();
-    if (wasDemo) {
-      setDemoPreference(false);
-    }
     await logout();
+    setDemoPreference(true);
     await queryClient.invalidateQueries({ queryKey: ["session"] });
   };
 
   useEffect(() => {
     setIsMenuOpen(false);
   }, [location.pathname]);
+
+  useEffect(() => {
+    if (isLoading) return;
+    setDemoPreference(!user);
+  }, [user, isLoading]);
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-slate-950 via-slate-950 to-slate-900">
@@ -123,6 +126,23 @@ export function AppLayout() {
             </nav>
           ) : null}
         </header>
+        {isGuest ? (
+          <div className="rounded-2xl border border-amber-400/40 bg-amber-500/10 px-4 py-3 text-sm text-amber-100 shadow-lg shadow-amber-900/10">
+            <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
+              <div className="flex items-center gap-2 font-medium">
+                <AlertTriangle className="h-4 w-4 shrink-0" />
+                Guest mode — data stays local and will not be saved.
+              </div>
+              <button
+                type="button"
+                className="text-left text-xs font-semibold uppercase tracking-[0.2em] text-amber-200/80 transition hover:text-amber-50"
+                onClick={handleLogin}
+              >
+                Sign in to sync
+              </button>
+            </div>
+          </div>
+        ) : null}
         <main className="flex-1">
           <Outlet />
         </main>
