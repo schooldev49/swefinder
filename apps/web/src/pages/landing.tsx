@@ -221,27 +221,7 @@ export function LandingPage() {
         </div>
       </section>
 
-      <section className="border-t border-slate-800/60 bg-slate-950/50">
-        <div className="mx-auto max-w-6xl px-4 py-12 sm:px-6">
-          <div className="mb-8 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-            <div>
-              <p className="text-xs font-semibold uppercase tracking-[0.35em] text-slate-400">How it works</p>
-              <h2 className="text-2xl font-semibold text-white">From repo to proof in three steps</h2>
-            </div>
-          </div>
-          <div className="grid gap-6 md:grid-cols-3">
-            {steps.map((step) => (
-              <div key={step.title} className="rounded-xl border border-slate-800 bg-slate-950/80 p-5">
-                <div className="mb-4 flex h-10 w-10 items-center justify-center rounded-lg bg-accent/10 text-accent">
-                  <step.icon className="h-5 w-5" />
-                </div>
-                <h3 className="text-lg font-semibold text-white">{step.title}</h3>
-                <p className="mt-2 text-sm text-slate-400">{step.body}</p>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
+     
 
       <section className="border-t border-slate-800 bg-slate-900/40">
         <div className="mx-auto grid max-w-6xl gap-8 px-4 py-14 sm:px-6 md:grid-cols-2">
