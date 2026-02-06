@@ -3,6 +3,7 @@ import { ArrowRight, CheckCircle2, CheckCircle, Code2, FileText, ShieldCheck, Sp
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { CodeSnippet } from "@/components/ui/code-snippet";
 import { useSession } from "@/hooks/use-session";
 import { buildGitHubLoginUrl } from "@/lib/auth";
 import { setDemoPreference } from "@/demo/mode";
@@ -321,9 +322,7 @@ function InlineSnippet({
             {snippet.filePath} {snippet.lines ? `· L${snippet.lines}` : ""}
           </p>
         )}
-        <pre className="max-h-48 overflow-auto rounded-xl bg-slate-950/80 p-3 text-[11px] text-slate-100">
-          <code>{snippet.code}</code>
-        </pre>
+        <CodeSnippet code={snippet.code} language={snippet.language} />
       </div>
     </details>
   );

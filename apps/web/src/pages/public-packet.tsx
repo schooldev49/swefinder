@@ -8,6 +8,7 @@ import { PublicShareLayout } from "@/components/layout/public-share-layout";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
+import { CodeSnippet } from "@/components/ui/code-snippet";
 
 export function PublicPacketPage() {
   const { handle, packetSlug } = useParams();
@@ -224,9 +225,7 @@ function EvidenceSnippetBlock({
           {snippet.filePath}
           {snippet.lineStart && snippet.lineEnd ? ` · L${snippet.lineStart}–${snippet.lineEnd}` : ""}
         </p>
-        <pre className="max-h-64 overflow-auto rounded-lg bg-slate-950/60 p-3 font-mono text-[11px] text-slate-100">
-          <code>{snippet.code}</code>
-        </pre>
+        <CodeSnippet code={snippet.code} language={snippet.language} />
         {snippet.url && (
           <a href={snippet.url} target="_blank" rel="noopener noreferrer nofollow" className="text-primary underline">
             Open on GitHub
