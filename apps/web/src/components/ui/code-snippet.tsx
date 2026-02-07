@@ -18,7 +18,7 @@ type HighlightNode = {
   };
 };
 
-function registerLanguage(grammar: any) {
+function registerLanguage(grammar: Parameters<typeof refractor.register>[0]) {
   try {
     refractor.register(grammar);
   } catch {
@@ -40,7 +40,7 @@ export function CodeSnippet({ code, language = "tsx", wrap = false, className, .
   return (
     <pre
       className={cn(
-        "relative max-h-64 overflow-auto rounded-xl bg-slate-950/80 p-3 font-mono text-xs leading-relaxed text-slate-100",
+        "relative w-full max-h-64 overflow-auto rounded-xl bg-slate-950/80 p-3 font-mono text-xs leading-relaxed text-slate-100",
         wrap ? "whitespace-pre-wrap break-words" : "whitespace-pre",
         className
       )}

@@ -1,5 +1,5 @@
 import { Link, NavLink, Outlet, useLocation } from "react-router-dom";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { Menu, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -29,10 +29,6 @@ export function AppLayout() {
     await logout();
     await queryClient.invalidateQueries({ queryKey: ["session"] });
   };
-
-  useEffect(() => {
-    setIsMenuOpen(false);
-  }, [location.pathname]);
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-slate-950 via-slate-950 to-slate-900">
@@ -103,6 +99,7 @@ export function AppLayout() {
                       isActive ? "bg-slate-800 text-white" : "text-muted-foreground"
                     )
                   }
+                  onClick={() => setIsMenuOpen(false)}
                 >
                   {link.label}
                 </NavLink>
@@ -111,6 +108,7 @@ export function AppLayout() {
                 <NavLink
                   to="/projects"
                   className="rounded-xl px-3 py-2 text-left text-white transition-colors hover:bg-slate-800 md:hidden"
+                  onClick={() => setIsMenuOpen(false)}
                 >
                   Go to dashboard
                 </NavLink>

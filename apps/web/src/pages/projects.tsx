@@ -11,11 +11,15 @@ import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Label } from "@/components/ui/label";
 import { cn } from "@/lib/utils";
-import { Loader2, RefreshCw } from "lucide-react";
+import { Loader2, RefreshCw, Trash2 } from "lucide-react";
 import { toast } from "sonner";
+import { CodeSnippet } from "@/components/ui/code-snippet";
+import type { ProjectCodeSample } from "@evidensify/types";
 
 const CONTEXT_OPTIONS = ["Personal", "Course", "Open Source", "Startup", "Research"];
 const MAX_SHOWCASED = 4;
+const MAX_SAMPLE_LINES = 40;
+const MAX_SAMPLE_CODE_CHARS = 2000;
 
 type ExternalFormState = {
   title: string;
@@ -37,6 +41,10 @@ const createEmptyExternalForm = (): ExternalFormState => ({
 
 const generateProjectId = () =>
   typeof crypto !== "undefined" && typeof crypto.randomUUID === "function" ? crypto.randomUUID() : `project-${Date.now()}`;
+const generateSampleId = () =>
+  typeof crypto !== "undefined" && typeof crypto.randomUUID === "function"
+    ? crypto.randomUUID()
+    : `sample-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
 
 const isValidHttpUrl = (value: string) => {
   try {
@@ -110,7 +118,7 @@ export function ProjectsPage() {
         savedProjects.map((project) => {
           const { userId, ...rest } = project;
           void userId;
-          return { ...rest, sourceType: rest.sourceType ?? "github" };
+          return { ...rest, sourceType: rest.sourceType ?? "github", codeSamples: rest.codeSamples ?? [] };
         })
       );
     }
@@ -124,7 +132,7 @@ export function ProjectsPage() {
         data.map((project) => {
           const { userId, ...rest } = project;
           void userId;
-          return { ...rest, sourceType: rest.sourceType ?? "github" };
+          return { ...rest, sourceType: rest.sourceType ?? "github", codeSamples: rest.codeSamples ?? [] };
         })
       );
       toast("Projects saved", { description: "Your proof-ready projects are up to date." });
@@ -176,6 +184,7 @@ export function ProjectsPage() {
         year: new Date(repo.updatedAt).getFullYear(),
         draft: true,
         isShowcased: false,
+        codeSamples: [],
       }));
     if (!newEntries.length) {
       toast("Already added", { description: "The selected repos are already in your project list." });
@@ -224,6 +233,7 @@ export function ProjectsPage() {
       demoUrl: url,
       draft: true,
       isShowcased: false,
+      codeSamples: [],
     };
     setProjects((prev) => [newProject, ...prev]);
     setExternalForm(createEmptyExternalForm());
@@ -466,6 +476,11 @@ export function ProjectsPage() {
                     placeholder="Short reminder of the problem, stack, and key outcomes."
                   />
                 </div>
+                <ProjectCodeSamplesEditor
+                  project={project}
+                  onChange={(samples) => updateProject(project.id, { codeSamples: samples })}
+                  projectUrl={project.htmlUrl}
+                />
               </div>
             ))}
           </div>
@@ -569,4 +584,235 @@ export function ProjectsPage() {
       )}
     </div>
   );
+}
+
+type SampleDraft = {
+  summary: string;
+  filePath: string;
+  lineStart: string;
+  lineEnd: string;
+  url: string;
+  language: string;
+  tags: string;
+  code: string;
+};
+
+const createEmptySampleDraft = (): SampleDraft => ({
+  summary: "",
+  filePath: "",
+  lineStart: "",
+  lineEnd: "",
+  url: "",
+  language: "",
+  tags: "",
+  code: "",
+});
+
+function ProjectCodeSamplesEditor({
+  project,
+  onChange,
+  projectUrl,
+}: {
+  project: EditableProject;
+  onChange: (samples: ProjectCodeSample[]) => void;
+  projectUrl?: string;
+}) {
+  const samples = project.codeSamples ?? [];
+  const [isAdding, setIsAdding] = useState(false);
+  const [draft, setDraft] = useState<SampleDraft>(() => createEmptySampleDraft());
+  const [expandedId, setExpandedId] = useState<string | null>(null);
+
+  const handleDraftChange =
+    (field: keyof SampleDraft) =>
+    (event: ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+      setDraft((prev) => ({ ...prev, [field]: event.target.value }));
+    };
+
+  const handleAddSample = (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    const summary = draft.summary.trim();
+    const code = draft.code.trim();
+    if (!summary || !code) {
+      toast("Add details", { description: "Summary and code are required." });
+      return;
+    }
+    if (code.length > MAX_SAMPLE_CODE_CHARS) {
+      toast("Snippet too long", { description: `Limit code samples to ${MAX_SAMPLE_CODE_CHARS} characters.` });
+      return;
+    }
+    const lineStart = draft.lineStart ? Math.max(1, Number.parseInt(draft.lineStart, 10)) : undefined;
+    let lineEnd = draft.lineEnd ? Math.max(1, Number.parseInt(draft.lineEnd, 10)) : undefined;
+    if (lineStart && lineEnd && lineEnd < lineStart) {
+      lineEnd = lineStart;
+    }
+    if (lineStart && lineEnd && lineEnd - lineStart > MAX_SAMPLE_LINES) {
+      toast("Range too long", { description: `Keep snippets to ${MAX_SAMPLE_LINES} lines or less.` });
+      return;
+    }
+    const newSample: ProjectCodeSample = {
+      id: generateSampleId(),
+      summary: summary.slice(0, 200),
+      code,
+      filePath: draft.filePath.trim() || undefined,
+      lineStart,
+      lineEnd,
+      url: draft.url.trim() || projectUrl,
+      language: (draft.language || inferLanguage(draft.filePath)).toLowerCase() || undefined,
+      tags: draft.tags
+        .split(",")
+        .map((token) => token.trim())
+        .filter(Boolean)
+        .slice(0, 5),
+    };
+    onChange([newSample, ...(samples ?? [])]);
+    setDraft(createEmptySampleDraft());
+    setIsAdding(false);
+    toast("Sample added", { description: "Short snippets keep reviewers engaged." });
+  };
+
+  const handleDelete = (sampleId: string) => {
+    onChange(samples.filter((sample) => sample.id !== sampleId));
+    if (expandedId === sampleId) {
+      setExpandedId(null);
+    }
+  };
+
+  return (
+    <div className="space-y-3 rounded-2xl border border-slate-900/60 bg-slate-950/40 p-4">
+      <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+        <div>
+          <p className="text-sm font-semibold text-white">Code samples (optional)</p>
+          <p className="text-xs text-muted-foreground">
+            Curate 10–40 line snippets with commentary. You can attach up to 3 per Proof Packet.
+          </p>
+        </div>
+        <Button type="button" variant="ghost" size="sm" onClick={() => setIsAdding((prev) => !prev)}>
+          {isAdding ? "Cancel" : "Add sample"}
+        </Button>
+      </div>
+      {samples.length === 0 ? (
+        <p className="text-xs text-muted-foreground">No samples saved yet.</p>
+      ) : (
+        <div className="space-y-3">
+          {samples.map((sample) => {
+            const isExpanded = expandedId === sample.id;
+            return (
+              <div key={sample.id} className="rounded-2xl border border-slate-900/80 bg-slate-950/60 p-3 text-xs text-muted-foreground">
+                <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                  <div>
+                    <p className="text-sm font-semibold text-white">{sample.summary}</p>
+                    <p className="text-[11px] uppercase tracking-[0.3em] text-slate-500">
+                      {sample.filePath || "snippet"} {formatLineRange(sample.lineStart, sample.lineEnd)}
+                    </p>
+                    {sample.tags && sample.tags.length > 0 && (
+                      <div className="mt-1 flex flex-wrap gap-1">
+                        {sample.tags.map((tag) => (
+                          <Badge key={tag} variant="outline" className="text-[10px]">
+                            {tag}
+                          </Badge>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Button type="button" variant="secondary" size="sm" onClick={() => setExpandedId(isExpanded ? null : sample.id)}>
+                      {isExpanded ? "Hide code" : "View code"}
+                    </Button>
+                    <Button type="button" variant="ghost" size="icon" onClick={() => handleDelete(sample.id)}>
+                      <Trash2 className="h-4 w-4" />
+                      <span className="sr-only">Delete sample</span>
+                    </Button>
+                  </div>
+                </div>
+                {isExpanded && (
+                  <div className="mt-3 space-y-2">
+                    {sample.url && (
+                      <a href={sample.url} target="_blank" rel="noopener noreferrer nofollow" className="text-[11px] text-primary underline">
+                        View source
+                      </a>
+                    )}
+                    <CodeSnippet code={sample.code} language={sample.language || inferLanguage(sample.filePath) || "tsx"} />
+                  </div>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      )}
+      {isAdding && (
+        <form onSubmit={handleAddSample} className="space-y-3 rounded-2xl border border-dashed border-slate-700 p-4">
+          <div>
+            <Label>Summary</Label>
+            <Input value={draft.summary} onChange={handleDraftChange("summary")} className="mt-2" placeholder="What does this snippet show?" required />
+          </div>
+          <div className="grid gap-3 md:grid-cols-2">
+            <div>
+              <Label>File path</Label>
+              <Input value={draft.filePath} onChange={handleDraftChange("filePath")} className="mt-2" placeholder="src/pipelines/features.py" />
+            </div>
+            <div>
+              <Label>Language</Label>
+              <Input value={draft.language} onChange={handleDraftChange("language")} className="mt-2" placeholder="python" />
+            </div>
+          </div>
+          <div className="grid gap-3 md:grid-cols-2">
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <Label>Start line</Label>
+                <Input type="number" min={1} value={draft.lineStart} onChange={handleDraftChange("lineStart")} className="mt-2" />
+              </div>
+              <div>
+                <Label>End line</Label>
+                <Input type="number" min={1} value={draft.lineEnd} onChange={handleDraftChange("lineEnd")} className="mt-2" />
+              </div>
+            </div>
+            <div>
+              <Label>Source URL</Label>
+              <Input value={draft.url} onChange={handleDraftChange("url")} className="mt-2" placeholder="https://github.com/demo/file#L1-L20" />
+            </div>
+          </div>
+          <div>
+            <Label>Tags</Label>
+            <Input value={draft.tags} onChange={handleDraftChange("tags")} className="mt-2" placeholder="ml, evaluation, guardrails" />
+            <p className="mt-1 text-[11px] text-muted-foreground">Comma-separated, up to 5 tags.</p>
+          </div>
+          <div>
+            <Label>Code</Label>
+            <Textarea value={draft.code} onChange={handleDraftChange("code")} className="mt-2 font-mono text-xs" rows={6} placeholder="Paste 10–40 lines of code" required />
+            <p className="mt-1 text-[11px] text-muted-foreground">
+              Limit {MAX_SAMPLE_LINES} lines / {MAX_SAMPLE_CODE_CHARS} characters.
+            </p>
+          </div>
+          <div className="flex justify-end">
+            <Button type="submit" size="sm">
+              Save sample
+            </Button>
+          </div>
+        </form>
+      )}
+    </div>
+  );
+}
+
+function inferLanguage(filePath?: string) {
+  if (!filePath) return "";
+  const lower = filePath.toLowerCase();
+  if (lower.endsWith(".py")) return "python";
+  if (lower.endsWith(".ts") || lower.endsWith(".tsx")) return "tsx";
+  if (lower.endsWith(".js") || lower.endsWith(".jsx")) return "javascript";
+  if (lower.endsWith(".rs")) return "rust";
+  if (lower.endsWith(".go")) return "go";
+  if (lower.endsWith(".java")) return "java";
+  if (lower.endsWith(".sql")) return "sql";
+  return "";
+}
+
+function formatLineRange(start?: number, end?: number) {
+  if (!start && !end) return "";
+  if (start && end) {
+    return `#L${start}-${end}`;
+  }
+  if (start) return `#L${start}`;
+  if (end) return `#L${end}`;
+  return "";
 }

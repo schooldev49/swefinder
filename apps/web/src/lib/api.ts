@@ -22,6 +22,7 @@ export interface CreateJobPayload {
 
 export interface GeneratePayload {
   selectedProjectIds: string[];
+  selectedSampleIds?: string[];
   userMetrics?: Record<string, { label: string; value: string }>;
 }
 

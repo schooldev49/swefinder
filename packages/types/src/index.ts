@@ -18,6 +18,20 @@ export interface User {
 
 export type ProjectSourceType = "github" | "link";
 
+export interface ProjectCodeSample {
+  id: string;
+  summary: string;
+  code: string;
+  language?: string;
+  filePath?: string;
+  lineStart?: number;
+  lineEnd?: number;
+  url?: string;
+  tags?: string[];
+  createdAt?: string;
+  updatedAt?: string;
+}
+
 export interface Project {
   id: string;
   userId: string;
@@ -36,6 +50,7 @@ export interface Project {
   updatedAt?: string;
   tags?: string[];
   isShowcased?: boolean;
+  codeSamples?: ProjectCodeSample[];
 }
 
 export interface Job {
@@ -103,6 +118,13 @@ export interface EvidenceSnippet {
   url?: string;
 }
 
+export interface ProofPacketCodeSample extends EvidenceSnippet {
+  id: string;
+  projectId: string;
+  projectFullName: string;
+  tags?: string[];
+}
+
 export interface ProofPacket {
   id: string;
   jobId: string;
@@ -113,6 +135,7 @@ export interface ProofPacket {
   bullets: string[];
   outreachNote: string;
   createdAt: string;
+  codeSamples?: ProofPacketCodeSample[];
 }
 
 export interface ApiResponse<T> {

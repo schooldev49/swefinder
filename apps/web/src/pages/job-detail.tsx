@@ -2,7 +2,14 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import type { EvidenceMappingWithEvidence, Job, Project, Requirement } from "@evidensify/types";
+import type {
+  EvidenceMappingWithEvidence,
+  Job,
+  Project,
+  ProofPacketCodeSample,
+  ProjectCodeSample,
+  Requirement,
+} from "@evidensify/types";
 import { fetchJob, fetchProjects, generateProof, updateJobStatus } from "@/lib/api";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -12,6 +19,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Loader2, RefreshCw } from "lucide-react";
 import { toast } from "sonner";
 import { useSession } from "@/hooks/use-session";
+import { CodeSnippet } from "@/components/ui/code-snippet";
 
 const STATUS_ORDER: Job["status"][] = ["DRAFT", "PROOF_GENERATED", "APPLIED", "INTERVIEW", "REJECTED", "OFFER"];
 
@@ -26,6 +34,7 @@ export function JobDetailPage() {
   const [bulletDrafts, setBulletDrafts] = useState<string[]>([]);
   const [outreachDraft, setOutreachDraft] = useState("");
   const [requirementNotes, setRequirementNotes] = useState<Record<string, string>>({});
+  const [selectedSamples, setSelectedSamples] = useState<Set<string>>(new Set());
 
   useEffect(() => {
     if (projectsQuery.data) {
@@ -62,11 +71,26 @@ export function JobDetailPage() {
     });
   }, [citations, selectedProjects]);
 
+  const availableSamples = useMemo(() => {
+    if (!projectsQuery.data) return [];
+    const selectedIds = new Set(selectedProjects);
+    return projectsQuery.data
+      .filter((project) => selectedIds.has(project.id))
+      .flatMap((project) =>
+        (project.codeSamples ?? []).map((sample) => ({
+          ...sample,
+          projectId: project.id,
+          projectFullName: project.fullName,
+        }))
+      );
+  }, [projectsQuery.data, selectedProjects]);
+
   useEffect(() => {
     if (!proof) {
       setBulletDrafts([]);
       setOutreachDraft("");
       setRequirementNotes({});
+      setSelectedSamples(new Set());
       return;
     }
     setBulletDrafts(proof.bullets);
@@ -76,7 +100,27 @@ export function JobDetailPage() {
       mappedNotes[requirement.id] = requirement.notes || "";
     });
     setRequirementNotes(mappedNotes);
+    setSelectedSamples(new Set(proof.codeSamples?.map((sample) => sample.id) ?? []));
   }, [proof]);
+
+  useEffect(() => {
+    setSelectedSamples((prev) => {
+      const allowed = new Set(availableSamples.map((sample) => sample.id));
+      let changed = false;
+      const next = new Set<string>();
+      prev.forEach((id) => {
+        if (allowed.has(id)) {
+          next.add(id);
+        } else {
+          changed = true;
+        }
+      });
+      if (!changed && next.size === prev.size) {
+        return prev;
+      }
+      return next;
+    });
+  }, [availableSamples]);
 
   const statusMutation = useMutation({
     mutationFn: (status: Job["status"]) => updateJobStatus(jobId, status),
@@ -88,13 +132,33 @@ export function JobDetailPage() {
   });
 
   const regenerateMutation = useMutation({
-    mutationFn: () => generateProof(jobId, { selectedProjectIds: Array.from(selectedProjects) }),
+    mutationFn: () =>
+      generateProof(jobId, {
+        selectedProjectIds: Array.from(selectedProjects),
+        selectedSampleIds: Array.from(selectedSamples),
+      }),
     onSuccess: async (packet) => {
       toast("Proof refreshed", { description: packet.title });
       await queryClient.invalidateQueries({ queryKey: ["job", jobId] });
     },
     onError: (error: Error) => toast("Could not regenerate", { description: error.message }),
   });
+
+  const handleSampleToggle = (sampleId: string, checked: boolean) => {
+    setSelectedSamples((prev) => {
+      const next = new Set(prev);
+      if (checked) {
+        if (next.size >= 3) {
+          toast("Limit reached", { description: "Attach up to 3 code samples per packet." });
+          return prev;
+        }
+        next.add(sampleId);
+      } else {
+        next.delete(sampleId);
+      }
+      return next;
+    });
+  };
 
   if (jobQuery.isLoading) {
     return <div className="h-32 animate-pulse rounded-xl bg-slate-900/60" />;
@@ -166,6 +230,9 @@ export function JobDetailPage() {
               onChange={setSelectedProjects}
             />
           )}
+          {availableSamples.length > 0 && (
+            <CodeSamplesSelector samples={availableSamples} selected={selectedSamples} onToggle={handleSampleToggle} />
+          )}
           {job.shareSlug && (
             <ShareLinkCallout shareLink={shareLink} profileSlug={session?.profileSlug} jobSlug={job.shareSlug} />
           )}
@@ -206,6 +273,7 @@ export function JobDetailPage() {
                   })}
                 </div>
               </section>
+              {proof.codeSamples && proof.codeSamples.length > 0 && <ProofCodeSamplesSection samples={proof.codeSamples} />}
               <section>
                 <div className="flex items-center justify-between">
                   <h3 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">Resume bullets</h3>
@@ -307,6 +375,133 @@ function ProjectSelector({ projects, selected, onChange }: { projects: Project[]
       </div>
     </div>
   );
+}
+
+type SampleOption = ProjectCodeSample & {
+  id: string;
+  projectId: string;
+  projectFullName: string;
+};
+
+function CodeSamplesSelector({
+  samples,
+  selected,
+  onToggle,
+}: {
+  samples: SampleOption[];
+  selected: Set<string>;
+  onToggle: (sampleId: string, checked: boolean) => void;
+}) {
+  const [expandedId, setExpandedId] = useState<string | null>(null);
+
+  return (
+    <div className="rounded-2xl border border-slate-800/80 bg-slate-950/60 p-4">
+      <div className="flex flex-col gap-1 md:flex-row md:items-center md:justify-between">
+        <div>
+          <p className="text-xs uppercase tracking-wide text-muted-foreground">Attach code samples</p>
+          <p className="text-[11px] text-muted-foreground">Pick up to 3 snippets to surface in this packet.</p>
+        </div>
+        <p className="text-[11px] text-muted-foreground">{selected.size}/3 selected</p>
+      </div>
+      <div className="mt-3 grid gap-2">
+        {samples.map((sample) => {
+          const isExpanded = expandedId === sample.id;
+          return (
+            <div key={sample.id} className="rounded-xl border border-slate-800/80 bg-slate-950/60 p-3 text-xs text-muted-foreground">
+              <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                <label className="flex flex-1 cursor-pointer items-start gap-3">
+                  <Checkbox checked={selected.has(sample.id)} onCheckedChange={(value) => onToggle(sample.id, Boolean(value))} />
+                  <div className="space-y-1">
+                    <p className="text-sm font-semibold text-white">{sample.summary}</p>
+                    <p className="text-[11px] uppercase tracking-[0.3em] text-slate-500">
+                      {sample.projectFullName} {formatLineLabel(sample.filePath, sample.lineStart, sample.lineEnd)}
+                    </p>
+                    {sample.tags && sample.tags.length > 0 && (
+                      <div className="flex flex-wrap gap-1">
+                        {sample.tags.map((tag) => (
+                          <Badge key={tag} variant="outline" className="text-[10px]">
+                            {tag}
+                          </Badge>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                </label>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  className="self-start"
+                  onClick={() => setExpandedId(isExpanded ? null : sample.id)}
+                >
+                  {isExpanded ? "Hide snippet" : "View snippet"}
+                </Button>
+              </div>
+              {isExpanded && (
+                <div className="mt-3 space-y-2">
+                  {sample.url && (
+                    <a href={sample.url} target="_blank" rel="noopener noreferrer nofollow" className="text-[11px] text-primary underline">
+                      View source
+                    </a>
+                  )}
+                  <CodeSnippet code={sample.code} language={sample.language || inferLanguage(sample.filePath) || "tsx"} />
+                </div>
+              )}
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+function ProofCodeSamplesSection({ samples }: { samples: ProofPacketCodeSample[] }) {
+  return (
+    <section className="space-y-3">
+      <div>
+        <h3 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">Code samples</h3>
+        <p className="text-xs text-muted-foreground">Short, user-curated snippets with direct repo links.</p>
+      </div>
+      <div className="grid gap-3">
+        {samples.map((sample) => (
+          <div key={sample.id} className="rounded-2xl border border-slate-800/80 bg-slate-950/60 p-3 text-xs text-muted-foreground">
+            <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+              <div>
+                <p className="text-sm font-semibold text-white">{sample.summary}</p>
+                <p className="text-[11px] uppercase tracking-[0.3em] text-slate-500">
+                  {sample.projectFullName} {formatLineLabel(sample.filePath, sample.lineStart, sample.lineEnd)}
+                </p>
+                {sample.tags && sample.tags.length > 0 && (
+                  <div className="mt-1 flex flex-wrap gap-1">
+                    {sample.tags.map((tag) => (
+                      <Badge key={tag} variant="outline" className="text-[10px]">
+                        {tag}
+                      </Badge>
+                    ))}
+                  </div>
+                )}
+              </div>
+              {sample.url && (
+                <a href={sample.url} target="_blank" rel="noopener noreferrer nofollow" className="text-[11px] text-primary underline">
+                  Proof link
+                </a>
+              )}
+            </div>
+            <div className="mt-3">
+              <CodeSnippet code={sample.code} language={sample.language || inferLanguage(sample.filePath) || "tsx"} />
+            </div>
+          </div>
+        ))}
+      </div>
+    </section>
+  );
+}
+
+function formatLineLabel(filePath?: string, start?: number, end?: number) {
+  const path = filePath || "snippet";
+  if (start && end) return `${path} #L${start}-${end}`;
+  if (start) return `${path} #L${start}`;
+  return path;
 }
 
 function RequirementCard({
@@ -466,6 +661,19 @@ function ShareLinkCallout({
       </div>
     </div>
   );
+}
+
+function inferLanguage(filePath?: string) {
+  if (!filePath) return "";
+  const lower = filePath.toLowerCase();
+  if (lower.endsWith(".py")) return "python";
+  if (lower.endsWith(".ts") || lower.endsWith(".tsx")) return "tsx";
+  if (lower.endsWith(".js") || lower.endsWith(".jsx")) return "javascript";
+  if (lower.endsWith(".rs")) return "rust";
+  if (lower.endsWith(".go")) return "go";
+  if (lower.endsWith(".java")) return "java";
+  if (lower.endsWith(".sql")) return "sql";
+  return "";
 }
 
 function getNextStatus(current: Job["status"]): Job["status"] | null {

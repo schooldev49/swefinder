@@ -1,4 +1,13 @@
-import type { EvidenceMappingWithEvidence, Job, ProofPacket, Project, Requirement, User } from "@evidensify/types";
+import type {
+  EvidenceMappingWithEvidence,
+  Job,
+  ProofPacket,
+  ProofPacketCodeSample,
+  Project,
+  ProjectCodeSample,
+  Requirement,
+  User,
+} from "@evidensify/types";
 import { callLLM } from "./llm/callLLM";
 import { buildBulletsAndOutreachPrompt, buildEvidenceMappingPrompt, buildRequirementsPrompt } from "./llm/prompts";
 import type { Env } from "./env";
@@ -49,6 +58,7 @@ interface CreateJobPayload {
 
 interface GeneratePayload {
   selectedProjectIds: string[];
+  selectedSampleIds?: string[];
   userMetrics?: Record<string, { label: string; value: string }>;
 }
 
@@ -459,6 +469,8 @@ async function handleGenerateProofPacket(request: Request, env: Env, jobId: stri
   if (selectedProjects.length === 0) {
     throw new HttpError("Select at least one project", 400);
   }
+  const selectedSampleIds = Array.isArray(payload.selectedSampleIds) ? payload.selectedSampleIds : [];
+  const codeSamples = buildProofCodeSamples(selectedSampleIds, selectedProjects);
 
   let requirements: Requirement[] = [];
   let mappings: EvidenceMappingWithEvidence[] = [];
@@ -481,6 +493,7 @@ async function handleGenerateProofPacket(request: Request, env: Env, jobId: stri
     bullets: bulletsResult.bullets,
     outreachNote: bulletsResult.outreachNote,
     createdAt: new Date().toISOString(),
+    codeSamples,
   };
 
   await saveProofPacket(env, proofPacket);
@@ -635,7 +648,52 @@ function normalizeProjectPayload(
     updatedAt: now,
     tags: project.tags ?? [],
     isShowcased: Boolean(project.isShowcased),
+    codeSamples: normalizeCodeSamples(project.codeSamples),
   };
+}
+
+const MAX_CODE_SAMPLES_PER_PROJECT = 10;
+const MAX_SAMPLE_LINES = 40;
+const MAX_SAMPLE_CODE_CHARS = 2000;
+const MAX_SAMPLE_SUMMARY_CHARS = 200;
+
+function normalizeCodeSamples(samples?: ProjectCodeSample[]): ProjectCodeSample[] {
+  if (!samples || samples.length === 0) return [];
+  const now = new Date().toISOString();
+  const sanitized: ProjectCodeSample[] = [];
+  for (const sample of samples.slice(0, MAX_CODE_SAMPLES_PER_PROJECT)) {
+    const summary = (sample.summary || "").trim();
+    const code = (sample.code || "").trim();
+    if (!summary || !code) continue;
+    const truncatedSummary = summary.slice(0, MAX_SAMPLE_SUMMARY_CHARS);
+    const truncatedCode = code.slice(0, MAX_SAMPLE_CODE_CHARS);
+    let lineStart = typeof sample.lineStart === "number" ? Math.max(1, Math.floor(sample.lineStart)) : undefined;
+    let lineEnd = typeof sample.lineEnd === "number" ? Math.max(lineStart ?? 1, Math.floor(sample.lineEnd ?? 0)) : undefined;
+    if (lineStart && lineEnd && lineEnd - lineStart > MAX_SAMPLE_LINES) {
+      lineEnd = lineStart + MAX_SAMPLE_LINES;
+    }
+    const url = sample.url ? validateOptionalUrl(sample.url) : undefined;
+    sanitized.push({
+      id: sample.id || crypto.randomUUID(),
+      summary: truncatedSummary,
+      code: truncatedCode,
+      language: sample.language || undefined,
+      filePath: sample.filePath?.trim() || undefined,
+      lineStart,
+      lineEnd,
+      url,
+      tags: (sample.tags || []).map((tag) => tag.trim()).filter(Boolean).slice(0, 5),
+      createdAt: sample.createdAt || now,
+      updatedAt: now,
+    });
+  }
+  return sanitized;
+}
+
+function validateOptionalUrl(value: string): string | undefined {
+  const trimmed = value.trim();
+  if (!trimmed) return undefined;
+  return validateProjectUrl(trimmed);
 }
 
 function validateProjectUrl(url: string): string {
@@ -727,4 +785,36 @@ async function ensureJobShareSlug(env: Env, job: Job): Promise<Job> {
   job.shareSlug = await generateJobShareSlug(env, job.userId, job.title, job.company);
   await updateJob(env, job);
   return job;
+}
+
+const MAX_PACKET_CODE_SAMPLES = 3;
+
+function buildProofCodeSamples(selectedSampleIds: string[], projects: Project[]): ProofPacketCodeSample[] {
+  if (!selectedSampleIds || selectedSampleIds.length === 0) {
+    return [];
+  }
+  const trimmedIds = Array.from(new Set(selectedSampleIds)).slice(0, MAX_PACKET_CODE_SAMPLES);
+  const samples: ProofPacketCodeSample[] = [];
+  for (const id of trimmedIds) {
+    for (const project of projects) {
+      const sample = project.codeSamples?.find((entry) => entry.id === id);
+      if (sample) {
+        samples.push({
+          id: sample.id,
+          projectId: project.id,
+          projectFullName: project.fullName,
+          summary: sample.summary,
+          code: sample.code,
+          language: sample.language,
+          filePath: sample.filePath,
+          lineStart: sample.lineStart,
+          lineEnd: sample.lineEnd,
+          url: sample.url,
+          tags: sample.tags,
+        });
+        break;
+      }
+    }
+  }
+  return samples;
 }

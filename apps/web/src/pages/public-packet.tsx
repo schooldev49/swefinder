@@ -1,14 +1,15 @@
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { useParams } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
-import { ArrowRight, CheckCircle2 } from "lucide-react";
-import type { Evidence, EvidenceMappingWithEvidence } from "@evidensify/types";
+import { CheckCircle2, ChevronRight } from "lucide-react";
+import type { Evidence, EvidenceMappingWithEvidence, ProofPacketCodeSample } from "@evidensify/types";
 import { fetchSharedPacket } from "@/lib/api";
 import { PublicShareLayout } from "@/components/layout/public-share-layout";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { CodeSnippet } from "@/components/ui/code-snippet";
+import { cn } from "@/lib/utils";
 
 
 const trustPoints = [
@@ -96,6 +97,9 @@ function PacketView({
                 ))}
               </div>
             </section>
+            {proof.codeSamples && proof.codeSamples.length > 0 && (
+              <PublicCodeSamples samples={proof.codeSamples} />
+            )}
             <section>
               <SectionHeading title="JD-specific bullets" />
               <ul className="mt-4 space-y-3">
@@ -214,6 +218,65 @@ function RequirementPublicCard({
   );
 }
 
+function PublicCodeSamples({ samples }: { samples: ProofPacketCodeSample[] }) {
+  return (
+    <section>
+      <SectionHeading title="Code samples" subtitle="Short, auditable snippets the candidate curated for this packet." />
+      <div className="mt-4 space-y-3">
+        {samples.map((sample) => (
+          <div key={sample.id} className="rounded-2xl border border-slate-900/80 bg-slate-950/60 p-4 text-xs text-muted-foreground">
+            <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+              <div>
+                <p className="text-sm font-semibold text-white">{sample.summary}</p>
+                <p className="text-[11px] uppercase tracking-[0.3em] text-slate-500">
+                  {sample.projectFullName} {formatPublicLineLabel(sample.filePath, sample.lineStart, sample.lineEnd)}
+                </p>
+                {sample.tags && sample.tags.length > 0 && (
+                  <div className="mt-1 flex flex-wrap gap-1">
+                    {sample.tags.map((tag) => (
+                      <Badge key={tag} variant="outline" className="text-[10px]">
+                        {tag}
+                      </Badge>
+                    ))}
+                  </div>
+                )}
+              </div>
+              {sample.url && (
+                <a href={sample.url} target="_blank" rel="noopener noreferrer nofollow" className="text-[11px] text-primary underline">
+                  View source
+                </a>
+              )}
+            </div>
+            <div className="mt-3">
+              <CodeSnippet code={sample.code} language={sample.language || inferLanguage(sample.filePath) || "tsx"} />
+            </div>
+          </div>
+        ))}
+      </div>
+    </section>
+  );
+}
+
+function formatPublicLineLabel(filePath?: string, start?: number, end?: number) {
+  const path = filePath || "snippet";
+  if (start && end) return `${path} #L${start}-${end}`;
+  if (start) return `${path} #L${start}`;
+  return path;
+}
+
+function inferLanguage(filePath?: string) {
+  if (!filePath) return "";
+  const lower = filePath.toLowerCase();
+  if (lower.endsWith(".py")) return "python";
+  if (lower.endsWith(".ts") || lower.endsWith(".tsx")) return "tsx";
+  if (lower.endsWith(".js") || lower.endsWith(".jsx")) return "javascript";
+  if (lower.endsWith(".rs")) return "rust";
+  if (lower.endsWith(".go")) return "go";
+  if (lower.endsWith(".java")) return "java";
+  if (lower.endsWith(".sql")) return "sql";
+  return "";
+}
+
 function buildCitationList(mappings: EvidenceMappingWithEvidence[]): Evidence[] {
   const seen = new Map<string, Evidence>();
   mappings.forEach((mapping) => {
@@ -239,27 +302,36 @@ function EvidenceSnippetBlock({
 }: {
   snippet: NonNullable<Awaited<ReturnType<typeof fetchSharedPacket>>["proofPacket"]>["mappings"][number]["evidence"]["codeSnippet"];
 }) {
+  const [open, setOpen] = useState(false);
   if (!snippet) return null;
+
   return (
-    <details className="mt-2 rounded-xl border border-slate-900/80 bg-slate-950/30 p-2 text-[11px] text-slate-300 [&[open]>summary_svg]:rotate-90">
-      <summary className="flex cursor-pointer list-none items-center justify-between gap-2 text-[10px] font-semibold uppercase tracking-[0.3em] text-slate-500">
-        View code sample
-        <ArrowRight className="h-3 w-3 transition-transform duration-200" aria-hidden="true" />
-      </summary>
-      <div className="mt-2 space-y-2">
-        <p className="text-slate-100">{snippet.summary}</p>
-        <p className="font-mono text-[10px] text-slate-500">
-          {snippet.filePath}
-          {snippet.lineStart && snippet.lineEnd ? ` · L${snippet.lineStart}–${snippet.lineEnd}` : ""}
-        </p>
-        <CodeSnippet code={snippet.code} language={snippet.language} />
-        {snippet.url && (
-          <a href={snippet.url} target="_blank" rel="noopener noreferrer nofollow" className="text-primary underline">
-            Open on GitHub
-          </a>
-        )}
-      </div>
-    </details>
+    <div className="mt-2 rounded-xl border border-slate-900/80 bg-slate-950/30 p-3 text-[11px] text-slate-300">
+      <button
+        type="button"
+        className="flex w-full items-center justify-between gap-2 text-left font-semibold uppercase tracking-[0.3em] text-slate-400"
+        onClick={() => setOpen((prev) => !prev)}
+        aria-expanded={open}
+      >
+        <span>View code sample</span>
+        <ChevronRight className={cn("h-3.5 w-3.5 transition-transform duration-200", open ? "rotate-90" : "")} aria-hidden="true" />
+      </button>
+      {open && (
+        <div className="mt-3 space-y-2 text-xs text-slate-300">
+          <p className="text-slate-100">{snippet.summary}</p>
+          <p className="font-mono text-[11px] text-slate-500">
+            {snippet.filePath}
+            {snippet.lineStart && snippet.lineEnd ? ` · L${snippet.lineStart}–${snippet.lineEnd}` : ""}
+          </p>
+          <CodeSnippet code={snippet.code} language={snippet.language} className="max-w-full text-sm" />
+          {snippet.url && (
+            <a href={snippet.url} target="_blank" rel="noopener noreferrer nofollow" className="text-primary underline">
+              Open on GitHub
+            </a>
+          )}
+        </div>
+      )}
+    </div>
   );
 }
 

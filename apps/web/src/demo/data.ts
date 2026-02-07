@@ -67,6 +67,27 @@ export const demoProjects: Project[] = [
     createdAt: demoRepos[0].updatedAt,
     updatedAt: demoRepos[0].updatedAt,
     isShowcased: true,
+    codeSamples: [
+      {
+        id: "sample-ml",
+        summary: "Feature extractor that guards against empty batches and logs tensor shapes.",
+        language: "python",
+        filePath: "pipelines/features.py",
+        lineStart: 42,
+        lineEnd: 63,
+        url: "https://github.com/demo-student/ml-research-notebooks/blob/main/pipelines/features.py#L42-L63",
+        tags: ["ml", "guardrails"],
+        code: `def extract_features(batch: list[dict[str, Any]]) -> torch.Tensor:
+    if not batch:
+        raise ValueError("empty batch passed to extract_features")
+
+    tensor = tokenizer(batch, padding=True, truncation=True, return_tensors="pt")
+    if tensor["input_ids"].shape[0] != len(batch):
+        logger.warning("shape mismatch: expected %s rows", len(batch))
+    tensor = tensor.to(device)
+    return encoder(tensor)`,
+      },
+    ],
   },
   {
     id: "project-webrtc",
@@ -84,6 +105,29 @@ export const demoProjects: Project[] = [
     createdAt: demoRepos[1].updatedAt,
     updatedAt: demoRepos[1].updatedAt,
     isShowcased: true,
+    codeSamples: [
+      {
+        id: "sample-webrtc",
+        summary: "CRDT presence hook that falls back to offline cache.",
+        language: "tsx",
+        filePath: "src/hooks/useRoom.ts",
+        lineStart: 12,
+        lineEnd: 33,
+        url: "https://github.com/demo-student/realtime-collab-board/blob/main/src/hooks/useRoom.ts#L12-L33",
+        tags: ["realtime", "crdt"],
+        code: `export function useRoom(roomId: string) {
+  const [doc] = useState(() => new Y.Doc());
+  useEffect(() => {
+    const provider = new WebrtcProvider(roomId, doc, { signaling: SIGNALING_URLS });
+    provider.on("status", ({ status }) => setOnline(status === "connected"));
+    provider.awareness.setLocalStateField("cursor", getLocalCursor());
+    return () => provider.destroy();
+  }, [roomId]);
+
+  return doc;
+}`,
+      },
+    ],
   },
   {
     id: "project-external",
@@ -199,6 +243,52 @@ export const demoProof: ProofPacket = {
   return doc;
 }`,
     }),
+  ],
+  codeSamples: [
+    {
+      id: "sample-ml",
+      projectId: "project-ml",
+      projectFullName: demoRepos[0].fullName,
+      summary: "Feature extractor that guards against empty batches and logs tensor shapes.",
+      language: "python",
+      filePath: "pipelines/features.py",
+      lineStart: 42,
+      lineEnd: 63,
+      url: "https://github.com/demo-student/ml-research-notebooks/blob/main/pipelines/features.py#L42-L63",
+      code: `def extract_features(batch: list[dict[str, Any]]) -> torch.Tensor:
+    if not batch:
+        raise ValueError("empty batch passed to extract_features")
+
+    tensor = tokenizer(batch, padding=True, truncation=True, return_tensors="pt")
+    if tensor["input_ids"].shape[0] != len(batch):
+        logger.warning("shape mismatch: expected %s rows", len(batch))
+    tensor = tensor.to(device)
+    return encoder(tensor)`,
+      tags: ["ml", "guardrails"],
+    },
+    {
+      id: "sample-webrtc",
+      projectId: "project-webrtc",
+      projectFullName: demoRepos[1].fullName,
+      summary: "CRDT presence hook that falls back to offline cache.",
+      language: "tsx",
+      filePath: "src/hooks/useRoom.ts",
+      lineStart: 12,
+      lineEnd: 33,
+      url: "https://github.com/demo-student/realtime-collab-board/blob/main/src/hooks/useRoom.ts#L12-L33",
+      code: `export function useRoom(roomId: string) {
+  const [doc] = useState(() => new Y.Doc());
+  useEffect(() => {
+    const provider = new WebrtcProvider(roomId, doc, { signaling: SIGNALING_URLS });
+    provider.on("status", ({ status }) => setOnline(status === "connected"));
+    provider.awareness.setLocalStateField("cursor", getLocalCursor());
+    return () => provider.destroy();
+  }, [roomId]);
+
+  return doc;
+}`,
+      tags: ["realtime", "crdt"],
+    },
   ],
   bullets: [
     "Fine-tuned a RoBERTa toxicity classifier on 1.2M comments with HF Accelerate, delivering 94% F1 tracked in W&B reports.",

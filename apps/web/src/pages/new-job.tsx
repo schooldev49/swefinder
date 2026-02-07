@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useMemo, useState, useEffect } from "react";
 import type { FormEvent } from "react";
 import { useNavigate } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
@@ -12,11 +12,13 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
 import { Loader2 } from "lucide-react";
+import { CodeSnippet } from "@/components/ui/code-snippet";
 
 export function NewJobPage() {
   const { data: projects, isLoading } = useQuery({ queryKey: ["projects"], queryFn: fetchProjects });
   const [selectedProjects, setSelectedProjects] = useState<Set<string>>(new Set());
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [selectedSamples, setSelectedSamples] = useState<Set<string>>(new Set());
   const navigate = useNavigate();
 
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
@@ -42,6 +44,7 @@ export function NewJobPage() {
       });
       await generateProof(job.id, {
         selectedProjectIds: Array.from(selectedProjects),
+        selectedSampleIds: Array.from(selectedSamples),
       });
       toast("Proof packet in progress", { description: "We saved the job and generated your first packet." });
       navigate(`/jobs/${job.id}`);
@@ -57,6 +60,52 @@ export function NewJobPage() {
       const next = new Set(prev);
       if (checked) next.add(id);
       else next.delete(id);
+      return next;
+    });
+  };
+
+  const availableSamples = useMemo(() => {
+    if (!projects) return [];
+    return projects
+      .filter((project) => selectedProjects.has(project.id))
+      .flatMap((project) =>
+        (project.codeSamples ?? []).map((sample) => ({
+          ...sample,
+          projectId: project.id,
+          projectFullName: project.fullName,
+        }))
+      );
+  }, [projects, selectedProjects]);
+
+  useEffect(() => {
+    setSelectedSamples((prev) => {
+      const allowed = new Set(availableSamples.map((sample) => sample.id));
+      let changed = false;
+      const next = new Set<string>();
+      prev.forEach((id) => {
+        if (allowed.has(id)) {
+          next.add(id);
+        } else {
+          changed = true;
+        }
+      });
+      if (!changed && next.size === prev.size) return prev;
+      return next;
+    });
+  }, [availableSamples]);
+
+  const handleSampleToggle = (sampleId: string, checked: boolean) => {
+    setSelectedSamples((prev) => {
+      const next = new Set(prev);
+      if (checked) {
+        if (next.size >= 3) {
+          toast("Limit reached", { description: "Attach up to 3 code samples per packet." });
+          return prev;
+        }
+        next.add(sampleId);
+      } else {
+        next.delete(sampleId);
+      }
       return next;
     });
   };
@@ -109,6 +158,13 @@ export function NewJobPage() {
               <p className="mt-3 text-sm text-muted-foreground">Save at least one project first.</p>
             )}
           </div>
+          {availableSamples.length > 0 && (
+            <SampleSelector
+              samples={availableSamples}
+              selected={selectedSamples}
+              onToggle={handleSampleToggle}
+            />
+          )}
           <Button type="submit" disabled={isSubmitting} className="w-full">
             {isSubmitting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
             Generate Proof Packet
@@ -145,4 +201,94 @@ function ProjectRow({ project, checked, onCheckedChange }: { project: Project; c
       </div>
     </div>
   );
+}
+
+type SampleOption = NonNullable<Project["codeSamples"]>[number] & {
+  projectId: string;
+  projectFullName: string;
+};
+
+function SampleSelector({
+  samples,
+  selected,
+  onToggle,
+}: {
+  samples: SampleOption[];
+  selected: Set<string>;
+  onToggle: (sampleId: string, checked: boolean) => void;
+}) {
+  const [expandedId, setExpandedId] = useState<string | null>(null);
+  return (
+    <div className="rounded-2xl border border-slate-800/80 bg-slate-950/40 p-4">
+      <div className="flex flex-col gap-1 md:flex-row md:items-center md:justify-between">
+        <div>
+          <label className="text-sm font-semibold text-white">Code samples (optional)</label>
+          <p className="text-xs text-muted-foreground">Pick up to 3 curated snippets to include in the first packet.</p>
+        </div>
+        <p className="text-xs text-muted-foreground">{selected.size}/3 selected</p>
+      </div>
+      <div className="mt-3 space-y-2">
+        {samples.map((sample) => {
+          const isExpanded = expandedId === sample.id;
+          return (
+            <div key={sample.id} className="rounded-xl border border-slate-800/80 bg-slate-950/60 p-3 text-xs text-muted-foreground">
+              <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                <label className="flex flex-1 cursor-pointer items-start gap-3">
+                  <Checkbox checked={selected.has(sample.id)} onCheckedChange={(value) => onToggle(sample.id, Boolean(value))} className="mt-0.5" />
+                  <div className="space-y-1">
+                    <p className="text-sm font-semibold text-white">{sample.summary}</p>
+                    <p className="text-[11px] uppercase tracking-[0.3em] text-slate-500">
+                      {sample.projectFullName} {formatLineLabel(sample.filePath, sample.lineStart, sample.lineEnd)}
+                    </p>
+                    {sample.tags && sample.tags.length > 0 && (
+                      <div className="flex flex-wrap gap-1">
+                        {sample.tags.map((tag) => (
+                          <Badge key={tag} variant="outline" className="text-[10px]">
+                            {tag}
+                          </Badge>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                </label>
+                <Button type="button" variant="ghost" size="sm" className="self-start" onClick={() => setExpandedId(isExpanded ? null : sample.id)}>
+                  {isExpanded ? "Hide code" : "View code"}
+                </Button>
+              </div>
+              {isExpanded && (
+                <div className="mt-3 space-y-2">
+                  {sample.url && (
+                    <a href={sample.url} target="_blank" rel="noopener noreferrer nofollow" className="text-[11px] text-primary underline">
+                      View source
+                    </a>
+                  )}
+                  <CodeSnippet code={sample.code} language={sample.language || inferLanguage(sample.filePath) || "tsx"} />
+                </div>
+              )}
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+function inferLanguage(filePath?: string) {
+  if (!filePath) return "";
+  const lower = filePath.toLowerCase();
+  if (lower.endsWith(".py")) return "python";
+  if (lower.endsWith(".ts") || lower.endsWith(".tsx")) return "tsx";
+  if (lower.endsWith(".js") || lower.endsWith(".jsx")) return "javascript";
+  if (lower.endsWith(".rs")) return "rust";
+  if (lower.endsWith(".go")) return "go";
+  if (lower.endsWith(".java")) return "java";
+  if (lower.endsWith(".sql")) return "sql";
+  return "";
+}
+
+function formatLineLabel(filePath?: string, start?: number, end?: number) {
+  const path = filePath || "snippet";
+  if (start && end) return `${path} #L${start}-${end}`;
+  if (start) return `${path} #L${start}`;
+  return path;
 }

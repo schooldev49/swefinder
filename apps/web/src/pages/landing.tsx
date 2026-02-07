@@ -1,12 +1,14 @@
+import { useState } from "react";
 import { Link } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
-import { ArrowRight, CheckCircle2, CheckCircle, ShieldCheck } from "lucide-react";
+import { ArrowRight, CheckCircle2, CheckCircle, ChevronRight, ShieldCheck } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { CodeSnippet } from "@/components/ui/code-snippet";
 import { useSession } from "@/hooks/use-session";
 import { fetchProjects } from "@/lib/api";
+import { cn } from "@/lib/utils";
 
 const trustPoints = [
   "Requirements mapped to specific repo paths or demos.",
@@ -27,18 +29,18 @@ const previewRequirements = [
       lines: "42-86",
       language: "python",
       code: `def evaluate_model(model: torch.nn.Module, loader: DataLoader) -> dict[str, float]:
-    \"\"\"Run evaluation with guardrails and log audit artifacts.\"\"\"
+    """Run evaluation with guardrails and log audit artifacts."""
     results = evaluate(model, loader)
     if results.total_examples == 0:
-        raise ValueError(\"empty evaluation set\")
+        raise ValueError("empty evaluation set")
 
     metrics = {
-        \"f1\": results.f1,
-        \"ece\": results.ece,
-        \"latency_ms\": results.p95_latency_ms,
+        "f1": results.f1,
+        "ece": results.ece,
+        "latency_ms": results.p95_latency_ms,
     }
     log_metrics(metrics)
-    save_failure_cases(results.hard_negatives, \"artifacts/failures.csv\")
+    save_failure_cases(results.hard_negatives, "artifacts/failures.csv")
     return metrics`,
     },
   },
@@ -278,21 +280,30 @@ function InlineSnippet({
     language?: string;
   };
 }) {
+  const [open, setOpen] = useState(false);
+
   return (
-    <details className="mt-2 rounded-2xl border border-slate-800/80 bg-slate-950/50 p-2 text-xs text-slate-300 [&[open]>summary_svg]:rotate-90">
-      <summary className="flex cursor-pointer list-none items-center justify-between gap-2 text-[11px] font-semibold uppercase tracking-[0.2em] text-slate-400">
-        View code sample
-        <ArrowRight className="h-3 w-3 transition-transform duration-200" aria-hidden="true" />
-      </summary>
-      <div className="mt-2 space-y-2">
-        <p className="text-slate-200">{snippet.summary}</p>
-        {(snippet.filePath || snippet.lines) && (
-          <p className="font-mono text-[11px] text-slate-500">
-            {snippet.filePath} {snippet.lines ? `· L${snippet.lines}` : ""}
-          </p>
-        )}
-        <CodeSnippet code={snippet.code} language={snippet.language} />
-      </div>
-    </details>
+    <div className="mt-3 rounded-2xl border border-slate-800/80 bg-slate-950/50 p-3">
+      <button
+        type="button"
+        onClick={() => setOpen((prev) => !prev)}
+        className="flex w-full items-center justify-between gap-2 text-left text-[11px] font-semibold uppercase tracking-[0.2em] text-slate-300"
+        aria-expanded={open}
+      >
+        <span>View code sample</span>
+        <ChevronRight className={cn("h-3.5 w-3.5 transition-transform duration-200", open ? "rotate-90" : "")} aria-hidden="true" />
+      </button>
+      {open && (
+        <div className="mt-3 space-y-2 text-xs text-slate-300">
+          <p className="text-slate-100">{snippet.summary}</p>
+          {(snippet.filePath || snippet.lines) && (
+            <p className="font-mono text-[11px] text-slate-500">
+              {snippet.filePath} {snippet.lines ? `· L${snippet.lines}` : ""}
+            </p>
+          )}
+          <CodeSnippet code={snippet.code} language={snippet.language} className="max-w-full text-sm" />
+        </div>
+      )}
+    </div>
   );
 }
