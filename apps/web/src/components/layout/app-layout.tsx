@@ -41,7 +41,7 @@ export function AppLayout() {
           <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
             <div className="flex items-center justify-between gap-3">
               <Link to="/" className="text-lg font-semibold tracking-tight text-white">
-                ProofCraft
+                Evidensify
               </Link>
               <button
                 type="button"

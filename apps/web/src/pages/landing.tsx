@@ -124,7 +124,7 @@ export function LandingPage() {
               Own your early-career engineering story.
             </h1>
             <p className="text-base text-slate-300 md:text-lg">
-              ProofCraft turns your GitHub repos into hiring-ready packets with linked requirements, curated bullets, and context built for fast review.
+              Evidensify turns your GitHub repos into hiring-ready packets with linked requirements, curated bullets, and context built for fast review.
             </p>
             <p className="text-sm text-slate-400">
               We built it as students for entry-level CS, SWE, and ML peers, so you control every claim and only share what you can prove.
@@ -192,7 +192,7 @@ export function LandingPage() {
         <div className="rounded-3xl border border-slate-800/70 bg-slate-950/60 p-6 shadow-xl shadow-slate-950/30">
           <h2 className="text-2xl font-semibold text-white">Show original builds, skip tutorials</h2>
           <p className="mt-3 text-sm text-slate-300">
-            Hiring managers skim for structure, thoughtful comments, and clean commits, not half-finished tutorials. ProofCraft highlights those signals with original repos,
+            Hiring managers skim for structure, thoughtful comments, and clean commits, not half-finished tutorials. Evidensify highlights those signals with original repos,
             README context, and short code excerpts that show decision making.
           </p>
           <ul className="mt-4 space-y-2 text-sm text-slate-300">

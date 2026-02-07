@@ -1,4 +1,4 @@
-import type { Job, ProofPacket, Project, User } from "@swefinder/types";
+import type { Job, ProofPacket, Project, User } from "@evidensify/types";
 
 export interface ApiRepoSummary {
   id: string;

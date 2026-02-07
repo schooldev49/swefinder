@@ -1,6 +1,6 @@
 import { useParams } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
-import type { Project } from "@swefinder/types";
+import type { Project } from "@evidensify/types";
 import { fetchPublicProfile } from "@/lib/api";
 import { PublicShareLayout } from "@/components/layout/public-share-layout";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -33,7 +33,7 @@ export function PublicProfilePage() {
                   <p className="text-sm uppercase tracking-wide text-muted-foreground">Proof profile</p>
                   <h1 className="text-2xl font-semibold text-white">@{profileQuery.data.user.profileSlug}</h1>
                   <p className="text-sm text-muted-foreground">
-                    Curated projects shared via ProofCraft. Each link opens a repo, demo, or doc you can verify in seconds.
+                    Curated projects shared via Evidensify. Each link opens a repo, demo, or doc you can verify in seconds.
                   </p>
                   <p className="text-sm text-muted-foreground">
                     Candidates pick the evidence themselves, so you’re seeing the exact work they’re proud to stand behind.

@@ -290,7 +290,7 @@ export function OnboardingPage() {
           ))}
         </div>
         <div className="mt-8 space-y-2 text-xs text-muted-foreground">
-          <p>Need help? Email security@proofcraft.app</p>
+          <p>Need help? Email security@Evidensify.app</p>
           <p>
             Want a refresher on access? <Link className="text-primary underline" to="/security">View security & access →</Link>
           </p>
@@ -426,7 +426,7 @@ export function OnboardingPage() {
                   </div>
                 </div>
               )}
-              <p className="text-xs text-muted-foreground">Only checked repos will be imported into ProofCraft. You can add more later from Projects.</p>
+              <p className="text-xs text-muted-foreground">Only checked repos will be imported into Evidensify. You can add more later from Projects.</p>
             </CardContent>
           </Card>
         )}
@@ -435,7 +435,7 @@ export function OnboardingPage() {
           <Card className="border-slate-800/80 bg-slate-950/60">
             <CardHeader>
               <CardTitle className="text-white">Add quick context</CardTitle>
-              <CardDescription>Tell ProofCraft why each repo matters. This stays editable later.</CardDescription>
+              <CardDescription>Tell Evidensify why each repo matters. This stays editable later.</CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
               {selectedRepos.length === 0 && <p className="text-sm text-muted-foreground">No projects selected yet.</p>}
@@ -513,7 +513,7 @@ export function OnboardingPage() {
           <Card className="border-slate-800/80 bg-slate-950/60">
             <CardHeader>
               <CardTitle className="text-white">Paste a JD & preview</CardTitle>
-              <CardDescription>Give ProofCraft something real to map your projects to.</CardDescription>
+              <CardDescription>Give Evidensify something real to map your projects to.</CardDescription>
             </CardHeader>
             <CardContent className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
               <div className="space-y-3">

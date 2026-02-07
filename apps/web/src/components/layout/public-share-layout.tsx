@@ -8,7 +8,7 @@ export function PublicShareLayout({ children }: { children: ReactNode }) {
       <header className="border-b border-slate-900/80 bg-slate-950/80">
         <div className="mx-auto flex max-w-5xl items-center justify-between px-6 py-4">
           <Link to="/" className="text-lg font-semibold tracking-tight">
-            ProofCraft
+            Evidensify
           </Link>
           <Button asChild size="sm" variant="secondary">
             <Link to="/">Create your packet</Link>

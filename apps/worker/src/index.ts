@@ -1,4 +1,4 @@
-import type { EvidenceMappingWithEvidence, Job, ProofPacket, Project, Requirement, User } from "@swefinder/types";
+import type { EvidenceMappingWithEvidence, Job, ProofPacket, Project, Requirement, User } from "@evidensify/types";
 import { callLLM } from "./llm/callLLM";
 import { buildBulletsAndOutreachPrompt, buildEvidenceMappingPrompt, buildRequirementsPrompt } from "./llm/prompts";
 import type { Env } from "./env";

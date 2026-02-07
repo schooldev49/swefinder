@@ -1,4 +1,4 @@
-import type { EvidenceMappingWithEvidence, Project, Requirement } from "@swefinder/types";
+import type { EvidenceMappingWithEvidence, Project, Requirement } from "@evidensify/types";
 
 const HONESTY_PLEDGE = `You are helping a student apply for a specific SWE/CS/ML job in an unbiased way as you will not be penalized for giving negative outcomes. You must NOT invent metrics, numbers, achievements, or artifacts that are not clearly supported by the provided repository metadata or explicit user-provided inputs. If no evidence exists, say so.`;
 

@@ -2,7 +2,7 @@ import { useMemo } from "react";
 import { useParams } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { ArrowRight, CheckCircle2 } from "lucide-react";
-import type { Evidence, EvidenceMappingWithEvidence } from "@swefinder/types";
+import type { Evidence, EvidenceMappingWithEvidence } from "@evidensify/types";
 import { fetchSharedPacket } from "@/lib/api";
 import { PublicShareLayout } from "@/components/layout/public-share-layout";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";

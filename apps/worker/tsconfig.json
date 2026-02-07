@@ -11,7 +11,7 @@
     "forceConsistentCasingInFileNames": true,
     "baseUrl": ".",
     "paths": {
-      "@swefinder/types": ["../../packages/types/src"]
+      "@evidensify/types": ["../../packages/types/src"]
     },
     "types": ["@cloudflare/workers-types"],
     "skipLibCheck": true

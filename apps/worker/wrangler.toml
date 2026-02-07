@@ -1,4 +1,4 @@
-name = "swefinder"
+name = "evidensify"
 main = "src/index.ts"
 account_id = "f4fdca115257cafba64ba5fc828f4003"
 compatibility_date = "2025-12-01"
@@ -10,7 +10,7 @@ binding = "ASSETS"
 directory = "../web/dist"
 
 [vars]
-SESSION_COOKIE_NAME = "swefinder_session"
+SESSION_COOKIE_NAME = "evidensify_session"
 SESSION_MAX_AGE = "1209600"
 
 [[kv_namespaces]]

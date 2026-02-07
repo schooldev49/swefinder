@@ -13,7 +13,7 @@ export function SecurityPage() {
     <div className="mx-auto max-w-4xl space-y-6 px-4 py-10">
       <div>
         <p className="text-xs uppercase tracking-[0.35em] text-muted-foreground">Security & access</p>
-        <h1 className="mt-2 text-3xl font-semibold text-white">How ProofCraft uses GitHub</h1>
+        <h1 className="mt-2 text-3xl font-semibold text-white">How Evidensify uses GitHub</h1>
         <p className="mt-3 text-sm text-muted-foreground">
           We stick to least-privilege scopes, never push commits, and give you a single place to revoke access or delete imported data.
         </p>
@@ -42,7 +42,7 @@ export function SecurityPage() {
           <div>
             <p className="font-semibold text-white">Revoke OAuth</p>
             <p className="text-slate-400">
-              Visit <a className="text-primary underline" href="https://github.com/settings/connections/applications" target="_blank" rel="noreferrer">GitHub &gt; Settings &gt; Applications</a>, find ProofCraft, and click <em>Revoke</em>.
+              Visit <a className="text-primary underline" href="https://github.com/settings/connections/applications" target="_blank" rel="noreferrer">GitHub &gt; Settings &gt; Applications</a>, find Evidensify, and click <em>Revoke</em>.
             </p>
           </div>
           <div>
@@ -51,7 +51,7 @@ export function SecurityPage() {
           </div>
           <div>
             <p className="font-semibold text-white">Questions?</p>
-            <p className="text-slate-400">Email security@proofcraft.app any time. We publish updates and SOC-style summaries on our changelog.</p>
+            <p className="text-slate-400">Email security@Evidensify.app any time. We publish updates and SOC-style summaries on our changelog.</p>
           </div>
           <Button asChild variant="outline" size="sm" className="text-white">
             <Link to="/onboarding">Back to onboarding</Link>

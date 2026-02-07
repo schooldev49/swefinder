@@ -1,5 +1,5 @@
 import type { Env } from "./env";
-import type { Job, ProofPacket, Project, User } from "@swefinder/types";
+import type { Job, ProofPacket, Project, User } from "@evidensify/types";
 
 const USER_PREFIX = "user:";
 const USER_BY_GITHUB_PREFIX = "user:github:";

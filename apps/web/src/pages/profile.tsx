@@ -2,7 +2,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link } from "react-router-dom";
-import type { Job } from "@swefinder/types";
+import type { Job } from "@evidensify/types";
 import { fetchJobs, fetchProfile, updateProfile } from "@/lib/api";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";

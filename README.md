@@ -1,6 +1,6 @@
-# ProofCraft
+# Evidensify
 
-ProofCraft is a vertical slice of a proof-based job application assistant. Candidates sign in with GitHub, stage the repos that actually prove their skills, paste a job description, and generate a JD-specific "Proof Packet" with plain-text resume bullets, requirement→evidence mappings, and an outreach note.
+Evidensify is a vertical slice of a proof-based job application assistant. Candidates sign in with GitHub, stage the repos that actually prove their skills, paste a job description, and generate a JD-specific "Proof Packet" with plain-text resume bullets, requirement→evidence mappings, and an outreach note.
 
 ## Repo structure
 
@@ -36,7 +36,7 @@ npm install
    wrangler secret put FRONTEND_BASE_URL  # e.g. https://localhost:5173 during dev
    ```
 3. Optional plain vars live inside `wrangler.toml`:
-   - `SESSION_COOKIE_NAME` (defaults to `swefinder_session`)
+   - `SESSION_COOKIE_NAME` (defaults to `evidensify_session`)
    - `SESSION_MAX_AGE` (seconds; defaults to 14 days)
 
 > 🔐 Tokens are encrypted at rest with `SESSION_SECRET` and stored in KV alongside session documents.

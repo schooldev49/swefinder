@@ -88,6 +88,6 @@ function githubHeaders(token: string): HeadersInit {
   return {
     Authorization: `Bearer ${token}`,
     Accept: "application/vnd.github+json",
-    "User-Agent": "swefinder-proof-agent",
+    "User-Agent": "evidensify-proof-agent",
   };
 }

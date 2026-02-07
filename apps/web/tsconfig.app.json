@@ -18,7 +18,7 @@
     "baseUrl": ".",
     "paths": {
       "@/*": ["src/*"],
-      "@swefinder/types": ["../../packages/types/src"]
+      "@evidensify/types": ["../../packages/types/src"]
     },
 
     /* Linting */

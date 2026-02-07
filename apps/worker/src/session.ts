@@ -1,11 +1,11 @@
 import type { Env } from "./env";
-import type { SessionData } from "@swefinder/types";
+import type { SessionData } from "@evidensify/types";
 
 const SESSION_PREFIX = "session:";
 const encoder = new TextEncoder();
 
 function getCookieName(env: Env): string {
-  return env.SESSION_COOKIE_NAME || "swefinder_session";
+  return env.SESSION_COOKIE_NAME || "evidensify_session";
 }
 
 function getMaxAge(env: Env): number {

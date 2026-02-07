@@ -1,5 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
-import type { User } from "@swefinder/types";
+import type { User } from "@evidensify/types";
 import { fetchCurrentUser } from "@/lib/api";
 
 export function useSession() {
