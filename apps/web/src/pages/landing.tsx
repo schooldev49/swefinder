@@ -11,7 +11,7 @@ import { fetchProjects } from "@/lib/api";
 const trustPoints = [
   "Requirements mapped to specific repo paths or demos.",
   "User-provided metrics stay labeled and auditable.",
-  "Proof Packet supplements — never replaces — your résumé.",
+  "Proof Packet supplements, never replaces, your résumé.",
   "Every packet is manually curated before sending.",
 ];
 
@@ -118,19 +118,21 @@ export function LandingPage() {
           <div className="inline-flex items-center gap-2 rounded-full border border-accent/40 bg-accent/10 px-4 py-1 text-xs font-semibold uppercase tracking-[0.2em] text-accent">
             <ShieldCheck className="h-4 w-4" /> Evidence-first job packets
           </div>
+          <p className="text-xs uppercase tracking-[0.45em] text-slate-400">Made by students for students</p>
           <div className="space-y-4">
             <h1 className="text-4xl font-semibold leading-tight text-white md:text-5xl">
-              Turn your GitHub projects into proof employers trust.
+              Own your early-career engineering story.
             </h1>
             <p className="text-base text-slate-300 md:text-lg">
-              ProofCraft maps your real commits and demos to each requirement, then generates JD-ready bullets and a proof sheet you can attach in seconds.
+              ProofCraft turns your GitHub repos into hiring-ready packets with linked requirements, curated bullets, and context built for fast review.
             </p>
-            <p className="text-sm text-slate-400">Built for CS, SWE, and ML applicants who already have projects and want a verifier, not a résumé spinner.</p>
-            <p className="text-sm text-slate-400">You pick the repos, confirm every claim, and send a curated packet instead of a generic blast.</p>
+            <p className="text-sm text-slate-400">
+              We built it as students for entry-level CS, SWE, and ML peers, so you control every claim and only share what you can prove.
+            </p>
           </div>
           <div className="flex flex-col gap-3 sm:flex-row">{primaryCta}</div>
           <p className="text-xs text-muted-foreground">
-            No résumés rewritten, no mass applying — just one GitHub login and evidence you can send to recruiters.
+            No résumés rewritten, no mass applying; just one GitHub login and evidence you can send to recruiters.
           </p>
         </div>
         <div className="relative w-full">
@@ -190,23 +192,21 @@ export function LandingPage() {
         <div className="rounded-3xl border border-slate-800/70 bg-slate-950/60 p-6 shadow-xl shadow-slate-950/30">
           <h2 className="text-2xl font-semibold text-white">Show original builds, skip tutorials</h2>
           <p className="mt-3 text-sm text-slate-300">
-            Hiring managers skim for creative projects with clear structure, thoughtful comments, and clean commits — not half-finished tutorials. ProofCraft nudges you to surface
-            the same signals: original repos, README context, and short code excerpts that highlight real decisions.
+            Hiring managers skim for structure, thoughtful comments, and clean commits, not half-finished tutorials. ProofCraft highlights those signals with original repos,
+            README context, and short code excerpts that show decision making.
           </p>
           <ul className="mt-4 space-y-2 text-sm text-slate-300">
             <li className="flex items-start gap-2">
-              <CheckCircle className="mt-0.5 h-4 w-4 text-accent" /> Showcase a few serious projects with READMEs, tests, or notebooks that explain your approach.
+              <CheckCircle className="mt-0.5 h-4 w-4 text-accent" /> Showcase a few dialed-in projects with READMEs, tests, or notebooks that explain your approach.
             </li>
             <li className="flex items-start gap-2">
-              <CheckCircle className="mt-0.5 h-4 w-4 text-accent" /> Avoid tutorial repos and anything that signals poor judgment (scraping sketchy sites, sloppy comments).
+              <CheckCircle className="mt-0.5 h-4 w-4 text-accent" /> Skip tutorial repos or anything that signals poor judgment.
             </li>
             <li className="flex items-start gap-2">
-              <CheckCircle className="mt-0.5 h-4 w-4 text-accent" /> Use 10–20 line snippets to spotlight decisions, edge cases, or thoughtful comments — not walls of boilerplate.
+              <CheckCircle className="mt-0.5 h-4 w-4 text-accent" /> Use 10–20 line snippets to spotlight decisions, edge cases, or thoughtful comments, not walls of boilerplate.
             </li>
           </ul>
-          <p className="mt-3 text-xs uppercase tracking-[0.35em] text-slate-500">
-            built for reviewers who only spend ~30 seconds before deciding to dive deeper.
-          </p>
+          <p className="mt-3 text-xs uppercase tracking-[0.35em] text-slate-500">Built for reviewers who spend ~30 seconds before diving deeper.</p>
         </div>
       </section>
 
