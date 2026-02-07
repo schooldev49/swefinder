@@ -13,6 +13,10 @@ directory = "../web/dist"
 SESSION_COOKIE_NAME = "evidensify_session"
 SESSION_MAX_AGE = "1209600"
 
+[[routes]]
+pattern = "https://evidensify.com/"
+custom_domain = true
+
 [[kv_namespaces]]
 binding = "DATA_KV"
 id = "b63aaa698f6d4b75b7e36f2d9994c655"
