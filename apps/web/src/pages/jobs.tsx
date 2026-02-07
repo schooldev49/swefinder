@@ -9,6 +9,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 import { Plus } from "lucide-react";
+import { useSession } from "@/hooks/use-session";
 
 const STATUS_BADGES: Record<Job["status"], { label: string; variant: "default" | "outline" | "success" | "warning" }> = {
   DRAFT: { label: "Draft", variant: "outline" },
@@ -20,7 +21,28 @@ const STATUS_BADGES: Record<Job["status"], { label: string; variant: "default" |
 };
 
 export function JobsPage() {
-  const { data: jobs, isLoading } = useQuery({ queryKey: ["jobs"], queryFn: fetchJobs });
+  const { data: user, isLoading: sessionLoading } = useSession();
+  const isAuthenticated = Boolean(user);
+  const { data: jobs, isLoading } = useQuery({ queryKey: ["jobs"], queryFn: fetchJobs, enabled: isAuthenticated });
+
+  if (!sessionLoading && !isAuthenticated) {
+    return (
+      <Card className="border-slate-800/80 bg-slate-950/40">
+        <CardHeader>
+          <CardTitle className="text-white">Job tracker</CardTitle>
+          <CardDescription>Log in to view and track your saved roles.</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="rounded-xl border border-dashed border-slate-800/80 p-6 text-center">
+            <p className="text-sm text-muted-foreground">Sign in with GitHub to access jobs and Proof Packets.</p>
+            <Button asChild className="mt-4">
+              <Link to="/onboarding">Log in to continue</Link>
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
 
   return (
     <Card className="border-slate-800/80 bg-slate-950/40">
