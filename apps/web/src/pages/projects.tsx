@@ -1,7 +1,15 @@
 import { useEffect, useMemo, useState } from "react";
 import type { ChangeEvent, FormEvent } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { fetchGitHubRepos, fetchProjects, saveProjects, type ApiRepoSummary, type ProjectPayload } from "@/lib/api";
+import {
+  fetchGitHubRepos,
+  fetchProjects,
+  saveProjects,
+  suggestSnippetSummary,
+  suggestSnippetTags,
+  type ApiRepoSummary,
+  type ProjectPayload,
+} from "@/lib/api";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -621,11 +629,44 @@ function ProjectCodeSamplesEditor({
   const [isAdding, setIsAdding] = useState(false);
   const [draft, setDraft] = useState<SampleDraft>(() => createEmptySampleDraft());
   const [expandedId, setExpandedId] = useState<string | null>(null);
+  const [summarySuggestion, setSummarySuggestion] = useState<string | null>(null);
+  const [tagSuggestions, setTagSuggestions] = useState<string[]>([]);
+
+  const summaryMutation = useMutation({
+    mutationFn: suggestSnippetSummary,
+    onSuccess: (data) => {
+      if (data?.suggestion) {
+        setSummarySuggestion(data.suggestion);
+      } else {
+        toast("No suggestion", { description: "The model could not improve this summary." });
+      }
+    },
+    onError: (error: Error) => toast("Could not polish summary", { description: error.message }),
+  });
+
+  const tagsMutation = useMutation({
+    mutationFn: suggestSnippetTags,
+    onSuccess: (data) => {
+      if (data?.tags?.length) {
+        setTagSuggestions(data.tags);
+      } else {
+        toast("No tags suggested", { description: "Try adding more context to the summary." });
+      }
+    },
+    onError: (error: Error) => toast("Could not suggest tags", { description: error.message }),
+  });
 
   const handleDraftChange =
     (field: keyof SampleDraft) =>
     (event: ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
-      setDraft((prev) => ({ ...prev, [field]: event.target.value }));
+      const value = event.target.value;
+      setDraft((prev) => ({ ...prev, [field]: value }));
+      if (field === "summary") {
+        setSummarySuggestion(null);
+      }
+      if (field === "summary" || field === "code") {
+        setTagSuggestions([]);
+      }
     };
 
   const handleAddSample = (event: FormEvent<HTMLFormElement>) => {
@@ -675,6 +716,36 @@ function ProjectCodeSamplesEditor({
     if (expandedId === sampleId) {
       setExpandedId(null);
     }
+  };
+
+  const handleSuggestSummary = () => {
+    if (!draft.summary.trim() || !draft.code.trim()) {
+      toast("Add summary + code", { description: "Enter both summary and code before polishing." });
+      return;
+    }
+    summaryMutation.mutate({ summary: draft.summary, code: draft.code });
+  };
+
+  const handleSuggestTags = () => {
+    if (!draft.summary.trim() || !draft.code.trim()) {
+      toast("Add summary + code", { description: "Enter both summary and code before suggesting tags." });
+      return;
+    }
+    tagsMutation.mutate({ summary: draft.summary, code: draft.code });
+  };
+
+  const applySummarySuggestion = () => {
+    if (!summarySuggestion) return;
+    setDraft((prev) => ({ ...prev, summary: summarySuggestion }));
+    setSummarySuggestion(null);
+    toast("Summary updated", { description: "AI draft applied. Review before saving." });
+  };
+
+  const applyTagSuggestions = () => {
+    if (!tagSuggestions.length) return;
+    setDraft((prev) => ({ ...prev, tags: tagSuggestions.join(", ") }));
+    setTagSuggestions([]);
+    toast("Tags inserted", { description: "Adjust them before saving if needed." });
   };
 
   return (
@@ -742,8 +813,27 @@ function ProjectCodeSamplesEditor({
       {isAdding && (
         <form onSubmit={handleAddSample} className="space-y-3 rounded-2xl border border-dashed border-slate-700 p-4">
           <div>
-            <Label>Summary</Label>
+            <div className="flex items-center justify-between gap-2">
+              <Label>Summary</Label>
+              <Button type="button" variant="ghost" size="sm" onClick={handleSuggestSummary} disabled={summaryMutation.isPending}>
+                {summaryMutation.isPending ? "Polishing..." : "Polish summary"}
+              </Button>
+            </div>
             <Input value={draft.summary} onChange={handleDraftChange("summary")} className="mt-2" placeholder="What does this snippet show?" required />
+            {summarySuggestion && (
+              <div className="mt-2 rounded-xl border border-slate-800/80 bg-slate-950/70 p-3 text-xs text-muted-foreground">
+                <p className="text-[11px] uppercase tracking-[0.3em] text-slate-500">AI suggestion</p>
+                <p className="text-sm text-white">{summarySuggestion}</p>
+                <div className="mt-2 flex gap-2">
+                  <Button type="button" size="sm" variant="secondary" onClick={applySummarySuggestion}>
+                    Use suggestion
+                  </Button>
+                  <Button type="button" size="sm" variant="ghost" onClick={() => setSummarySuggestion(null)}>
+                    Dismiss
+                  </Button>
+                </div>
+              </div>
+            )}
           </div>
           <div className="grid gap-3 md:grid-cols-2">
             <div>
@@ -772,9 +862,34 @@ function ProjectCodeSamplesEditor({
             </div>
           </div>
           <div>
-            <Label>Tags</Label>
+            <div className="flex items-center justify-between gap-2">
+              <Label>Tags</Label>
+              <Button type="button" variant="ghost" size="sm" onClick={handleSuggestTags} disabled={tagsMutation.isPending}>
+                {tagsMutation.isPending ? "Suggesting..." : "Suggest tags"}
+              </Button>
+            </div>
             <Input value={draft.tags} onChange={handleDraftChange("tags")} className="mt-2" placeholder="ml, evaluation, guardrails" />
             <p className="mt-1 text-[11px] text-muted-foreground">Comma-separated, up to 5 tags.</p>
+            {tagSuggestions.length > 0 && (
+              <div className="mt-2 rounded-xl border border-slate-800/80 bg-slate-950/70 p-3 text-xs text-muted-foreground">
+                <p className="text-[11px] uppercase tracking-[0.3em] text-slate-500">AI suggestions</p>
+                <div className="mt-1 flex flex-wrap gap-2">
+                  {tagSuggestions.map((tag) => (
+                    <Badge key={tag} variant="outline" className="text-[10px]">
+                      {tag}
+                    </Badge>
+                  ))}
+                </div>
+                <div className="mt-2 flex gap-2">
+                  <Button type="button" size="sm" variant="secondary" onClick={applyTagSuggestions}>
+                    Insert tags
+                  </Button>
+                  <Button type="button" size="sm" variant="ghost" onClick={() => setTagSuggestions([])}>
+                    Dismiss
+                  </Button>
+                </div>
+              </div>
+            )}
           </div>
           <div>
             <Label>Code</Label>

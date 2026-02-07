@@ -7,4 +7,5 @@ export interface Env {
   SESSION_COOKIE_NAME?: string;
   SESSION_MAX_AGE?: string;
   ASSETS: Fetcher;
+  OPENAI_TOKEN?: string;
 }

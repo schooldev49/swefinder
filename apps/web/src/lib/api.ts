@@ -26,6 +26,11 @@ export interface GeneratePayload {
   userMetrics?: Record<string, { label: string; value: string }>;
 }
 
+export interface SnippetSuggestionPayload {
+  summary: string;
+  code: string;
+}
+
 const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL as string | undefined) || "/api";
 
 async function apiFetch<T>(path: string, init?: RequestInit): Promise<T> {
@@ -121,6 +126,20 @@ export function updateJobStatus(jobId: string, status: Job["status"]) {
 
 export function logout() {
   return apiFetch<void>("/logout", { method: "POST" });
+}
+
+export function suggestSnippetSummary(payload: SnippetSuggestionPayload) {
+  return apiFetch<{ suggestion: string }>("/snippets/suggest-summary", {
+    method: "POST",
+    body: JSON.stringify(payload),
+  });
+}
+
+export function suggestSnippetTags(payload: SnippetSuggestionPayload) {
+  return apiFetch<{ tags: string[] }>("/snippets/suggest-tags", {
+    method: "POST",
+    body: JSON.stringify(payload),
+  });
 }
 
 export interface ProfileResponse {

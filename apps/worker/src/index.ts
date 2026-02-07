@@ -9,7 +9,13 @@ import type {
   User,
 } from "@evidensify/types";
 import { callLLM } from "./llm/callLLM";
-import { buildBulletsAndOutreachPrompt, buildEvidenceMappingPrompt, buildRequirementsPrompt } from "./llm/prompts";
+import {
+  buildBulletsAndOutreachPrompt,
+  buildEvidenceMappingPrompt,
+  buildRequirementsPrompt,
+  buildSnippetSummaryPrompt,
+  buildSnippetTagsPrompt,
+} from "./llm/prompts";
 import type { Env } from "./env";
 import { decryptToken, encryptToken } from "./crypto";
 import { errorResponse, getAllowedOrigin, handleOptions, jsonResponse, parseJsonBody, withCors } from "./utils";
@@ -64,6 +70,11 @@ interface GeneratePayload {
 
 interface UpdateStatusPayload {
   status: Job["status"];
+}
+
+interface SnippetSuggestionPayload {
+  summary: string;
+  code: string;
 }
 
 class HttpError extends Error {
@@ -137,6 +148,14 @@ export default {
 
       if (url.pathname === "/api/profile" && request.method === "POST") {
         return withCors(await handleUpdateProfile(request, env), origin);
+      }
+
+      if (url.pathname === "/api/snippets/suggest-summary" && request.method === "POST") {
+        return withCors(await handleSuggestSnippetSummary(request, env), origin);
+      }
+
+      if (url.pathname === "/api/snippets/suggest-tags" && request.method === "POST") {
+        return withCors(await handleSuggestSnippetTags(request, env), origin);
       }
 
       const jobIdMatch = url.pathname.match(/^\/api\/jobs\/(?<jobId>[^\/]+)/);
@@ -426,6 +445,22 @@ async function handleUpdateProfile(request: Request, env: Env): Promise<Response
   return jsonResponse(user);
 }
 
+async function handleSuggestSnippetSummary(request: Request, env: Env): Promise<Response> {
+  await requireUser(request, env);
+  const payload = await parseJsonBody<SnippetSuggestionPayload>(request);
+  const { summary, code } = validateSnippetPayload(payload);
+  const suggestion = await runLLMForSnippetSummary(env, summary, code);
+  return jsonResponse({ suggestion });
+}
+
+async function handleSuggestSnippetTags(request: Request, env: Env): Promise<Response> {
+  await requireUser(request, env);
+  const payload = await parseJsonBody<SnippetSuggestionPayload>(request);
+  const { summary, code } = validateSnippetPayload(payload);
+  const tags = await runLLMForSnippetTags(env, summary, code);
+  return jsonResponse({ tags });
+}
+
 async function handleGetJob(request: Request, env: Env, jobId: string): Promise<Response> {
   const { user } = await requireUser(request, env);
   const job = await getJob(env, jobId);
@@ -476,9 +511,9 @@ async function handleGenerateProofPacket(request: Request, env: Env, jobId: stri
   let mappings: EvidenceMappingWithEvidence[] = [];
   let bulletsResult: { bullets: string[]; outreachNote: string; summary: string };
   try {
-    requirements = await runLLMForRequirements(job.rawDescription);
-    mappings = await runLLMForMappings(job.rawDescription, requirements, selectedProjects);
-    bulletsResult = await runLLMForBullets(requirements, mappings);
+    requirements = await runLLMForRequirements(env, job.rawDescription);
+    mappings = await runLLMForMappings(env, job.rawDescription, requirements, selectedProjects);
+    bulletsResult = await runLLMForBullets(env, requirements, mappings);
   } catch (error) {
     throw new HttpError(error instanceof Error ? error.message : "LLM generation failed", 502);
   }
@@ -504,18 +539,25 @@ async function handleGenerateProofPacket(request: Request, env: Env, jobId: stri
   return jsonResponse(proofPacket);
 }
 
-async function runLLMForRequirements(jobDescription: string): Promise<Requirement[]> {
-  const response = await callLLM({
+async function runLLMForRequirements(env: Env, jobDescription: string): Promise<Requirement[]> {
+  const response = await callLLM(env, {
     systemPrompt: "You extract key job requirements.",
     userPrompt: buildRequirementsPrompt(jobDescription),
+    responseFormat: "json",
   });
   return JSON.parse(response.raw) as Requirement[];
 }
 
-async function runLLMForMappings(jobDescription: string, requirements: Requirement[], projects: Project[]): Promise<EvidenceMappingWithEvidence[]> {
-  const response = await callLLM({
+async function runLLMForMappings(
+  env: Env,
+  jobDescription: string,
+  requirements: Requirement[],
+  projects: Project[]
+): Promise<EvidenceMappingWithEvidence[]> {
+  const response = await callLLM(env, {
     systemPrompt: "You match requirements to project evidence.",
     userPrompt: buildEvidenceMappingPrompt({ jobDescription, requirements, projects }),
+    responseFormat: "json",
   });
   const parsed = JSON.parse(response.raw) as Array<{ requirementId: string; mappings: any[] }>;
   const flattened: EvidenceMappingWithEvidence[] = parsed.flatMap((entry) =>
@@ -548,12 +590,37 @@ function buildEvidenceFromMapping(mapping: any, projects: Project[]): EvidenceMa
   };
 }
 
-async function runLLMForBullets(requirements: Requirement[], mappings: EvidenceMappingWithEvidence[]) {
-  const response = await callLLM({
+async function runLLMForBullets(env: Env, requirements: Requirement[], mappings: EvidenceMappingWithEvidence[]) {
+  const response = await callLLM(env, {
     systemPrompt: "You craft plain-text resume bullets and outreach notes grounded in real evidence.",
     userPrompt: buildBulletsAndOutreachPrompt({ requirements, mappings }),
+    responseFormat: "json",
   });
   return JSON.parse(response.raw) as { bullets: string[]; outreachNote: string; summary: string };
+}
+
+async function runLLMForSnippetSummary(env: Env, summary: string, code: string): Promise<string> {
+  const prompt = buildSnippetSummaryPrompt({ summary, code });
+  const response = await callLLM(env, {
+    systemPrompt: "You rewrite summaries without adding new claims.",
+    userPrompt: prompt,
+  });
+  return response.raw.trim();
+}
+
+async function runLLMForSnippetTags(env: Env, summary: string, code: string): Promise<string[]> {
+  const prompt = buildSnippetTagsPrompt({ summary, code });
+  const response = await callLLM(env, {
+    systemPrompt: "You suggest concise tags for code snippets.",
+    userPrompt: prompt,
+    responseFormat: "json",
+  });
+  try {
+    const parsed = JSON.parse(response.raw) as { tags?: string[] };
+    return (parsed.tags || []).map((tag) => tag.trim().toLowerCase()).filter((tag) => Boolean(tag));
+  } catch {
+    return [];
+  }
 }
 
 async function handlePublicProfile(request: Request, env: Env, slug: string): Promise<Response> {
@@ -817,4 +884,25 @@ function buildProofCodeSamples(selectedSampleIds: string[], projects: Project[])
     }
   }
   return samples;
+}
+
+const MAX_SNIPPET_CODE_LENGTH = 4000;
+const MAX_SNIPPET_SUMMARY_LENGTH = 600;
+
+function validateSnippetPayload(payload: SnippetSuggestionPayload): { summary: string; code: string } {
+  const summary = (payload.summary || "").trim();
+  const code = (payload.code || "").trim();
+  if (!summary) {
+    throw new HttpError("Provide a short summary first", 400);
+  }
+  if (!code) {
+    throw new HttpError("Provide code for the snippet", 400);
+  }
+  if (summary.length > MAX_SNIPPET_SUMMARY_LENGTH) {
+    throw new HttpError("Summary is too long", 400);
+  }
+  if (code.length > MAX_SNIPPET_CODE_LENGTH) {
+    throw new HttpError("Code snippet is too long for suggestions", 400);
+  }
+  return { summary, code };
 }

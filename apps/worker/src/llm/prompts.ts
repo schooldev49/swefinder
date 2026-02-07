@@ -39,3 +39,11 @@ export function buildBulletsAndOutreachPrompt(params: {
   const mappingsJson = JSON.stringify(mappingSummaries, null, 2);
   return `SYSTEM:\n${HONESTY_PLEDGE}\n\nTASK:\nUsing the validated requirement-to-evidence links, craft 3-6 plain-text resume bullets and one outreach note. Each bullet must cite a specific repo or artifact and avoid invented metrics. The outreach note must reference exactly one link. Respond with JSON: {"bullets":[""],"outreachNote":"string","summary":"2 sentence summary"}.\n\nREQUIREMENTS:\n${requirementsJson}\n\nEVIDENCE LINKAGE:\n${mappingsJson}`;
 }
+
+export function buildSnippetSummaryPrompt(params: { summary: string; code: string }): string {
+  return `SYSTEM:\n${HONESTY_PLEDGE}\n\nTASK:\nRewrite the provided snippet summary into one sentence (<=180 characters) without adding new claims. Maintain the same facts and technologies.\n\nCURRENT SUMMARY:\n${params.summary}\n\nCODE SNIPPET:\n${params.code}`;
+}
+
+export function buildSnippetTagsPrompt(params: { summary: string; code: string }): string {
+  return `SYSTEM:\n${HONESTY_PLEDGE}\n\nTASK:\nSuggest up to 3 lowercase tags (<=15 characters) that describe the snippet. Only reference concepts present in the snippet or summary. Respond with JSON: {"tags":["tag"]}.\n\nSUMMARY:\n${params.summary}\n\nCODE SNIPPET:\n${params.code}`;
+}
