@@ -136,6 +136,7 @@ export interface ProofPacket {
   outreachNote: string;
   createdAt: string;
   codeSamples?: ProofPacketCodeSample[];
+  requirementSampleMap?: Record<string, string | null>;
 }
 
 export interface ApiResponse<T> {

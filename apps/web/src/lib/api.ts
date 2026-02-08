@@ -142,6 +142,13 @@ export function suggestSnippetTags(payload: SnippetSuggestionPayload) {
   });
 }
 
+export function updateRequirementSample(jobId: string, payload: { requirementId: string; sampleId: string | null }) {
+  return apiFetch<{ requirementSampleMap: Record<string, string | null> }>(`/jobs/${jobId}/requirement-samples`, {
+    method: "POST",
+    body: JSON.stringify(payload),
+  });
+}
+
 export interface ProfileResponse {
   user: User;
   projects: Project[];

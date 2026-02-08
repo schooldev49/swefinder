@@ -10,7 +10,7 @@ import type {
   ProjectCodeSample,
   Requirement,
 } from "@evidensify/types";
-import { fetchJob, fetchProjects, generateProof, updateJobStatus } from "@/lib/api";
+import { fetchJob, fetchProjects, generateProof, updateJobStatus, updateRequirementSample } from "@/lib/api";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -35,6 +35,7 @@ export function JobDetailPage() {
   const [outreachDraft, setOutreachDraft] = useState("");
   const [requirementNotes, setRequirementNotes] = useState<Record<string, string>>({});
   const [selectedSamples, setSelectedSamples] = useState<Set<string>>(new Set());
+  const [requirementSampleMap, setRequirementSampleMap] = useState<Record<string, string | null>>({});
 
   useEffect(() => {
     if (projectsQuery.data) {
@@ -44,6 +45,7 @@ export function JobDetailPage() {
 
   const job = jobQuery.data?.job;
   const proof = jobQuery.data?.proofPacket;
+  const proofSamples = proof?.codeSamples ?? [];
   const origin = typeof window !== "undefined" ? window.location.origin : "";
   const shareLink =
     session?.profileSlug && job?.shareSlug ? `${origin}/users/${session.profileSlug}/${job.shareSlug}` : "";
@@ -91,6 +93,7 @@ export function JobDetailPage() {
       setOutreachDraft("");
       setRequirementNotes({});
       setSelectedSamples(new Set());
+      setRequirementSampleMap({});
       return;
     }
     setBulletDrafts(proof.bullets);
@@ -101,6 +104,7 @@ export function JobDetailPage() {
     });
     setRequirementNotes(mappedNotes);
     setSelectedSamples(new Set(proof.codeSamples?.map((sample) => sample.id) ?? []));
+    setRequirementSampleMap(proof.requirementSampleMap || {});
   }, [proof]);
 
   useEffect(() => {
@@ -144,6 +148,17 @@ export function JobDetailPage() {
     onError: (error: Error) => toast("Could not regenerate", { description: error.message }),
   });
 
+  const requirementSampleMutation = useMutation({
+    mutationFn: (payload: { requirementId: string; sampleId: string | null }) =>
+      updateRequirementSample(jobId, payload),
+    onSuccess: async (data) => {
+      setRequirementSampleMap(data.requirementSampleMap || {});
+      await queryClient.invalidateQueries({ queryKey: ["job", jobId] });
+      toast("Requirement sample updated");
+    },
+    onError: (error: Error) => toast("Could not update sample", { description: error.message }),
+  });
+
   const handleSampleToggle = (sampleId: string, checked: boolean) => {
     setSelectedSamples((prev) => {
       const next = new Set(prev);
@@ -158,6 +173,10 @@ export function JobDetailPage() {
       }
       return next;
     });
+  };
+
+  const handleRequirementSampleChange = (requirementId: string, sampleId: string | null) => {
+    requirementSampleMutation.mutate({ requirementId, sampleId });
   };
 
   if (jobQuery.isLoading) {
@@ -268,6 +287,10 @@ export function JobDetailPage() {
                           }))
                         }
                         mappings={mappings}
+                        sampleOptions={proofSamples}
+                        selectedSampleId={requirementSampleMap[requirement.id] ?? null}
+                        onSampleChange={(sampleId) => handleRequirementSampleChange(requirement.id, sampleId)}
+                        sampleSaving={requirementSampleMutation.isPending}
                       />
                     );
                   })}
@@ -509,12 +532,21 @@ function RequirementCard({
   mappings,
   note,
   onNoteChange,
+  sampleOptions,
+  selectedSampleId,
+  onSampleChange,
+  sampleSaving,
 }: {
   requirement: Requirement;
   mappings: EvidenceMappingWithEvidence[];
   note: string;
   onNoteChange: (value: string) => void;
+  sampleOptions: ProofPacketCodeSample[];
+  selectedSampleId: string | null;
+  onSampleChange: (sampleId: string | null) => void;
+  sampleSaving?: boolean;
 }) {
+  const selectedSample = sampleOptions.find((sample) => sample.id === selectedSampleId);
   return (
     <div className="rounded-2xl border border-slate-800/80 bg-slate-950/60 p-4 space-y-3">
       <div className="space-y-2">
@@ -544,6 +576,35 @@ function RequirementCard({
           ))
         ) : (
           <p className="text-xs text-muted-foreground">No mapped evidence yet.</p>
+        )}
+      </div>
+      <div className="space-y-2 rounded-xl border border-slate-800/70 bg-slate-950/60 p-3 text-xs text-muted-foreground">
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <p className="text-[11px] uppercase tracking-wide">Attach code sample</p>
+          {sampleSaving ? <Loader2 className="h-3.5 w-3.5 animate-spin text-muted-foreground" /> : null}
+        </div>
+        {sampleOptions.length === 0 ? (
+          <p>No snippets yet. Add one from the Projects page, then regenerate.</p>
+        ) : (
+          <select
+            className="w-full rounded-lg border border-slate-800/80 bg-slate-950/80 px-3 py-2 text-sm text-white"
+            value={selectedSampleId ?? ""}
+            onChange={(event) => onSampleChange(event.target.value ? event.target.value : null)}
+          >
+            <option value="">No code sample</option>
+            {sampleOptions.map((sample) => (
+              <option key={sample.id} value={sample.id}>
+                {sample.projectFullName} — {sample.summary.slice(0, 60)}
+              </option>
+            ))}
+          </select>
+        )}
+        {selectedSample && (
+          <div className="space-y-2 rounded-lg border border-slate-800/70 bg-slate-950/70 p-3 text-[11px] text-muted-foreground">
+            <p className="text-xs font-semibold text-white">{selectedSample.summary}</p>
+            <p>{formatLineLabel(selectedSample.filePath, selectedSample.lineStart, selectedSample.lineEnd)}</p>
+            <CodeSnippet code={selectedSample.code} language={selectedSample.language || inferLanguage(selectedSample.filePath) || "tsx"} />
+          </div>
         )}
       </div>
       <div className="space-y-1">

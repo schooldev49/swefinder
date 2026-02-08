@@ -15,7 +15,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 
 const MAX_SELECTION = 5;
-const STEP_LABELS = ["Connect GitHub", "Select projects", "Enrich projects", "Paste JD"];
+const STEP_LABELS = ["Connect GitHub", "Select projects", "Attach proof inputs"];
 const CONTEXT_OPTIONS = ["Personal", "Course", "Research", "Startup", "Open Source"];
 
 interface SelectedRepo extends ApiRepoSummary {
@@ -25,12 +25,6 @@ interface SelectedRepo extends ApiRepoSummary {
   external?: boolean;
   externalUrl?: string;
   customTitle?: string;
-}
-
-interface ProofPreview {
-  requirements: string[];
-  bullets: string[];
-  projects: SelectedRepo[];
 }
 
 type PageItem = { type: "page"; value: number } | { type: "ellipsis"; key: string };
@@ -74,8 +68,6 @@ export function OnboardingPage() {
   const [searchTerm, setSearchTerm] = useState("");
   const [repoPage, setRepoPage] = useState(1);
   const reposPerPage = 15;
-  const [jobDescription, setJobDescription] = useState("");
-  const [proofPreview, setProofPreview] = useState<ProofPreview | null>(null);
   const [externalForm, setExternalForm] = useState({ title: "", url: "", description: "" });
 
   const repoQuery = useQuery({
@@ -133,11 +125,9 @@ export function OnboardingPage() {
       case 0:
         return hasConnected;
       case 1:
-        return selectedRepoIds.size > 0;
+        return selectedRepoIds.size > 0 || selectedRepos.length > 0;
       case 2:
         return selectedRepos.length > 0;
-      case 3:
-        return jobDescription.trim().length >= 80;
       default:
         return true;
     }
@@ -145,7 +135,7 @@ export function OnboardingPage() {
 
   const handleNext = () => {
     if (currentStep === STEP_LABELS.length - 1) {
-      navigate("/projects");
+      navigate("/jobs/new");
       return;
     }
     if (currentStep === 1) {
@@ -249,25 +239,12 @@ export function OnboardingPage() {
     });
   };
 
-  const handleGeneratePreview = () => {
-    if (!jobDescription.trim()) {
-      toast.error("Paste a job description first");
-      return;
+  useEffect(() => {
+    if (repoQuery.data && repoQuery.data.length && selectedRepoIds.size === 0 && hasConnected) {
+      const suggestions = repoQuery.data.slice(0, 3).map((repo) => repo.id);
+      setSelectedRepoIds(new Set(suggestions));
     }
-    const sentences = jobDescription
-      .split(/\n|\. /)
-      .map((sentence) => sentence.trim())
-      .filter(Boolean)
-      .slice(0, 3);
-    const requirements = sentences.length ? sentences : ["Prototype ML experiments", "Ship collaborative tooling"];
-    const bullets = selectedRepos.slice(0, 3).map((repo) => `Mapped ${repo.fullName} to ${requirements[0] ?? "the JD"}.`);
-    setProofPreview({ requirements, bullets, projects: selectedRepos });
-    toast("Preview generated");
-  };
-
-  const fillSampleJD = () => {
-    setJobDescription(`We're hiring an ML Research Intern to prototype classification models, measure experiments, and ship UX for real-time reviews. Must be comfortable owning projects end-to-end, collaborating cross-functionally, and explaining trade-offs to stakeholders.`);
-  };
+  }, [repoQuery.data, selectedRepoIds.size, hasConnected]);
 
   return (
     <div className="mx-auto flex max-w-6xl flex-col gap-6 px-4 py-10 lg:flex-row">
@@ -351,9 +328,11 @@ export function OnboardingPage() {
           <Card className="border-slate-800/80 bg-slate-950/60">
             <CardHeader>
               <CardTitle className="text-white">Select projects</CardTitle>
-              <CardDescription>Choose up to {MAX_SELECTION} repos that prove your skills (avoid tutorial repos). Add external demos later.</CardDescription>
+              <CardDescription>
+                We preselected your three most recently updated repos. Keep up to {MAX_SELECTION} that best prove your skills, then add any missing demos.
+              </CardDescription>
             </CardHeader>
-            <CardContent className="space-y-4">
+            <CardContent className="space-y-5">
               <div className="flex items-center gap-2 rounded-xl border border-slate-800/80 bg-slate-900/60 px-3">
                 <Search className="h-4 w-4 text-muted-foreground" />
                 <Input value={searchTerm} onChange={(event) => setSearchTerm(event.target.value)} placeholder="Search repositories" className="border-0 bg-transparent focus-visible:ring-0" />
@@ -426,7 +405,25 @@ export function OnboardingPage() {
                   </div>
                 </div>
               )}
-              <p className="text-xs text-muted-foreground">Only checked repos will be imported into Evidensify. You can add more later from Projects.</p>
+              <div className="rounded-2xl border border-dashed border-slate-700/70 bg-slate-950/20 p-4">
+                <p className="text-sm font-semibold text-white">Add external project</p>
+                <p className="text-xs text-muted-foreground">Demo, notebook, or write-up that lives outside GitHub.</p>
+                <div className="mt-3 grid gap-3 sm:grid-cols-2">
+                  <Input placeholder="Title" value={externalForm.title} onChange={(event) => setExternalForm((prev) => ({ ...prev, title: event.target.value }))} />
+                  <Input placeholder="URL" value={externalForm.url} onChange={(event) => setExternalForm((prev) => ({ ...prev, url: event.target.value }))} />
+                </div>
+                <Textarea
+                  className="mt-3"
+                  rows={2}
+                  placeholder="Short description"
+                  value={externalForm.description}
+                  onChange={(event) => setExternalForm((prev) => ({ ...prev, description: event.target.value }))}
+                />
+                <Button className="mt-3" variant="outline" size="sm" onClick={addExternalProject}>
+                  + Add external project
+                </Button>
+              </div>
+              <p className="text-xs text-muted-foreground">Only checked repos and the external items above move forward. You can manage everything later in Projects.</p>
             </CardContent>
           </Card>
         )}
@@ -434,10 +431,10 @@ export function OnboardingPage() {
         {currentStep === 2 && (
           <Card className="border-slate-800/80 bg-slate-950/60">
             <CardHeader>
-              <CardTitle className="text-white">Add quick context</CardTitle>
-              <CardDescription>Tell Evidensify why each repo matters. This stays editable later.</CardDescription>
+              <CardTitle className="text-white">Attach proof inputs</CardTitle>
+              <CardDescription>Give each project context, public links, and a snippet to highlight. We’ll reuse it across Proof Packets.</CardDescription>
             </CardHeader>
-            <CardContent className="space-y-4">
+            <CardContent className="space-y-6">
               {selectedRepos.length === 0 && <p className="text-sm text-muted-foreground">No projects selected yet.</p>}
               {selectedRepos.map((repo) => (
                 <div key={repo.id} className="space-y-3 rounded-2xl border border-slate-800/80 bg-slate-950/40 p-4">
@@ -485,88 +482,25 @@ export function OnboardingPage() {
                       placeholder="Briefly describe the feature, dataset, or impact."
                     />
                   </label>
-                </div>
-              ))}
-              <div className="rounded-2xl border border-dashed border-slate-700/70 bg-slate-950/20 p-4">
-                <p className="text-sm font-semibold text-white">Add external project</p>
-                <p className="text-xs text-muted-foreground">Demo, notebook, or write-up that lives outside GitHub.</p>
-                <div className="mt-3 grid gap-3 sm:grid-cols-2">
-                  <Input placeholder="Title" value={externalForm.title} onChange={(event) => setExternalForm((prev) => ({ ...prev, title: event.target.value }))} />
-                  <Input placeholder="URL" value={externalForm.url} onChange={(event) => setExternalForm((prev) => ({ ...prev, url: event.target.value }))} />
-                </div>
-                <Textarea
-                  className="mt-3"
-                  rows={2}
-                  placeholder="Short description"
-                  value={externalForm.description}
-                  onChange={(event) => setExternalForm((prev) => ({ ...prev, description: event.target.value }))}
-                />
-                <Button className="mt-3" variant="outline" size="sm" onClick={addExternalProject}>
-                  + Add external project
-                </Button>
-              </div>
-            </CardContent>
-          </Card>
-        )}
-
-        {currentStep === 3 && (
-          <Card className="border-slate-800/80 bg-slate-950/60">
-            <CardHeader>
-              <CardTitle className="text-white">Paste a JD & preview</CardTitle>
-              <CardDescription>Give Evidensify something real to map your projects to.</CardDescription>
-            </CardHeader>
-            <CardContent className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
-              <div className="space-y-3">
-                <Textarea
-                  rows={10}
-                  value={jobDescription}
-                  onChange={(event) => setJobDescription(event.target.value)}
-                  placeholder="Paste a job description or LinkedIn URL…"
-                />
-                <div className="flex flex-wrap gap-2">
-                  <Button variant="default" onClick={handleGeneratePreview}>
-                    Generate proof preview
-                  </Button>
-                  <Button variant="ghost" onClick={fillSampleJD}>
-                    Use sample listing
-                  </Button>
-                </div>
-              </div>
-              <div className="rounded-2xl border border-slate-800/80 bg-slate-950/40 p-4">
-                <p className="text-xs uppercase tracking-[0.35em] text-muted-foreground">Preview</p>
-                {!proofPreview ? (
-                  <p className="mt-3 text-sm text-muted-foreground">Generate to see requirements, bullets, and evidence here.</p>
-                ) : (
-                  <div className="mt-3 space-y-3 text-sm text-white">
-                    <div>
-                      <p className="text-xs uppercase tracking-wide text-muted-foreground">Key requirements</p>
-                      <ul className="mt-1 space-y-1 text-slate-200">
-                        {proofPreview.requirements.map((req) => (
-                          <li key={req}>• {req}</li>
-                        ))}
-                      </ul>
-                    </div>
-                    <div>
-                      <p className="text-xs uppercase tracking-wide text-muted-foreground">Bullets</p>
-                      <ul className="mt-1 space-y-1 text-slate-200">
-                        {proofPreview.bullets.map((bullet, index) => (
-                          <li key={`${bullet}-${index}`}>• {bullet}</li>
-                        ))}
-                      </ul>
-                    </div>
-                    <div>
-                      <p className="text-xs uppercase tracking-wide text-muted-foreground">Evidence</p>
-                      <ul className="mt-1 space-y-1 text-slate-200">
-                        {proofPreview.projects.map((project) => (
-                          <li key={project.id}>{project.fullName}</li>
-                        ))}
-                      </ul>
-                    </div>
-                    <Button asChild size="sm">
-                      <Link to="/projects">View full Proof Packet</Link>
+                  <div className="rounded-xl border border-dashed border-slate-700/70 bg-slate-950/40 p-3 text-xs text-muted-foreground">
+                    <p className="text-[11px] uppercase tracking-[0.3em] text-slate-500">Code samples</p>
+                    <p className="mt-1">
+                      Use the <span className="text-white">Projects → Add code sample</span> editor to capture a 10–40 line snippet. You’ll be able to “Polish summary” and “Suggest tags” there anytime.
+                    </p>
+                    <Button asChild size="sm" variant="secondary" className="mt-3 w-full sm:w-auto">
+                      <Link to="/projects">Open Projects to add samples</Link>
                     </Button>
                   </div>
-                )}
+                </div>
+              ))}
+              <div className="rounded-2xl border border-slate-800/80 bg-slate-950/30 p-4">
+                <p className="text-xs uppercase tracking-[0.35em] text-muted-foreground">Proof checklist</p>
+                <ul className="mt-3 space-y-2 text-sm text-slate-200">
+                  <li>• At least 1–3 repositories with README/context filled in.</li>
+                  <li>• Public URLs for demos or notebooks so reviewers can click.</li>
+                  <li>• Add code samples with summaries/tags from the Projects page.</li>
+                </ul>
+                <p className="mt-3 text-xs text-muted-foreground">When everything feels ready, click “Next” to start your first job-specific Proof Packet.</p>
               </div>
             </CardContent>
           </Card>

@@ -77,6 +77,11 @@ interface SnippetSuggestionPayload {
   code: string;
 }
 
+interface RequirementSamplePayload {
+  requirementId: string;
+  sampleId: string | null;
+}
+
 class HttpError extends Error {
   status: number;
 
@@ -169,6 +174,9 @@ export default {
         }
         if (url.pathname.endsWith(`/api/jobs/${jobId}/generate`) && request.method === "POST") {
           return withCors(await handleGenerateProofPacket(request, env, jobId), origin);
+        }
+        if (url.pathname.endsWith(`/api/jobs/${jobId}/requirement-samples`) && request.method === "POST") {
+          return withCors(await handleUpdateRequirementSample(request, env, jobId), origin);
         }
       }
 
@@ -459,6 +467,41 @@ async function handleSuggestSnippetTags(request: Request, env: Env): Promise<Res
   const { summary, code } = validateSnippetPayload(payload);
   const tags = await runLLMForSnippetTags(env, summary, code);
   return jsonResponse({ tags });
+}
+
+async function handleUpdateRequirementSample(request: Request, env: Env, jobId: string): Promise<Response> {
+  const { user } = await requireUser(request, env);
+  const payload = await parseJsonBody<RequirementSamplePayload>(request);
+  if (!payload.requirementId) {
+    throw new HttpError("requirementId is required", 400);
+  }
+  const job = await getJob(env, jobId);
+  if (!job || job.userId !== user.id) {
+    throw new HttpError("Job not found", 404);
+  }
+  const proof = await getProofPacket(env, jobId);
+  if (!proof) {
+    throw new HttpError("Generate a Proof Packet first", 400);
+  }
+  const requirement = proof.requirements.find((req) => req.id === payload.requirementId);
+  if (!requirement) {
+    throw new HttpError("Requirement not found", 404);
+  }
+  if (payload.sampleId) {
+    const exists = proof.codeSamples?.some((sample) => sample.id === payload.sampleId);
+    if (!exists) {
+      throw new HttpError("Sample not available for this packet", 400);
+    }
+  }
+  const nextMap = { ...(proof.requirementSampleMap || {}) };
+  if (!payload.sampleId) {
+    delete nextMap[payload.requirementId];
+  } else {
+    nextMap[payload.requirementId] = payload.sampleId;
+  }
+  proof.requirementSampleMap = nextMap;
+  await saveProofPacket(env, proof);
+  return jsonResponse({ requirementSampleMap: nextMap });
 }
 
 async function handleGetJob(request: Request, env: Env, jobId: string): Promise<Response> {

@@ -47,6 +47,8 @@ function PacketView({
 }) {
   const proof = data.proofPacket;
   const citations = useMemo(() => buildCitationList(proof?.mappings ?? []), [proof?.mappings]);
+  const requirementSampleMap = proof?.requirementSampleMap || {};
+  const proofSamples = proof?.codeSamples ?? [];
 
   return (
     <div className="space-y-6">
@@ -93,6 +95,8 @@ function PacketView({
                     key={requirement.id}
                     requirement={requirement}
                     mappings={proof.mappings.filter((mapping) => mapping.requirementId === requirement.id)}
+                    sampleOptions={proofSamples}
+                    selectedSampleId={requirementSampleMap[requirement.id] ?? null}
                   />
                 ))}
               </div>
@@ -176,10 +180,15 @@ function PacketView({
 function RequirementPublicCard({
   requirement,
   mappings,
+  sampleOptions,
+  selectedSampleId,
 }: {
   requirement: NonNullable<Awaited<ReturnType<typeof fetchSharedPacket>>["proofPacket"]>["requirements"][number];
   mappings: EvidenceMappingWithEvidence[];
+  sampleOptions: ProofPacketCodeSample[];
+  selectedSampleId: string | null;
 }) {
+  const selectedSample = sampleOptions.find((sample) => sample.id === selectedSampleId);
   return (
     <div className="rounded-2xl border border-slate-900/80 bg-slate-950/60 p-4 space-y-3">
       <div>
@@ -214,6 +223,19 @@ function RequirementPublicCard({
           ))
         )}
       </div>
+      {selectedSample && (
+        <div className="space-y-2 rounded-xl border border-slate-900/80 bg-slate-950/70 p-3 text-xs text-muted-foreground">
+          <p className="text-[11px] uppercase tracking-[0.3em] text-slate-500">Code sample</p>
+          <p className="text-sm font-semibold text-white">{selectedSample.summary}</p>
+          <p>{formatPublicLineLabel(selectedSample.filePath, selectedSample.lineStart, selectedSample.lineEnd)}</p>
+          <CodeSnippet code={selectedSample.code} language={selectedSample.language || inferLanguage(selectedSample.filePath) || "tsx"} />
+          {selectedSample.url && (
+            <a href={selectedSample.url} target="_blank" rel="noopener noreferrer nofollow" className="text-primary underline">
+              View on GitHub
+            </a>
+          )}
+        </div>
+      )}
     </div>
   );
 }
