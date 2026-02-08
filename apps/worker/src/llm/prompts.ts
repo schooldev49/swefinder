@@ -37,13 +37,49 @@ export function buildBulletsAndOutreachPrompt(params: {
     rationale: mapping.rationale,
   }));
   const mappingsJson = JSON.stringify(mappingSummaries, null, 2);
-  return `SYSTEM:\n${HONESTY_PLEDGE}\n\nTASK:\nUsing the validated requirement-to-evidence links, craft 3-6 plain-text resume bullets and one outreach note that emphasize technical depth—specific stacks, models, infra, experiments, or performance results that already exist in evidence. Each bullet must cite a specific repo or artifact and avoid invented metrics. The outreach note must reference exactly one link. Respond with JSON: {"bullets":[""],"outreachNote":"string","summary":"2 sentence summary"}.\n\nREQUIREMENTS:\n${requirementsJson}\n\nEVIDENCE LINKAGE:\n${mappingsJson}`;
+return `SYSTEM:
+${HONESTY_PLEDGE}
+
+TASK:
+Using the validated requirement-to-evidence links, craft 3–6 plain-text resume bullets and one outreach note that emphasize technical depth—specific stacks, models, infrastructure, experiments, or performance results already present in evidence. Each bullet must cite a specific repo or artifact using the format [repo:<name>] or [artifact:<path>] and must not include invented metrics or claims. If uncertain, use qualitative phrasing instead. The outreach note (3–5 sentences) must reference exactly one artifact and maintain a concise, professional tone. Respond only with valid JSON: {"bullets":[""],"outreachNote":"string","summary":"2-sentence summary emphasizing technical focus and impact"}.
+
+REQUIREMENTS:
+${requirementsJson}
+
+EVIDENCE LINKAGE:
+${mappingsJson}`;
 }
 
 export function buildSnippetSummaryPrompt(params: { summary: string; code: string }): string {
-  return `SYSTEM:\n${HONESTY_PLEDGE}\n\nTASK:\nRewrite the provided snippet summary into one sentence (<=180 characters) without adding new claims or using jargon/trying to sound fancy, make sure to sound natural without em dashes. Maintain the same facts and technologies.\n\nCURRENT SUMMARY:\n${params.summary}\n\nCODE SNIPPET:\n${params.code}`;
+  return `SYSTEM:
+${HONESTY_PLEDGE}
+
+TASK:
+Rewrite the provided snippet summary into exactly one plain-text sentence (≤180 characters).
+Do not add or remove factual details or technologies.
+Output the sentence only—no quotes, markdown, or prefixes.
+Use natural, clear wording (no jargon or em dashes). Keep deterministic.
+
+CURRENT SUMMARY:
+${params.summary}
+
+CODE SNIPPET:
+${params.code}`;
 }
 
 export function buildSnippetTagsPrompt(params: { summary: string; code: string }): string {
-  return `SYSTEM:\n${HONESTY_PLEDGE}\n\nTASK:\nSuggest up to 3 lowercase tags (<=15 characters) that describe the snippet. Only reference concepts present in the snippet or summary. Respond with JSON: {"tags":["tag"]}.\n\nSUMMARY:\n${params.summary}\n\nCODE SNIPPET:\n${params.code}`;
+  return `SYSTEM:
+${HONESTY_PLEDGE}
+
+TASK:
+Suggest up to 3 lowercase tags (≤15 characters) describing the snippet.
+Only reference concrete technologies, concepts, or methods present in the summary or code.
+Avoid generic tags like "code" or "project".
+Respond only with valid JSON: {"tags":["tag1","tag2","tag3"]}.
+
+SUMMARY:
+${params.summary}
+
+CODE SNIPPET:
+${params.code}`;
 }
