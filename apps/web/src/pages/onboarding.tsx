@@ -487,9 +487,7 @@ export function OnboardingPage() {
                     <p className="mt-1">
                       Use the <span className="text-white">Projects → Add code sample</span> editor to capture a 10–40 line snippet. You’ll be able to “Polish summary” and “Suggest tags” there anytime.
                     </p>
-                    <Button asChild size="sm" variant="secondary" className="mt-3 w-full sm:w-auto">
-                      <Link to="/projects">Open Projects to add samples</Link>
-                    </Button>
+                    
                   </div>
                 </div>
               ))}
