@@ -30,7 +30,8 @@ export function SecurityPage() {
             </div>
           ))}
           <p className="text-xs text-muted-foreground">
-            Need private repos? Enable “Include private repos” during onboarding to grant the <code className="mx-1">repo</code> scope. You can revoke it anytime from GitHub settings.
+            Need private repos? From the Projects page, toggle “Include private repos” when connecting to GitHub to grant the
+            <code className="mx-1">repo</code> scope. You can revoke it anytime from GitHub settings.
           </p>
         </CardContent>
       </Card>
@@ -54,7 +55,7 @@ export function SecurityPage() {
             <p className="text-slate-400">Email security@Evidensify.app any time. We publish updates and SOC-style summaries on our changelog.</p>
           </div>
           <Button asChild variant="outline" size="sm" className="text-white">
-            <Link to="/onboarding">Back to onboarding</Link>
+            <Link to="/projects">Back to projects</Link>
           </Button>
         </CardContent>
       </Card>

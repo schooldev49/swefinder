@@ -1,4 +1,4 @@
-import { createBrowserRouter, RouterProvider } from "react-router-dom";
+import { createBrowserRouter, Navigate, RouterProvider } from "react-router-dom";
 import { AppLayout } from "@/components/layout/app-layout";
 import { LandingPage } from "@/pages/landing";
 import { ProjectsPage } from "@/pages/projects";
@@ -9,7 +9,6 @@ import { ProfilePage } from "@/pages/profile";
 import { ProtectedRoute } from "@/components/auth/protected-route";
 import { PublicProfilePage } from "@/pages/public-profile";
 import { PublicPacketPage } from "@/pages/public-packet";
-import { OnboardingPage } from "@/pages/onboarding";
 import { SecurityPage } from "@/pages/security";
 
 const router = createBrowserRouter([
@@ -70,7 +69,7 @@ const router = createBrowserRouter([
   },
   {
     path: "/onboarding",
-    element: <OnboardingPage />,
+    element: <Navigate to="/projects" replace />,
   },
   {
     path: "/security",

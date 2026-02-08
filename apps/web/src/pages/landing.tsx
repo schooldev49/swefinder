@@ -9,6 +9,7 @@ import { CodeSnippet } from "@/components/ui/code-snippet";
 import { useSession } from "@/hooks/use-session";
 import { fetchProjects } from "@/lib/api";
 import { cn } from "@/lib/utils";
+import { buildGitHubLoginUrl } from "@/lib/auth";
 
 const trustPoints = [
   "Requirements mapped to specific repo paths or demos.",
@@ -97,21 +98,36 @@ export function LandingPage() {
     staleTime: 60 * 1000,
   });
   const hasProjects = Boolean(projectsQuery.data && projectsQuery.data.length > 0);
+  const handleGitHubLogin = () => {
+    window.location.href = buildGitHubLoginUrl("/projects");
+  };
 
-  const primaryCta = isAuthenticated && hasProjects ? (
-    <Button asChild size="lg">
-      <Link to="/jobs/new">
-        Generate proof packet <ArrowRight className="ml-2 h-4 w-4" />
-      </Link>
-    </Button>
-  ) : (
-    <Button asChild size="lg" className="inline-flex items-center gap-2 bg-white text-slate-900 hover:bg-slate-100">
-      <Link to="/onboarding">
-        <GitHubMark className="h-4 w-4" />
-        {isAuthenticated ? "Continue onboarding" : "Start with GitHub"}
-      </Link>
-    </Button>
-  );
+  const primaryCta = isAuthenticated
+    ? hasProjects
+      ? (
+          <Button asChild size="lg">
+            <Link to="/jobs/new">
+              Generate proof packet <ArrowRight className="ml-2 h-4 w-4" />
+            </Link>
+          </Button>
+        )
+      : (
+          <Button asChild size="lg">
+            <Link to="/projects">
+              Set up projects <ArrowRight className="ml-2 h-4 w-4" />
+            </Link>
+          </Button>
+        )
+    : (
+        <Button
+          size="lg"
+          onClick={handleGitHubLogin}
+          className="inline-flex items-center gap-2 bg-white text-slate-900 hover:bg-slate-100"
+        >
+          <GitHubMark className="h-4 w-4" />
+          Sign in with GitHub
+        </Button>
+      );
 
   return (
     <div className="space-y-16 overflow-hidden py-6 sm:space-y-20">

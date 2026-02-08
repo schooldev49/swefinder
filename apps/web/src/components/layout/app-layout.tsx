@@ -1,4 +1,4 @@
-import { Link, NavLink, Outlet, useLocation } from "react-router-dom";
+import { Link, NavLink, Outlet } from "react-router-dom";
 import { useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { Menu, X } from "lucide-react";
@@ -16,13 +16,12 @@ const baseLinks = [
 export function AppLayout() {
   const { data: user, isLoading } = useSession();
   const queryClient = useQueryClient();
-  const location = useLocation();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const isAuthenticated = Boolean(user);
   const navLinks = isAuthenticated ? [...baseLinks, { to: "/profile", label: "Profile" }] : baseLinks;
 
   const handleLogin = () => {
-    window.location.href = buildGitHubLoginUrl(location.pathname);
+    window.location.href = buildGitHubLoginUrl("/projects");
   };
 
   const handleLogout = async () => {

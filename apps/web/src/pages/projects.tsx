@@ -34,6 +34,20 @@ const AI_ROLE_OPTIONS = [
 const MAX_SHOWCASED = 4;
 const MAX_SAMPLE_LINES = 40;
 const MAX_SAMPLE_CODE_CHARS = 2000;
+const PROJECTS_CHECKLIST = [
+  {
+    title: "Import repos",
+    detail: "Pull in the GitHub repos or links you actually want to share. Skip tutorials.",
+  },
+  {
+    title: "Add context & AI usage",
+    detail: "Explain design choices, note how you used (or skipped) AI, and add short code samples.",
+  },
+  {
+    title: "Generate packets",
+    detail: "Head to Jobs → New job to map these projects to a JD-specific Proof Packet.",
+  },
+];
 
 type ExternalFormState = {
   title: string;
@@ -328,6 +342,18 @@ export function ProjectsPage() {
 
   return (
     <div className="space-y-6">
+      <div className="rounded-2xl border border-slate-800/70 bg-slate-950/50 p-5">
+        <p className="text-xs uppercase tracking-[0.35em] text-muted-foreground">Setup checklist</p>
+        <div className="mt-4 grid gap-4 md:grid-cols-3">
+          {PROJECTS_CHECKLIST.map((step, index) => (
+            <div key={step.title} className="rounded-xl border border-slate-800/70 bg-slate-950/70 p-4">
+              <div className="text-sm font-semibold text-accent">Step {index + 1}</div>
+              <p className="mt-1 text-sm font-semibold text-white">{step.title}</p>
+              <p className="mt-1 text-xs text-muted-foreground">{step.detail}</p>
+            </div>
+          ))}
+        </div>
+      </div>
       <Card className="border-slate-800/80 bg-slate-950/40">
         <CardHeader className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
           <div>
