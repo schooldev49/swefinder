@@ -25,6 +25,12 @@ import { CodeSnippet } from "@/components/ui/code-snippet";
 import type { ProjectCodeSample } from "@evidensify/types";
 
 const CONTEXT_OPTIONS = ["Personal", "Course", "Open Source", "Startup", "Research"];
+const AI_ROLE_OPTIONS = [
+  { value: "none", label: "No AI" },
+  { value: "assist", label: "Assist (autocomplete, Copilot, Cursor)" },
+  { value: "co-design", label: "Co-design (AI drafts + your review)" },
+  { value: "agent-orchestration", label: "Agent orchestration (built eval/guardrails)" },
+];
 const MAX_SHOWCASED = 4;
 const MAX_SAMPLE_LINES = 40;
 const MAX_SAMPLE_CODE_CHARS = 2000;
@@ -126,7 +132,14 @@ export function ProjectsPage() {
         savedProjects.map((project) => {
           const { userId, ...rest } = project;
           void userId;
-          return { ...rest, sourceType: rest.sourceType ?? "github", codeSamples: rest.codeSamples ?? [] };
+          return {
+            ...rest,
+            sourceType: rest.sourceType ?? "github",
+            codeSamples: rest.codeSamples ?? [],
+            aiRole: rest.aiRole,
+            aiTools: rest.aiTools ?? [],
+            aiSupervisionNotes: rest.aiSupervisionNotes,
+          };
         })
       );
     }
@@ -140,7 +153,14 @@ export function ProjectsPage() {
         data.map((project) => {
           const { userId, ...rest } = project;
           void userId;
-          return { ...rest, sourceType: rest.sourceType ?? "github", codeSamples: rest.codeSamples ?? [] };
+          return {
+            ...rest,
+            sourceType: rest.sourceType ?? "github",
+            codeSamples: rest.codeSamples ?? [],
+            aiRole: rest.aiRole,
+            aiTools: rest.aiTools ?? [],
+            aiSupervisionNotes: rest.aiSupervisionNotes,
+          };
         })
       );
       toast("Projects saved", { description: "Your proof-ready projects are up to date." });
@@ -193,6 +213,8 @@ export function ProjectsPage() {
         draft: true,
         isShowcased: false,
         codeSamples: [],
+        aiRole: "none",
+        aiTools: [],
       }));
     if (!newEntries.length) {
       toast("Already added", { description: "The selected repos are already in your project list." });
@@ -242,6 +264,8 @@ export function ProjectsPage() {
       draft: true,
       isShowcased: false,
       codeSamples: [],
+      aiRole: "none",
+      aiTools: [],
     };
     setProjects((prev) => [newProject, ...prev]);
     setExternalForm(createEmptyExternalForm());
@@ -251,6 +275,13 @@ export function ProjectsPage() {
 
   const updateProject = (projectId: string, changes: Partial<EditableProject>) => {
     setProjects((prev) => prev.map((project) => (project.id === projectId ? { ...project, ...changes } : project)));
+  };
+  const handleAiToolsChange = (projectId: string, value: string) => {
+    const tools = value
+      .split(",")
+      .map((token) => token.trim())
+      .filter(Boolean);
+    updateProject(projectId, { aiTools: tools });
   };
 
   const toggleShowcased = (projectId: string, nextState: boolean) => {
@@ -476,6 +507,9 @@ export function ProjectsPage() {
                 </div>
                 <div className="mt-4">
                   <Label>What did you build?</Label>
+                  <p className="mt-1 text-[11px] text-muted-foreground">
+                    Describe design choices, tools, what you learned, and any limitations. Use your own words; AI can help polish, but only include facts you can defend.
+                  </p>
                   <Textarea
                     className="mt-2"
                     rows={3}
@@ -483,6 +517,48 @@ export function ProjectsPage() {
                     onChange={(event) => updateProject(project.id, { description: event.target.value })}
                     placeholder="Short reminder of the problem, stack, and key outcomes."
                   />
+                </div>
+                <div className="mt-4 rounded-2xl border border-slate-800/70 bg-slate-950/50 p-4 text-xs text-muted-foreground">
+                  <p className="text-[11px] uppercase tracking-[0.3em] text-slate-500">AI usage (optional)</p>
+                  <p className="mt-2">
+                    Recruiters care less about whether you used AI and more about how you used it. Be specific and honest. It's fine if a project used no AI at all.
+                  </p>
+                  <div className="mt-3 grid gap-3 md:grid-cols-2">
+                    <label className="space-y-1 text-xs text-muted-foreground">
+                      Role
+                      <select
+                        className="w-full rounded-lg border border-border bg-transparent px-3 py-2 text-sm text-white"
+                        value={project.aiRole || ""}
+                        onChange={(event) => updateProject(project.id, { aiRole: event.target.value || undefined })}
+                      >
+                        <option value="">Select</option>
+                        {AI_ROLE_OPTIONS.map((option) => (
+                          <option key={option.value} className="bg-slate-900" value={option.value}>
+                            {option.label}
+                          </option>
+                        ))}
+                      </select>
+                    </label>
+                    <label className="space-y-1 text-xs text-muted-foreground">
+                      Tools (comma separated)
+                      <Input
+                        className="text-sm"
+                        value={project.aiTools && project.aiTools.length ? project.aiTools.join(", ") : ""}
+                        onChange={(event) => handleAiToolsChange(project.id, event.target.value)}
+                        placeholder="Copilot, Cursor"
+                      />
+                    </label>
+                  </div>
+                  <label className="mt-3 block space-y-1 text-xs text-muted-foreground">
+                    Supervision notes
+                    <Textarea
+                      rows={2}
+                      maxLength={400}
+                      value={project.aiSupervisionNotes || ""}
+                      onChange={(event) => updateProject(project.id, { aiSupervisionNotes: event.target.value })}
+                      placeholder="Example: Reviewed and refactored agent output, added tests for race conditions."
+                    />
+                  </label>
                 </div>
                 <ProjectCodeSamplesEditor
                   project={project}

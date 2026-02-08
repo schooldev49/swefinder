@@ -17,6 +17,7 @@ export interface User {
 }
 
 export type ProjectSourceType = "github" | "link";
+export type AIRole = "none" | "assist" | "co-design" | "agent-orchestration";
 
 export interface ProjectCodeSample {
   id: string;
@@ -51,6 +52,9 @@ export interface Project {
   tags?: string[];
   isShowcased?: boolean;
   codeSamples?: ProjectCodeSample[];
+  aiRole?: AIRole;
+  aiTools?: string[];
+  aiSupervisionNotes?: string;
 }
 
 export interface Job {
@@ -94,6 +98,9 @@ export interface Evidence {
   context?: string;
   metrics?: Record<string, EvidenceMetric>;
   codeSnippet?: EvidenceSnippet;
+  aiRole?: AIRole;
+  aiTools?: string[];
+  aiSupervisionNotes?: string;
 }
 
 export interface EvidenceMapping {

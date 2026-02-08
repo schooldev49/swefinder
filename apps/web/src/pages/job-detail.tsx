@@ -197,6 +197,12 @@ export function JobDetailPage() {
 
   return (
     <div className="grid gap-6">
+      <div className="rounded-2xl border border-slate-800/80 bg-slate-950/40 p-4 text-sm text-muted-foreground">
+        <p className="text-xs uppercase tracking-[0.35em] text-muted-foreground">How to send this</p>
+        <p className="mt-2 text-slate-200">
+          Attach this Proof Packet alongside your normal chronological resume. It organizes your repositories and artifacts by the requirements of this specific role.
+        </p>
+      </div>
       <Card className="border-slate-800/80 bg-slate-950/40">
         <CardHeader className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
           <div>
@@ -268,7 +274,7 @@ export function JobDetailPage() {
                   <p className="text-xs text-muted-foreground">Requirement text stays locked; jot your own talking points below.</p>
                 </div>
                 <div className="mt-3 grid gap-3 md:grid-cols-2">
-                  {proof.requirements.map((requirement) => {
+                  {proof.requirements.slice(0, 5).map((requirement) => {
                     const mappings = proof.mappings.filter((mapping) => {
                       if (mapping.requirementId !== requirement.id) return false;
                       const projectId = mapping.evidence.projectId;
@@ -286,7 +292,7 @@ export function JobDetailPage() {
                             [requirement.id]: value,
                           }))
                         }
-                        mappings={mappings}
+                        mappings={mappings.slice(0, 2)}
                         sampleOptions={proofSamples}
                         selectedSampleId={requirementSampleMap[requirement.id] ?? null}
                         onSampleChange={(sampleId) => handleRequirementSampleChange(requirement.id, sampleId)}
@@ -479,42 +485,61 @@ function CodeSamplesSelector({
 }
 
 function ProofCodeSamplesSection({ samples }: { samples: ProofPacketCodeSample[] }) {
+  const [expanded, setExpanded] = useState<Set<string>>(() => new Set());
+  const toggle = (id: string) => {
+    setExpanded((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
+
   return (
     <section className="space-y-3">
       <div>
         <h3 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">Code samples</h3>
-        <p className="text-xs text-muted-foreground">Short, user-curated snippets with direct repo links.</p>
+        <p className="text-xs text-muted-foreground">
+          Optional deep dives for engineers. They stay collapsed so recruiters can skim.
+        </p>
       </div>
       <div className="grid gap-3">
-        {samples.map((sample) => (
-          <div key={sample.id} className="rounded-2xl border border-slate-800/80 bg-slate-950/60 p-3 text-xs text-muted-foreground">
-            <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-              <div>
-                <p className="text-sm font-semibold text-white">{sample.summary}</p>
-                <p className="text-[11px] uppercase tracking-[0.3em] text-slate-500">
-                  {sample.projectFullName} {formatLineLabel(sample.filePath, sample.lineStart, sample.lineEnd)}
-                </p>
-                {sample.tags && sample.tags.length > 0 && (
-                  <div className="mt-1 flex flex-wrap gap-1">
-                    {sample.tags.map((tag) => (
-                      <Badge key={tag} variant="outline" className="text-[10px]">
-                        {tag}
-                      </Badge>
-                    ))}
-                  </div>
-                )}
+        {samples.map((sample) => {
+          const isOpen = expanded.has(sample.id);
+          return (
+            <div key={sample.id} className="rounded-2xl border border-slate-800/80 bg-slate-950/60 p-3 text-xs text-muted-foreground">
+              <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                <div>
+                  <p className="text-sm font-semibold text-white">{sample.summary}</p>
+                  <p className="text-[11px] uppercase tracking-[0.3em] text-slate-500">
+                    {sample.projectFullName} {formatLineLabel(sample.filePath, sample.lineStart, sample.lineEnd)}
+                  </p>
+                </div>
+                <div className="flex items-center gap-2">
+                  {sample.url && (
+                    <a href={sample.url} target="_blank" rel="noopener noreferrer nofollow" className="text-[11px] text-primary underline">
+                      View on GitHub
+                    </a>
+                  )}
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    className="text-xs"
+                    onClick={() => toggle(sample.id)}
+                  >
+                    {isOpen ? "Hide snippet" : "Preview code"}
+                  </Button>
+                </div>
               </div>
-              {sample.url && (
-                <a href={sample.url} target="_blank" rel="noopener noreferrer nofollow" className="text-[11px] text-primary underline">
-                  Proof link
-                </a>
+              {isOpen && (
+                <div className="mt-3">
+                  <CodeSnippet code={sample.code} language={sample.language || inferLanguage(sample.filePath) || "tsx"} />
+                </div>
               )}
             </div>
-            <div className="mt-3">
-              <CodeSnippet code={sample.code} language={sample.language || inferLanguage(sample.filePath) || "tsx"} />
-            </div>
-          </div>
-        ))}
+          );
+        })}
       </div>
     </section>
   );
@@ -525,6 +550,28 @@ function formatLineLabel(filePath?: string, start?: number, end?: number) {
   if (start && end) return `${path} #L${start}-${end}`;
   if (start) return `${path} #L${start}`;
   return path;
+}
+
+const AI_ROLE_LABELS: Record<string, string> = {
+  none: "No AI",
+  assist: "Assist",
+  "co-design": "Co-design",
+  "agent-orchestration": "Agent orchestration",
+};
+
+function formatAiUsage(evidence: { aiRole?: string; aiTools?: string[]; aiSupervisionNotes?: string }): string | null {
+  const parts: string[] = [];
+  if (evidence.aiRole && AI_ROLE_LABELS[evidence.aiRole]) {
+    parts.push(`AI role: ${AI_ROLE_LABELS[evidence.aiRole]}`);
+  }
+  if (evidence.aiTools && evidence.aiTools.length > 0) {
+    parts.push(`Tools: ${evidence.aiTools.join(", ")}`);
+  }
+  if (evidence.aiSupervisionNotes) {
+    parts.push(`Supervision: ${evidence.aiSupervisionNotes}`);
+  }
+  if (!parts.length) return null;
+  return parts.join(" · ");
 }
 
 function RequirementCard({
@@ -547,34 +594,56 @@ function RequirementCard({
   sampleSaving?: boolean;
 }) {
   const selectedSample = sampleOptions.find((sample) => sample.id === selectedSampleId);
+  const hasEvidence = mappings.length > 0;
   return (
     <div className="rounded-2xl border border-slate-800/80 bg-slate-950/60 p-4 space-y-3">
       <div className="space-y-2">
         <div className="rounded-xl border border-slate-800/80 bg-slate-950/70 p-3">
-          <p className="text-[11px] uppercase tracking-[0.35em] text-muted-foreground">JD requirement</p>
-          <p className="mt-1 text-sm font-semibold text-white">{requirement.text}</p>
+          <div className="flex flex-wrap items-center gap-3">
+            <div className="flex-1">
+              <p className="text-[11px] uppercase tracking-[0.35em] text-muted-foreground">JD requirement</p>
+              <p className="mt-1 text-sm font-semibold text-white">{requirement.text}</p>
+            </div>
+            {selectedSample ? (
+              <Badge variant="outline" className="text-[10px] uppercase tracking-wide text-emerald-300/80">
+                Code sample attached
+              </Badge>
+            ) : null}
+          </div>
         </div>
         <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
           <Badge variant="outline" className="text-[10px] uppercase tracking-wide">
             Priority {requirement.priority}
           </Badge>
-          <span>Evidence: {mappings.length || "0"} project{mappings.length === 1 ? "" : "s"}</span>
+          <span>Evidence: {hasEvidence ? mappings.length : "0"} project{mappings.length === 1 ? "" : "s"}</span>
         </div>
       </div>
       <div className="space-y-2">
-        {mappings.length > 0 ? (
+        {hasEvidence ? (
           mappings.map((mapping) => (
-            <div key={mapping.id} className="rounded-lg border border-slate-800/80 p-3 text-xs text-muted-foreground">
+            <div key={mapping.id} className="rounded-lg border border-slate-800/80 bg-slate-950/70 p-3 text-xs text-muted-foreground">
+            <div className="flex flex-col gap-1">
               <p className="font-semibold text-white">{mapping.evidence.projectFullName}</p>
-              {mapping.evidence.description && <p>{mapping.evidence.description}</p>}
-              {mapping.evidence.fileUrl && (
-                <a href={mapping.evidence.fileUrl} target="_blank" rel="noreferrer" className="text-accent">
-                  Proof link
-                </a>
+              {mapping.evidence.description && <p className="text-slate-300">{mapping.evidence.description}</p>}
+              <div className="flex flex-wrap items-center gap-2 text-[11px]">
+                {mapping.evidence.fileUrl && (
+                  <a href={mapping.evidence.fileUrl} target="_blank" rel="noreferrer" className="text-accent underline">
+                    Repo / doc link
+                  </a>
+                )}
+                {mapping.evidence.demoUrl && (
+                  <a href={mapping.evidence.demoUrl} target="_blank" rel="noreferrer" className="text-accent underline">
+                    Demo
+                  </a>
+                )}
+              </div>
+              {formatAiUsage(mapping.evidence) && (
+                <p className="text-[11px] text-muted-foreground">{formatAiUsage(mapping.evidence)}</p>
               )}
             </div>
-          ))
-        ) : (
+          </div>
+        ))
+      ) : (
           <p className="text-xs text-muted-foreground">No mapped evidence yet.</p>
         )}
       </div>
@@ -604,6 +673,19 @@ function RequirementCard({
             <p className="text-xs font-semibold text-white">{selectedSample.summary}</p>
             <p>{formatLineLabel(selectedSample.filePath, selectedSample.lineStart, selectedSample.lineEnd)}</p>
             <CodeSnippet code={selectedSample.code} language={selectedSample.language || inferLanguage(selectedSample.filePath) || "tsx"} />
+          </div>
+        )}
+        {selectedSample && (
+          <div className="space-y-1 rounded-lg border border-slate-800/70 bg-slate-950/70 p-2">
+            <p className="text-xs font-semibold text-white">{selectedSample.summary}</p>
+            <p className="text-[11px] text-muted-foreground">{formatLineLabel(selectedSample.filePath, selectedSample.lineStart, selectedSample.lineEnd)}</p>
+            <div className="flex flex-wrap gap-2">
+              {selectedSample.url && (
+                <a href={selectedSample.url} target="_blank" rel="noopener noreferrer" className="text-[11px] text-primary underline">
+                  View on GitHub
+                </a>
+              )}
+            </div>
           </div>
         )}
       </div>

@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
-import { ArrowRight, CheckCircle2, CheckCircle, ChevronRight, ShieldCheck } from "lucide-react";
+import { ArrowRight, CheckCircle2, CheckCircle, ChevronRight, ShieldCheck, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -100,8 +100,8 @@ export function LandingPage() {
 
   const primaryCta = isAuthenticated && hasProjects ? (
     <Button asChild size="lg">
-      <Link to="/projects">
-        Go to dashboard <ArrowRight className="ml-2 h-4 w-4" />
+      <Link to="/jobs/new">
+        Generate proof packet <ArrowRight className="ml-2 h-4 w-4" />
       </Link>
     </Button>
   ) : (
@@ -123,19 +123,24 @@ export function LandingPage() {
           <p className="text-xs uppercase tracking-[0.45em] text-slate-400">Made by students for students</p>
           <div className="space-y-4">
             <h1 className="text-4xl font-semibold leading-tight text-white md:text-5xl">
-              Own your early-career engineering story.
+              Attach proof, not fluff.
             </h1>
             <p className="text-base text-slate-300 md:text-lg">
-              Evidensify turns your GitHub repos into hiring-ready packets with linked requirements, curated bullets, and context built for fast review.
+              Evidensify builds a Proof Packet you can send next to your chronological resume. Requirements are mapped to real repos, demos, and optional code samples so reviewers can verify your work fast.
             </p>
             <p className="text-sm text-slate-400">
-              We built it as students for entry-level CS, SWE, and ML peers, so you control every claim and only share what you can prove.
+              Every sentence comes from you. If you used AI, note how. If you did not, leave it blank. Recruiters care more about clarity than hype.
             </p>
           </div>
           <div className="flex flex-col gap-3 sm:flex-row">{primaryCta}</div>
-          <p className="text-xs text-muted-foreground">
-            No résumés rewritten, no mass applying; just one GitHub login and evidence you can send to recruiters.
-          </p>
+          <div className="rounded-2xl border border-slate-800/80 bg-slate-950/60 p-4 text-xs text-slate-200">
+            <div className="flex items-center gap-2 text-sm font-semibold text-white">
+              <Sparkles className="h-4 w-4 text-accent" /> Show how you work with AI
+            </div>
+            <p className="mt-2">
+              Call out tools you used (or note “No AI”) and explain how you supervised the output. Honest detail beats buzzwords when recruiters skim.
+            </p>
+          </div>
         </div>
         <div className="relative w-full">
           <div className="absolute inset-x-4 top-6 -z-10 rounded-3xl bg-slate-800/30 blur-3xl" aria-hidden="true" />
@@ -190,12 +195,30 @@ export function LandingPage() {
         </div>
       </section>
 
+      <section className="mx-auto max-w-6xl px-4 sm:px-6">
+        <div className="rounded-3xl border border-slate-800/70 bg-slate-950/60 p-6">
+          <h2 className="text-xl font-semibold text-white">How it works</h2>
+          <div className="mt-4 grid gap-4 md:grid-cols-4">
+            {[
+              { title: "Paste the JD", description: "Tell us the role so we can extract the top requirements." },
+              { title: "Pick repos", description: "Select a few repos or demos you can walk through live." },
+              { title: "Map requirements", description: "Link each requirement to real artifacts and note AI usage." },
+              { title: "Send with resume", description: "Attach the Proof Packet next to your chronological resume." },
+            ].map((step) => (
+              <div key={step.title} className="rounded-2xl border border-slate-800/60 bg-slate-950/50 p-4 text-sm text-slate-200">
+                <p className="text-sm font-semibold text-white">{step.title}</p>
+                <p className="mt-1 text-xs text-slate-400">{step.description}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
       <section className="mx-auto max-w-6xl px-4 pb-8 sm:px-6">
         <div className="rounded-3xl border border-slate-800/70 bg-slate-950/60 p-6 shadow-xl shadow-slate-950/30">
-          <h2 className="text-2xl font-semibold text-white">Show original builds, skip tutorials</h2>
+          <h2 className="text-2xl font-semibold text-white">Requirement-proof mapping beats portfolio spam</h2>
           <p className="mt-3 text-sm text-slate-300">
-            Hiring managers skim for structure, thoughtful comments, and clean commits, not half-finished tutorials. Evidensify highlights those signals with original repos,
-            README context, and short code excerpts that show decision making.
+            Hiring managers skim for structure, thoughtful comments, and honest context. Evidensify links each requirement to the repo paths, docs, demos, and optional code samples that prove it.
           </p>
           <ul className="mt-4 space-y-2 text-sm text-slate-300">
             <li className="flex items-start gap-2">
@@ -230,6 +253,18 @@ export function LandingPage() {
               </li>
             ))}
           </ul>
+        </div>
+      </section>
+
+      <section className="mx-auto max-w-6xl rounded-3xl border border-slate-800/70 bg-slate-950/60 px-4 py-10 sm:px-6">
+        <h2 className="text-xl font-semibold text-white">FAQ</h2>
+        <div className="mt-4 space-y-4 text-sm text-slate-300">
+          <div>
+            <p className="font-semibold text-white">Is this a replacement for my resume?</p>
+            <p className="mt-1 text-slate-300">
+              No. ProofCraft organizes your repo evidence so reviewers can verify your resume faster. Attach the Proof Packet alongside your normal chronological resume.
+            </p>
+          </div>
         </div>
       </section>
     </div>

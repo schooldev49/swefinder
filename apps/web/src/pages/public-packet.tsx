@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { useParams } from "react-router-dom";
+import { Link, useParams } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { CheckCircle2, ChevronRight } from "lucide-react";
 import type { Evidence, EvidenceMappingWithEvidence, ProofPacketCodeSample } from "@evidensify/types";
@@ -10,6 +10,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { CodeSnippet } from "@/components/ui/code-snippet";
 import { cn } from "@/lib/utils";
+import { Button } from "@/components/ui/button";
 
 
 const trustPoints = [
@@ -29,6 +30,12 @@ export function PublicPacketPage() {
 
   return (
     <PublicShareLayout>
+      <div className="mb-6 rounded-2xl border border-slate-900/80 bg-slate-950/60 p-4 text-sm text-slate-200">
+        <p className="text-xs uppercase tracking-[0.35em] text-muted-foreground">Attach with resume</p>
+        <p className="mt-2">
+          This Proof Packet is an add-on to the candidate's chronological resume. It aligns their repositories and artifacts to this specific job so you can verify work quickly.
+        </p>
+      </div>
       {packetQuery.isLoading ? (
         <div className="h-40 animate-pulse rounded-2xl bg-slate-900/60" />
       ) : packetQuery.isError ? (
@@ -52,6 +59,12 @@ function PacketView({
 
   return (
     <div className="space-y-6">
+      <div className="rounded-2xl border border-slate-900/80 bg-slate-950/60 p-4 text-sm text-slate-200">
+        <p className="text-xs uppercase tracking-[0.35em] text-muted-foreground">Attach with resume</p>
+        <p className="mt-2">
+          Use this alongside the candidate's chronological resume. Requirements are mapped directly to tangible repos, docs, and demos for quick verification.
+        </p>
+      </div>
       <Card className="border-slate-900/80 bg-slate-950/80">
         <CardHeader className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
           <div className="flex items-center gap-4">
@@ -90,7 +103,7 @@ function PacketView({
             <section>
               <SectionHeading title="Key requirements" subtitle="Each mapped to concrete repos or docs." />
               <div className="mt-4 grid gap-4 md:grid-cols-2">
-                {proof.requirements.map((requirement) => (
+                {proof.requirements.slice(0, 5).map((requirement) => (
                   <RequirementPublicCard
                     key={requirement.id}
                     requirement={requirement}
@@ -155,6 +168,18 @@ function PacketView({
         </Card>
       )}
 
+      <div className="rounded-2xl border border-slate-900/80 bg-slate-950/60 p-4 text-sm text-slate-200">
+        <h3 className="text-xs uppercase tracking-[0.35em] text-muted-foreground">How to read this</h3>
+        <ul className="mt-3 space-y-2 text-sm text-slate-300">
+          <li>• Use this alongside the candidate's chronological resume—it's just an evidence sheet.</li>
+          <li>• Links open GitHub or other hosts you already trust. Code is collapsed unless you open it.</li>
+          <li>• Nothing is auto-scored; every claim is tied to a concrete repo, doc, or demo.</li>
+        </ul>
+        <Link to="/security" className="mt-3 inline-block text-xs text-primary underline">
+          Security & access practices
+        </Link>
+      </div>
+
             <section className="border-t border-slate-800 bg-slate-900/40">
               <div className="mx-auto grid max-w-6xl gap-8 px-4 py-14 sm:px-6 md:grid-cols-2">
                 <div>
@@ -189,6 +214,7 @@ function RequirementPublicCard({
   selectedSampleId: string | null;
 }) {
   const selectedSample = sampleOptions.find((sample) => sample.id === selectedSampleId);
+  const trimmedMappings = mappings.slice(0, 2);
   return (
     <div className="rounded-2xl border border-slate-900/80 bg-slate-950/60 p-4 space-y-3">
       <div>
@@ -201,10 +227,10 @@ function RequirementPublicCard({
         </div>
       </div>
       <div className="space-y-2">
-        {mappings.length === 0 ? (
+        {trimmedMappings.length === 0 ? (
           <p className="text-xs text-muted-foreground">No direct evidence yet.</p>
         ) : (
-          mappings.map((mapping) => (
+          trimmedMappings.map((mapping) => (
             <div key={mapping.id} className="rounded-xl border border-slate-900/80 p-3 text-xs text-muted-foreground">
               <p className="font-semibold text-white">{mapping.evidence.projectFullName}</p>
               {mapping.rationale && <p>{mapping.rationale}</p>}
@@ -217,6 +243,9 @@ function RequirementPublicCard({
                 >
                   View proof
                 </a>
+              )}
+              {formatAiUsagePublic(mapping.evidence) && (
+                <p className="text-[11px] text-slate-500 mt-1">{formatAiUsagePublic(mapping.evidence)}</p>
               )}
               {mapping.evidence.codeSnippet ? <EvidenceSnippetBlock snippet={mapping.evidence.codeSnippet} /> : null}
             </div>
@@ -241,39 +270,50 @@ function RequirementPublicCard({
 }
 
 function PublicCodeSamples({ samples }: { samples: ProofPacketCodeSample[] }) {
+  const [expanded, setExpanded] = useState<Set<string>>(() => new Set());
+  const toggle = (id: string) => {
+    setExpanded((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
+
   return (
     <section>
-      <SectionHeading title="Code samples" subtitle="Short, auditable snippets the candidate curated for this packet." />
+      <SectionHeading title="Code samples" subtitle="Optional deep dives for engineers—collapsed by default." />
       <div className="mt-4 space-y-3">
-        {samples.map((sample) => (
-          <div key={sample.id} className="rounded-2xl border border-slate-900/80 bg-slate-950/60 p-4 text-xs text-muted-foreground">
-            <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-              <div>
-                <p className="text-sm font-semibold text-white">{sample.summary}</p>
-                <p className="text-[11px] uppercase tracking-[0.3em] text-slate-500">
-                  {sample.projectFullName} {formatPublicLineLabel(sample.filePath, sample.lineStart, sample.lineEnd)}
-                </p>
-                {sample.tags && sample.tags.length > 0 && (
-                  <div className="mt-1 flex flex-wrap gap-1">
-                    {sample.tags.map((tag) => (
-                      <Badge key={tag} variant="outline" className="text-[10px]">
-                        {tag}
-                      </Badge>
-                    ))}
-                  </div>
-                )}
+        {samples.map((sample) => {
+          const open = expanded.has(sample.id);
+          return (
+            <div key={sample.id} className="rounded-2xl border border-slate-900/80 bg-slate-950/60 p-4 text-xs text-muted-foreground">
+              <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                <div>
+                  <p className="text-sm font-semibold text-white">{sample.summary}</p>
+                  <p className="text-[11px] uppercase tracking-[0.3em] text-slate-500">
+                    {sample.projectFullName} {formatPublicLineLabel(sample.filePath, sample.lineStart, sample.lineEnd)}
+                  </p>
+                </div>
+                <div className="flex items-center gap-2">
+                  {sample.url && (
+                    <a href={sample.url} target="_blank" rel="noopener noreferrer nofollow" className="text-[11px] text-primary underline">
+                      View on GitHub
+                    </a>
+                  )}
+                  <Button variant="ghost" size="sm" className="text-xs" onClick={() => toggle(sample.id)}>
+                    {open ? "Hide snippet" : "Preview code"}
+                  </Button>
+                </div>
               </div>
-              {sample.url && (
-                <a href={sample.url} target="_blank" rel="noopener noreferrer nofollow" className="text-[11px] text-primary underline">
-                  View source
-                </a>
+              {open && (
+                <div className="mt-3">
+                  <CodeSnippet code={sample.code} language={sample.language || inferLanguage(sample.filePath) || "tsx"} />
+                </div>
               )}
             </div>
-            <div className="mt-3">
-              <CodeSnippet code={sample.code} language={sample.language || inferLanguage(sample.filePath) || "tsx"} />
-            </div>
-          </div>
-        ))}
+          );
+        })}
       </div>
     </section>
   );
@@ -317,6 +357,28 @@ function SectionHeading({ title, subtitle }: { title: string; subtitle?: string 
       {subtitle && <p className="text-xs text-muted-foreground">{subtitle}</p>}
     </div>
   );
+}
+
+const AI_ROLE_LABELS: Record<string, string> = {
+  none: "No AI",
+  assist: "Assist",
+  "co-design": "Co-design",
+  "agent-orchestration": "Agent orchestration",
+};
+
+function formatAiUsagePublic(evidence: { aiRole?: string; aiTools?: string[]; aiSupervisionNotes?: string }): string | null {
+  const parts: string[] = [];
+  if (evidence.aiRole && AI_ROLE_LABELS[evidence.aiRole]) {
+    parts.push(`AI role: ${AI_ROLE_LABELS[evidence.aiRole]}`);
+  }
+  if (evidence.aiTools && evidence.aiTools.length) {
+    parts.push(`Tools: ${evidence.aiTools.join(", ")}`);
+  }
+  if (evidence.aiSupervisionNotes) {
+    parts.push(`Supervision: ${evidence.aiSupervisionNotes}`);
+  }
+  if (!parts.length) return null;
+  return parts.join(" · ");
 }
 
 function EvidenceSnippetBlock({

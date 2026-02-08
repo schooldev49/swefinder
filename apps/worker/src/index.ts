@@ -1,4 +1,5 @@
 import type {
+  AIRole,
   EvidenceMappingWithEvidence,
   Job,
   ProofPacket,
@@ -630,6 +631,9 @@ function buildEvidenceFromMapping(mapping: any, projects: Project[]): EvidenceMa
     demoUrl: mapping.links?.[1],
     context: mapping.context || project?.context,
     year: mapping.year || project?.year,
+    aiRole: project?.aiRole,
+    aiTools: project?.aiTools ?? [],
+    aiSupervisionNotes: project?.aiSupervisionNotes,
   };
 }
 
@@ -740,6 +744,10 @@ function normalizeProjectPayload(
     htmlUrl = validateProjectUrl(htmlUrl);
   }
 
+  const aiRole = normalizeAiRole(project.aiRole);
+  const aiTools = normalizeAiTools(project.aiTools);
+  const aiSupervisionNotes = normalizeAiSupervisionNotes(project.aiSupervisionNotes);
+
   return {
     id: project.id || crypto.randomUUID(),
     userId,
@@ -759,6 +767,9 @@ function normalizeProjectPayload(
     tags: project.tags ?? [],
     isShowcased: Boolean(project.isShowcased),
     codeSamples: normalizeCodeSamples(project.codeSamples),
+    aiRole,
+    aiTools,
+    aiSupervisionNotes,
   };
 }
 
@@ -766,6 +777,10 @@ const MAX_CODE_SAMPLES_PER_PROJECT = 10;
 const MAX_SAMPLE_LINES = 40;
 const MAX_SAMPLE_CODE_CHARS = 2000;
 const MAX_SAMPLE_SUMMARY_CHARS = 200;
+const MAX_AI_SUPERVISION_LENGTH = 400;
+const MAX_AI_TOOLS = 5;
+const MAX_AI_TOOL_LENGTH = 40;
+const AI_ROLE_VALUES: AIRole[] = ["none", "assist", "co-design", "agent-orchestration"];
 
 function normalizeCodeSamples(samples?: ProjectCodeSample[]): ProjectCodeSample[] {
   if (!samples || samples.length === 0) return [];
@@ -804,6 +819,31 @@ function validateOptionalUrl(value: string): string | undefined {
   const trimmed = value.trim();
   if (!trimmed) return undefined;
   return validateProjectUrl(trimmed);
+}
+
+function normalizeAiRole(role?: string | null): AIRole | undefined {
+  if (!role) return undefined;
+  const normalized = role.toLowerCase() as AIRole;
+  return AI_ROLE_VALUES.includes(normalized) ? normalized : undefined;
+}
+
+function normalizeAiTools(tools?: string[] | null): string[] {
+  if (!tools || tools.length === 0) return [];
+  const unique = Array.from(
+    new Set(
+      tools
+        .map((tool) => tool?.toString().trim())
+        .filter((tool): tool is string => Boolean(tool))
+    )
+  );
+  return unique.slice(0, MAX_AI_TOOLS).map((tool) => tool.slice(0, MAX_AI_TOOL_LENGTH));
+}
+
+function normalizeAiSupervisionNotes(notes?: string | null): string | undefined {
+  if (!notes) return undefined;
+  const trimmed = notes.trim();
+  if (!trimmed) return undefined;
+  return trimmed.slice(0, MAX_AI_SUPERVISION_LENGTH);
 }
 
 function validateProjectUrl(url: string): string {

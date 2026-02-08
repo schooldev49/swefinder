@@ -494,11 +494,35 @@ export function OnboardingPage() {
               <div className="rounded-2xl border border-slate-800/80 bg-slate-950/30 p-4">
                 <p className="text-xs uppercase tracking-[0.35em] text-muted-foreground">Proof checklist</p>
                 <ul className="mt-3 space-y-2 text-sm text-slate-200">
-                  <li>• At least 1–3 repositories with README/context filled in.</li>
-                  <li>• Public URLs for demos or notebooks so reviewers can click.</li>
-                  <li>• Add code samples with summaries/tags from the Projects page.</li>
+                  <li>• Describe the problem, tools, design choices, and limitations in your own words.</li>
+                  <li>• Mention how you used AI (Assist, Co-design, Agent orchestration) or note that you did not use it.</li>
+                  <li>• Only add 10–40 line snippets when they illustrate a tricky decision or trade-off.</li>
                 </ul>
-                <p className="mt-3 text-xs text-muted-foreground">When everything feels ready, click “Next” to start your first job-specific Proof Packet.</p>
+                <p className="mt-3 text-xs text-muted-foreground">When everything feels ready, click Next to start your first job-specific Proof Packet.</p>
+              </div>
+              <div className="rounded-2xl border border-dashed border-slate-700/70 bg-slate-950/40 p-4">
+                <p className="text-xs uppercase tracking-[0.35em] text-muted-foreground">Packet preview</p>
+                <div className="mt-3 space-y-2 rounded-xl border border-slate-800/80 bg-slate-950/60 p-3 text-xs text-slate-300">
+                  <div className="flex items-center justify-between gap-2">
+                    <p className="text-sm font-semibold text-white">Requirement: Build backend APIs in Python</p>
+                    <Badge variant="outline" className="text-[10px] uppercase tracking-wide text-emerald-300/80">
+                      Code sample attached
+                    </Badge>
+                  </div>
+                  <div className="rounded-lg border border-slate-800/80 bg-slate-950/70 p-2">
+                    <p className="text-sm font-semibold text-white">Project: ml-tracker-api</p>
+                    <p className="text-[11px] text-slate-400">AI role: Assist (Copilot) · Supervision: Reviewed generated endpoints and added tests.</p>
+                    <div className="mt-1 flex flex-wrap gap-2">
+                      <span className="text-[11px] text-accent underline">Repo link</span>
+                      <span className="text-[11px] text-accent underline">Demo</span>
+                    </div>
+                  </div>
+                  <div className="rounded-lg border border-slate-800/80 bg-slate-950/50 p-2 text-[11px]">
+                    <p className="font-semibold text-slate-300">Code sample summary (collapsed)</p>
+                    <p className="text-slate-500">src/api/routes.py · L35–62</p>
+                  </div>
+                </div>
+                <p className="mt-2 text-xs text-muted-foreground">Your Proof Packet will look like this once you generate it.</p>
               </div>
             </CardContent>
           </Card>
