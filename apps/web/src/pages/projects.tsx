@@ -22,7 +22,7 @@ import { cn } from "@/lib/utils";
 import { Loader2, RefreshCw, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { CodeSnippet } from "@/components/ui/code-snippet";
-import type { ProjectCodeSample } from "@evidensify/types";
+import type { AIRole, ProjectCodeSample } from "@evidensify/types";
 
 const CONTEXT_OPTIONS = ["Personal", "Course", "Open Source", "Startup", "Research"];
 const AI_ROLE_OPTIONS = [
@@ -529,7 +529,7 @@ export function ProjectsPage() {
                       <select
                         className="w-full rounded-lg border border-border bg-transparent px-3 py-2 text-sm text-white"
                         value={project.aiRole || ""}
-                        onChange={(event) => updateProject(project.id, { aiRole: event.target.value || undefined })}
+                        onChange={(event) => updateProject(project.id, { aiRole: event.target.value as AIRole || undefined })}
                       >
                         <option value="">Select</option>
                         {AI_ROLE_OPTIONS.map((option) => (
