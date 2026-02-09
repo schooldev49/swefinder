@@ -729,7 +729,6 @@ type SampleSelection = {
 
 interface CodeSamplePickerProps {
   project: EditableProject;
-  open: boolean;
   onClose: () => void;
   onSelect: (selection: SampleSelection) => void;
 }
@@ -983,13 +982,8 @@ function ProjectCodeSamplesEditor({
           onSelectFromGitHub={canUsePicker ? () => setIsPickerOpen(true) : undefined}
         />
       ) : null}
-      {canUsePicker ? (
-        <CodeSamplePicker
-          project={project}
-          open={isPickerOpen}
-          onClose={() => setIsPickerOpen(false)}
-          onSelect={handlePickerSelect}
-        />
+      {canUsePicker && isPickerOpen ? (
+        <CodeSamplePicker project={project} onClose={() => setIsPickerOpen(false)} onSelect={handlePickerSelect} />
       ) : null}
     </div>
   );
@@ -1134,7 +1128,7 @@ function SampleEditorModal({
   );
 }
 
-function CodeSamplePicker({ project, open, onClose, onSelect }: CodeSamplePickerProps) {
+function CodeSamplePicker({ project, onClose, onSelect }: CodeSamplePickerProps) {
   const isGitHubProject = project.sourceType !== "link" && Boolean(project.fullName?.includes("/"));
   const defaultBranch = project.defaultBranch || "main";
   const [activeTab, setActiveTab] = useState<"browse" | "link">("browse");
@@ -1152,17 +1146,16 @@ function CodeSamplePicker({ project, open, onClose, onSelect }: CodeSamplePicker
   const [blobLoading, setBlobLoading] = useState(false);
 
   useEffect(() => {
-    if (!open) return;
     const previous = document.body.style.overflow;
     document.body.style.overflow = "hidden";
     return () => {
       document.body.style.overflow = previous;
     };
-  }, [open]);
+  }, []);
 
   useEffect(() => {
     let isMounted = true;
-    if (open && isGitHubProject) {
+    if (isGitHubProject) {
       setTreeLoading(true);
       setTreeError(null);
       fetchRepoFileTree(project.fullName, defaultBranch)
@@ -1185,19 +1178,13 @@ function CodeSamplePicker({ project, open, onClose, onSelect }: CodeSamplePicker
   }, [open, project.fullName, defaultBranch, isGitHubProject]);
 
   useEffect(() => {
-    if (!open) {
-      setActiveTab("browse");
-      setSelectedPath(null);
-      setFilePreview(null);
-      setSelection(null);
-      setFileError(null);
-      setBlobError(null);
-    }
-  }, [open]);
-
-  if (!open || !isGitHubProject) {
-    return null;
-  }
+    setActiveTab("browse");
+    setSelectedPath(null);
+    setFilePreview(null);
+    setSelection(null);
+    setFileError(null);
+    setBlobError(null);
+  }, []);
 
   const filteredFiles = useMemo(() => {
     const term = searchTerm.toLowerCase();
@@ -1206,6 +1193,10 @@ function CodeSamplePicker({ project, open, onClose, onSelect }: CodeSamplePicker
       .filter((entry) => entry.path.toLowerCase().includes(term))
       .sort((a, b) => a.path.localeCompare(b.path));
   }, [tree, searchTerm]);
+
+  if (!isGitHubProject) {
+    return null;
+  }
 
   const selectedLineCount = selection ? selection.end - selection.start + 1 : 0;
   const selectedCode =
