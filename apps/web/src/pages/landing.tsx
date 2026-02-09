@@ -142,7 +142,7 @@ export function LandingPage() {
               Attach proof, not fluff.
             </h1>
             <p className="text-base text-slate-300 md:text-lg">
-              Evidensify builds a Proof Packet you can send next to your chronological resume. Requirements are mapped to real repos, demos, and optional code samples so reviewers can verify your work fast.
+              Evidensify builds a Proof Packet you can send next to your chronological resume. Requirements are mapped to real repos, demos, and optional samples (code, docs, commits) so reviewers can verify your work fast.
             </p>
             <p className="text-sm text-slate-400">
               Every sentence comes from you. If you used AI, note how. If you did not, leave it blank. Recruiters care more about clarity than hype.
@@ -234,7 +234,7 @@ export function LandingPage() {
         <div className="rounded-3xl border border-slate-800/70 bg-slate-950/60 p-6 shadow-xl shadow-slate-950/30">
           <h2 className="text-2xl font-semibold text-white">Requirement-proof mapping beats portfolio spam</h2>
           <p className="mt-3 text-sm text-slate-300">
-            Hiring managers skim for structure, thoughtful comments, and honest context. Evidensify links each requirement to the repo paths, docs, demos, and optional code samples that prove it.
+            Hiring managers skim for structure, thoughtful comments, and honest context. Evidensify links each requirement to the repo paths, docs, demos, and optional samples (code, docs, commits) that prove it.
           </p>
           <ul className="mt-4 space-y-2 text-sm text-slate-300">
             <li className="flex items-start gap-2">
@@ -341,7 +341,7 @@ function InlineSnippet({
         className="flex w-full items-center justify-between gap-2 text-left text-[11px] font-semibold uppercase tracking-[0.2em] text-slate-300"
         aria-expanded={open}
       >
-        <span>View code sample</span>
+        <span>View sample</span>
         <ChevronRight className={cn("h-3.5 w-3.5 transition-transform duration-200", open ? "rotate-90" : "")} aria-hidden="true" />
       </button>
       {open && (

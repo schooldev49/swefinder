@@ -6,12 +6,15 @@ import {
   fetchProjects,
   fetchRepoFileContent,
   fetchRepoFileTree,
+  fetchRepoReadmeContent,
+  fetchRepoCommitsList,
   saveProjects,
   suggestSnippetSummary,
   suggestSnippetTags,
   type ApiRepoSummary,
   type ProjectPayload,
   type RepoTreeItem,
+  type RepoCommitSummary,
 } from "@/lib/api";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
@@ -24,7 +27,7 @@ import { Label } from "@/components/ui/label";
 import { cn } from "@/lib/utils";
 import { Loader2, RefreshCw, Search, Trash2, X, Pencil } from "lucide-react";
 import { toast } from "sonner";
-import type { AIRole, Project, ProjectCodeSample } from "@evidensify/types";
+import type { AIRole, CodeSampleType, Project, ProjectCodeSample } from "@evidensify/types";
 
 const CONTEXT_OPTIONS = ["Personal", "Course", "Open Source", "Startup", "Research"];
 const AI_ROLE_OPTIONS = [
@@ -36,6 +39,7 @@ const AI_ROLE_OPTIONS = [
 const MAX_SHOWCASED = 4;
 const MAX_SAMPLE_LINES = 40;
 const MAX_SAMPLE_CODE_CHARS = 2000;
+const DOC_EXCERPT_CHARS = 800;
 const PROJECTS_CHECKLIST = [
   {
     title: "Import repos",
@@ -43,13 +47,37 @@ const PROJECTS_CHECKLIST = [
   },
   {
     title: "Add context & AI usage",
-    detail: "Explain design choices, note how you used (or skipped) AI, and add short code samples.",
+    detail: "Explain design choices, note how you used (or skipped) AI, and add short samples (code, docs, commits).",
   },
   {
     title: "Generate packets",
     detail: "Head to Jobs → New job to map these projects to a JD-specific Proof Packet.",
   },
 ];
+
+const SAMPLE_TYPE_OPTIONS: Array<{ value: CodeSampleType; label: string; helper: string }> = [
+  {
+    value: "code",
+    label: "Code snippet",
+    helper: "Show 10–40 lines of implementation, tests, or evaluators.",
+  },
+  {
+    value: "readme",
+    label: "README / doc excerpt",
+    helper: "Pull a short section that explains design choices or results.",
+  },
+  {
+    value: "commit",
+    label: "Commit trail",
+    helper: "Highlight a commit that fixes a bug or ships a notable change.",
+  },
+];
+
+const SAMPLE_TYPE_LABELS: Record<CodeSampleType, string> = {
+  code: "Code sample",
+  readme: "README sample",
+  commit: "Commit sample",
+};
 
 type ExternalFormState = {
   title: string;
@@ -740,6 +768,7 @@ export function ProjectsPage() {
 }
 
 type SampleDraft = {
+  type: CodeSampleType;
   summary: string;
   filePath: string;
   lineStart: string;
@@ -751,11 +780,12 @@ type SampleDraft = {
 };
 
 type SampleSelection = {
-  filePath: string;
-  language: string;
-  lineStart: number;
-  lineEnd: number;
-  sourceUrl: string;
+  type: CodeSampleType;
+  filePath?: string;
+  language?: string;
+  lineStart?: number;
+  lineEnd?: number;
+  sourceUrl?: string;
   code: string;
 };
 
@@ -772,6 +802,7 @@ type FilePreviewState = {
 };
 
 const createEmptySampleDraft = (): SampleDraft => ({
+  type: "code",
   summary: "",
   filePath: "",
   lineStart: "",
@@ -824,6 +855,7 @@ function ProjectCodeSamplesEditor({
   const openModal = (mode: "create" | "edit", sample?: ProjectCodeSample) => {
     if (mode === "edit" && sample) {
       setDraft({
+        type: sample.type || "code",
         summary: sample.summary || "",
         filePath: sample.filePath || "",
         lineStart: sample.lineStart ? sample.lineStart.toString() : "",
@@ -860,6 +892,19 @@ function ProjectCodeSamplesEditor({
         setTagSuggestions([]);
       }
     };
+  const handleSampleTypeChange = (value: CodeSampleType) => {
+    setDraft((prev) => ({
+      ...prev,
+      type: value,
+      ...(value === "code"
+        ? {}
+        : {
+            lineStart: "",
+            lineEnd: "",
+            language: value === "readme" ? "markdown" : prev.language || "",
+          }),
+    }));
+  };
   const handleDelete = (sampleId: string) => {
     onChange(samples.filter((sample) => sample.id !== sampleId));
     if (editingSampleId === sampleId) {
@@ -875,15 +920,17 @@ function ProjectCodeSamplesEditor({
       return;
     }
     if (code.length > MAX_SAMPLE_CODE_CHARS) {
-      toast("Snippet too long", { description: `Limit code samples to ${MAX_SAMPLE_CODE_CHARS} characters.` });
+      toast("Snippet too long", { description: `Limit samples to ${MAX_SAMPLE_CODE_CHARS} characters.` });
       return;
     }
-    const lineStart = draft.lineStart ? Math.max(1, Number.parseInt(draft.lineStart, 10)) : undefined;
-    let lineEnd = draft.lineEnd ? Math.max(1, Number.parseInt(draft.lineEnd, 10)) : undefined;
-    if (lineStart && lineEnd && lineEnd < lineStart) {
+    const sampleType: CodeSampleType = draft.type || "code";
+    const enforceLines = sampleType === "code";
+    const lineStart = enforceLines && draft.lineStart ? Math.max(1, Number.parseInt(draft.lineStart, 10)) : undefined;
+    let lineEnd = enforceLines && draft.lineEnd ? Math.max(1, Number.parseInt(draft.lineEnd, 10)) : undefined;
+    if (enforceLines && lineStart && lineEnd && lineEnd < lineStart) {
       lineEnd = lineStart;
     }
-    if (lineStart && lineEnd && lineEnd - lineStart > MAX_SAMPLE_LINES) {
+    if (enforceLines && lineStart && lineEnd && lineEnd - lineStart > MAX_SAMPLE_LINES) {
       toast("Range too long", { description: `Keep snippets to ${MAX_SAMPLE_LINES} lines or less.` });
       return;
     }
@@ -894,13 +941,16 @@ function ProjectCodeSamplesEditor({
       .slice(0, 5);
     const payload: ProjectCodeSample = {
       id: editingSampleId || generateSampleId(),
+      type: sampleType,
       summary: summary.slice(0, 200),
       code,
       filePath: draft.filePath.trim() || undefined,
       lineStart,
       lineEnd,
       url: draft.url.trim() || projectUrl,
-      language: (draft.language || inferLanguage(draft.filePath)).toLowerCase() || undefined,
+      language:
+        (draft.language || inferLanguage(draft.filePath) || (sampleType === "readme" ? "markdown" : sampleType === "commit" ? "text" : "")).toLowerCase() ||
+        undefined,
       tags: normalizedTags,
     };
     if (editingSampleId) {
@@ -916,11 +966,12 @@ function ProjectCodeSamplesEditor({
   const handlePickerSelect = (selection: SampleSelection) => {
     setDraft((prev) => ({
       ...prev,
-      filePath: selection.filePath,
-      language: selection.language,
-      lineStart: selection.lineStart.toString(),
-      lineEnd: selection.lineEnd.toString(),
-      url: selection.sourceUrl,
+      type: selection.type || prev.type || "code",
+      filePath: selection.filePath || "",
+      language: selection.language || prev.language || "",
+      lineStart: selection.lineStart ? selection.lineStart.toString() : "",
+      lineEnd: selection.lineEnd ? selection.lineEnd.toString() : "",
+      url: selection.sourceUrl || projectUrl || "",
       code: selection.code,
     }));
     setModalMode((prev) => prev ?? "create");
@@ -967,12 +1018,17 @@ function ProjectCodeSamplesEditor({
         <div className="space-y-3">
           {samples.map((sample) => (
             <div key={sample.id} className="rounded-2xl border border-slate-900/80 bg-slate-950/60 p-3 text-xs text-muted-foreground">
-              <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                <div>
-                  <p className="text-sm font-semibold text-white line-clamp-2">{sample.summary}</p>
-                  <p className="text-[11px] uppercase tracking-[0.3em] text-slate-500">
-                    {sample.filePath || 'snippet'} {formatLineRange(sample.lineStart, sample.lineEnd)}
-                  </p>
+                <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                  <div>
+                    <div className="flex flex-wrap items-center gap-2">
+                      <p className="text-sm font-semibold text-white line-clamp-2">{sample.summary}</p>
+                      <Badge variant="outline" className="border-accent/60 text-[10px] uppercase tracking-wide text-accent">
+                        {SAMPLE_TYPE_LABELS[sample.type || "code"]}
+                      </Badge>
+                    </div>
+                    <p className="text-[11px] uppercase tracking-[0.3em] text-slate-500">
+                      {sample.filePath || 'snippet'} {formatLineRange(sample.lineStart, sample.lineEnd)}
+                    </p>
                   {sample.tags && sample.tags.length > 0 && (
                     <div className="mt-1 flex flex-wrap gap-1">
                       {sample.tags.map((tag) => (
@@ -1004,6 +1060,7 @@ function ProjectCodeSamplesEditor({
           mode={modalMode}
           onClose={closeModal}
           onSave={upsertSample}
+          onTypeChange={handleSampleTypeChange}
           onDraftChange={handleDraftChange}
           onSuggestSummary={handleSuggestSummary}
           onSuggestTags={handleSuggestTags}
@@ -1025,6 +1082,7 @@ interface SampleEditorModalProps {
   mode: "create" | "edit";
   onClose: () => void;
   onSave: () => void;
+  onTypeChange: (value: CodeSampleType) => void;
   onDraftChange: (field: keyof SampleDraft) => (event: ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => void;
   onSuggestSummary: () => void;
   onSuggestTags: () => void;
@@ -1040,6 +1098,7 @@ function SampleEditorModal({
   mode,
   onClose,
   onSave,
+  onTypeChange,
   onDraftChange,
   onSuggestSummary,
   onSuggestTags,
@@ -1049,6 +1108,15 @@ function SampleEditorModal({
   tagsPending,
   onSelectFromGitHub,
 }: SampleEditorModalProps) {
+  const typeCopy = SAMPLE_TYPE_OPTIONS.find((option) => option.value === draft.type);
+  const codeLabel = draft.type === "code" ? "Code" : "Excerpt";
+  const codePlaceholder =
+    draft.type === "code"
+      ? "Paste 10–40 lines of code, tests, or evaluator logic."
+      : draft.type === "readme"
+        ? "Paste the README paragraph or doc snippet that proves this requirement."
+        : "Paste the commit summary or bullet points explaining what changed.";
+  const showLineInputs = draft.type === "code";
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 px-4 py-6" role="dialog" aria-modal="true" onClick={onClose}>
       <div
@@ -1057,7 +1125,7 @@ function SampleEditorModal({
       >
         <div className="flex items-center justify-between">
           <div>
-            <p className="text-xs uppercase tracking-[0.35em] text-muted-foreground">{mode === "edit" ? "Edit code sample" : "New code sample"}</p>
+            <p className="text-xs uppercase tracking-[0.35em] text-muted-foreground">{mode === "edit" ? "Edit sample" : "New sample"}</p>
             <h3 className="text-base font-semibold text-white">{draft.summary || "Untitled snippet"}</h3>
           </div>
           <button type="button" className="rounded-full border border-slate-700 p-2 text-slate-400 hover:text-white" onClick={onClose}>
@@ -1065,6 +1133,23 @@ function SampleEditorModal({
           </button>
         </div>
         <div className="mt-4 space-y-4">
+          <div>
+            <Label>Sample type</Label>
+            <div className="mt-2 flex flex-wrap gap-2">
+              {SAMPLE_TYPE_OPTIONS.map((option) => (
+                <Button
+                  key={option.value}
+                  type="button"
+                  size="sm"
+                  variant={draft.type === option.value ? "secondary" : "ghost"}
+                  onClick={() => onTypeChange(option.value)}
+                >
+                  {option.label}
+                </Button>
+              ))}
+            </div>
+            {typeCopy?.helper ? <p className="mt-1 text-[11px] text-muted-foreground">{typeCopy.helper}</p> : null}
+          </div>
           <div>
             <div className="flex items-center justify-between gap-2">
               <Label>Summary</Label>
@@ -1091,22 +1176,29 @@ function SampleEditorModal({
               <Input value={draft.language} onChange={onDraftChange("language")} className="mt-2" placeholder="python" />
             </div>
           </div>
-          <div className="grid gap-3 md:grid-cols-2">
-            <div className="grid grid-cols-2 gap-3">
-              <div>
-                <Label>Start line</Label>
-                <Input type="number" min={1} value={draft.lineStart} onChange={onDraftChange("lineStart")} className="mt-2" />
+          {showLineInputs ? (
+            <div className="grid gap-3 md:grid-cols-2">
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <Label>Start line</Label>
+                  <Input type="number" min={1} value={draft.lineStart} onChange={onDraftChange("lineStart")} className="mt-2" />
+                </div>
+                <div>
+                  <Label>End line</Label>
+                  <Input type="number" min={1} value={draft.lineEnd} onChange={onDraftChange("lineEnd")} className="mt-2" />
+                </div>
               </div>
               <div>
-                <Label>End line</Label>
-                <Input type="number" min={1} value={draft.lineEnd} onChange={onDraftChange("lineEnd")} className="mt-2" />
+                <Label>Source URL</Label>
+                <Input value={draft.url} onChange={onDraftChange("url")} className="mt-2" placeholder="https://github.com/demo/file#L1-L20" />
               </div>
             </div>
+          ) : (
             <div>
               <Label>Source URL</Label>
               <Input value={draft.url} onChange={onDraftChange("url")} className="mt-2" placeholder="https://github.com/demo/file#L1-L20" />
             </div>
-          </div>
+          )}
           <div>
             <div className="flex items-center justify-between gap-2">
               <Label>Tags</Label>
@@ -1131,14 +1223,25 @@ function SampleEditorModal({
             )}
           </div>
           <div>
-            <Label>Code</Label>
-            <Textarea value={draft.code} onChange={onDraftChange("code")} className="mt-2 font-mono text-xs" rows={6} placeholder="Paste 10–40 lines of code" required />
-            <p className="mt-1 text-[11px] text-muted-foreground">
-              Limit {MAX_SAMPLE_LINES} lines / {MAX_SAMPLE_CODE_CHARS} characters.
-            </p>
+            <Label>{codeLabel}</Label>
+            <Textarea
+              value={draft.code}
+              onChange={onDraftChange("code")}
+              className={cn("mt-2 text-xs", draft.type === "code" ? "font-mono" : "font-sans")}
+              rows={draft.type === "code" ? 6 : 5}
+              placeholder={codePlaceholder}
+              required
+            />
+            {draft.type === "code" ? (
+              <p className="mt-1 text-[11px] text-muted-foreground">
+                Limit {MAX_SAMPLE_LINES} lines / {MAX_SAMPLE_CODE_CHARS} characters.
+              </p>
+            ) : (
+              <p className="mt-1 text-[11px] text-muted-foreground">Keep it concise (under {MAX_SAMPLE_CODE_CHARS} characters) and focused on evidence.</p>
+            )}
           </div>
           <div className="flex items-center justify-between gap-2">
-            {onSelectFromGitHub ? (
+            {onSelectFromGitHub && draft.type === "code" ? (
               <Button type="button" variant="secondary" onClick={onSelectFromGitHub}>
                 Select lines from GitHub
               </Button>
@@ -1163,7 +1266,7 @@ function SampleEditorModal({
 function CodeSamplePicker({ project, onClose, onSelect }: CodeSamplePickerProps) {
   const isGitHubProject = project.sourceType !== "link" && Boolean(project.fullName?.includes("/"));
   const defaultBranch = project.defaultBranch || "main";
-  const [activeTab, setActiveTab] = useState<"browse" | "link">("browse");
+  const [activeTab, setActiveTab] = useState<"code" | "docs" | "link">("code");
   const [tree, setTree] = useState<RepoTreeItem[]>([]);
   const [treeLoading, setTreeLoading] = useState(false);
   const [treeError, setTreeError] = useState<string | null>(null);
@@ -1176,6 +1279,12 @@ function CodeSamplePicker({ project, onClose, onSelect }: CodeSamplePickerProps)
   const [blobUrl, setBlobUrl] = useState("");
   const [blobError, setBlobError] = useState<string | null>(null);
   const [blobLoading, setBlobLoading] = useState(false);
+  const [readmeContent, setReadmeContent] = useState<string | null>(null);
+  const [readmeLoading, setReadmeLoading] = useState(false);
+  const [readmeError, setReadmeError] = useState<string | null>(null);
+  const [commits, setCommits] = useState<RepoCommitSummary[]>([]);
+  const [commitsLoading, setCommitsLoading] = useState(false);
+  const [commitsError, setCommitsError] = useState<string | null>(null);
 
   useEffect(() => {
     const previous = document.body.style.overflow;
@@ -1210,13 +1319,24 @@ function CodeSamplePicker({ project, onClose, onSelect }: CodeSamplePickerProps)
   }, [open, project.fullName, defaultBranch, isGitHubProject]);
 
   useEffect(() => {
-    setActiveTab("browse");
+    setActiveTab("code");
     setSelectedPath(null);
     setFilePreview(null);
     setSelection(null);
     setFileError(null);
     setBlobError(null);
   }, []);
+
+  useEffect(() => {
+    if (activeTab === "docs" && isGitHubProject) {
+      if (!readmeContent && !readmeLoading) {
+        void loadReadme();
+      }
+      if (!commits.length && !commitsLoading) {
+        void loadCommits();
+      }
+    }
+  }, [activeTab, isGitHubProject, readmeContent, readmeLoading, commits.length, commitsLoading]);
 
   const filteredFiles = useMemo(() => {
     const term = searchTerm.toLowerCase();
@@ -1225,6 +1345,34 @@ function CodeSamplePicker({ project, onClose, onSelect }: CodeSamplePickerProps)
       .filter((entry) => entry.path.toLowerCase().includes(term))
       .sort((a, b) => a.path.localeCompare(b.path));
   }, [tree, searchTerm]);
+
+  const loadReadme = async () => {
+    if (readmeLoading || readmeContent !== null || !isGitHubProject) return;
+    setReadmeLoading(true);
+    setReadmeError(null);
+    try {
+      const data = await fetchRepoReadmeContent(project.fullName);
+      setReadmeContent(data.content || "");
+    } catch (error) {
+      setReadmeError((error as Error).message);
+    } finally {
+      setReadmeLoading(false);
+    }
+  };
+
+  const loadCommits = async () => {
+    if (commitsLoading || commits.length > 0 || !isGitHubProject) return;
+    setCommitsLoading(true);
+    setCommitsError(null);
+    try {
+      const data = await fetchRepoCommitsList(project.fullName, 20);
+      setCommits(data);
+    } catch (error) {
+      setCommitsError((error as Error).message);
+    } finally {
+      setCommitsLoading(false);
+    }
+  };
 
   if (!isGitHubProject) {
     return null;
@@ -1303,12 +1451,50 @@ function CodeSamplePicker({ project, onClose, onSelect }: CodeSamplePickerProps)
     const language = inferLanguage(filePreview.path) || "text";
     const url = buildGitHubBlobUrl(project.fullName, filePreview.ref, filePreview.path, selection.start, selection.end);
     onSelect({
+      type: "code",
       filePath: filePreview.path,
       language,
       lineStart: selection.start,
       lineEnd: selection.end,
       sourceUrl: url,
       code: selectedCode,
+    });
+  };
+
+  const handleUseReadmeSnippet = () => {
+    if (!readmeContent || !readmeContent.trim()) {
+      setReadmeError("README content not available.");
+      return;
+    }
+    const excerpt = readmeContent.replace(/\r\n/g, "\n").trim().slice(0, DOC_EXCERPT_CHARS);
+    if (!excerpt) {
+      setReadmeError("README excerpt is empty.");
+      return;
+    }
+    const sourceUrl = project.htmlUrl ? `${project.htmlUrl}#readme` : `https://github.com/${project.fullName}#readme`;
+    onSelect({
+      type: "readme",
+      filePath: "README.md",
+      language: "markdown",
+      code: excerpt,
+      sourceUrl,
+    });
+  };
+
+  const handleUseCommitSnippet = (commit: RepoCommitSummary) => {
+    const message = commit.message?.trim();
+    if (!message) {
+      setCommitsError("Commit message is empty.");
+      return;
+    }
+    const snippet = message.slice(0, DOC_EXCERPT_CHARS);
+    const label = commit.sha ? commit.sha.slice(0, 7) : "commit";
+    onSelect({
+      type: "commit",
+      filePath: label,
+      language: "text",
+      code: snippet,
+      sourceUrl: commit.htmlUrl,
     });
   };
 
@@ -1325,7 +1511,7 @@ function CodeSamplePicker({ project, onClose, onSelect }: CodeSamplePickerProps)
       setBlobError("URL must point to this repository.");
       return;
     }
-    setActiveTab("browse");
+    setActiveTab("code");
     setBlobLoading(true);
     try {
       await handleFetchFile(parsed.path, parsed.branch, {
@@ -1455,7 +1641,7 @@ function CodeSamplePicker({ project, onClose, onSelect }: CodeSamplePickerProps)
     onClose();
   };
 
-  const filteredList = activeTab === "browse" ? filteredFiles : [];
+  const filteredList = activeTab === "code" ? filteredFiles : [];
 
   return (
     <div
@@ -1470,7 +1656,7 @@ function CodeSamplePicker({ project, onClose, onSelect }: CodeSamplePickerProps)
       >
         <header className="flex items-center justify-between border-b border-slate-800 px-6 py-4">
           <div>
-            <p className="text-sm uppercase tracking-[0.4em] text-slate-500">Select code sample</p>
+            <p className="text-sm uppercase tracking-[0.4em] text-slate-500">Select proof sample</p>
             <p className="text-base font-semibold text-white">{project.fullName}</p>
           </div>
           <button
@@ -1487,11 +1673,21 @@ function CodeSamplePicker({ project, onClose, onSelect }: CodeSamplePickerProps)
               type="button"
               className={cn(
                 "rounded-full px-3 py-1 transition-colors",
-                activeTab === "browse" ? "bg-slate-800 text-white" : "text-slate-400"
+                activeTab === "code" ? "bg-slate-800 text-white" : "text-slate-400"
               )}
-              onClick={() => setActiveTab("browse")}
+              onClick={() => setActiveTab("code")}
             >
               Browse files
+            </button>
+            <button
+              type="button"
+              className={cn(
+                "rounded-full px-3 py-1 transition-colors",
+                activeTab === "docs" ? "bg-slate-800 text-white" : "text-slate-400"
+              )}
+              onClick={() => setActiveTab("docs")}
+            >
+              Docs & commits
             </button>
             <button
               type="button"
@@ -1506,7 +1702,7 @@ function CodeSamplePicker({ project, onClose, onSelect }: CodeSamplePickerProps)
           </div>
         </div>
         <div className="space-y-4 overflow-y-auto px-6 py-4">
-          {activeTab === "browse" ? (
+          {activeTab === "code" ? (
             <div className="grid gap-4 md:grid-cols-[280px_1fr]">
               <div className="rounded-2xl border border-slate-800/80 bg-slate-950/60 p-3">
                 <div className="flex items-center gap-2 rounded-xl border border-slate-800 bg-slate-900/60 px-3">
@@ -1554,6 +1750,90 @@ function CodeSamplePicker({ project, onClose, onSelect }: CodeSamplePickerProps)
                 </p>
               </div>
               <div>{renderPreview()}</div>
+            </div>
+          ) : activeTab === "docs" ? (
+            <div className="grid gap-4 md:grid-cols-2">
+              <div className="rounded-2xl border border-slate-800/80 bg-slate-950/60 p-4">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm font-semibold text-white">README excerpt</p>
+                    <p className="text-xs text-muted-foreground">Capture a paragraph that proves this requirement.</p>
+                  </div>
+                  <Button type="button" variant="ghost" size="sm" onClick={loadReadme} disabled={readmeLoading}>
+                    Refresh
+                  </Button>
+                </div>
+                <div className="mt-3 h-48 overflow-y-auto rounded-xl border border-slate-800/80 bg-slate-950/50 p-3 text-xs text-muted-foreground">
+                  {readmeLoading ? (
+                    <div className="flex h-full items-center justify-center">
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Loading README…
+                    </div>
+                  ) : readmeError ? (
+                    <p className="text-red-400">{readmeError}</p>
+                  ) : readmeContent ? (
+                    <pre className="whitespace-pre-wrap text-slate-200">{readmeContent.slice(0, DOC_EXCERPT_CHARS)}</pre>
+                  ) : (
+                    <p>No README detected for this repo.</p>
+                  )}
+                </div>
+                <Button
+                  type="button"
+                  className="mt-3 w-full"
+                  onClick={handleUseReadmeSnippet}
+                  disabled={readmeLoading || !readmeContent}
+                >
+                  Use README excerpt
+                </Button>
+              </div>
+              <div className="rounded-2xl border border-slate-800/80 bg-slate-950/60 p-4">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm font-semibold text-white">Recent commits</p>
+                    <p className="text-xs text-muted-foreground">Use a commit that shows judgement or debugging.</p>
+                  </div>
+                  <Button type="button" variant="ghost" size="sm" onClick={loadCommits} disabled={commitsLoading}>
+                    Refresh
+                  </Button>
+                </div>
+                <div className="mt-3 flex h-64 flex-col gap-2 overflow-y-auto">
+                  {commitsLoading ? (
+                    <div className="flex flex-1 items-center justify-center text-xs text-muted-foreground">
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Loading commits…
+                    </div>
+                  ) : commitsError ? (
+                    <p className="text-xs text-red-400">{commitsError}</p>
+                  ) : commits.length === 0 ? (
+                    <p className="text-xs text-muted-foreground">No recent commits yet.</p>
+                  ) : (
+                    commits.slice(0, 8).map((commit) => {
+                      const preview = commit.message?.split("\n")[0] || "No commit message";
+                      return (
+                        <div key={commit.sha} className="rounded-xl border border-slate-800/70 bg-slate-950/70 p-3 text-xs text-muted-foreground">
+                          <p className="text-sm font-semibold text-white">{preview}</p>
+                          <p className="text-[11px] text-slate-500">
+                            {commit.sha.slice(0, 7)} · {formatCommitDate(commit.date)}
+                          </p>
+                          <div className="mt-2 flex flex-wrap items-center gap-2">
+                            <Button type="button" size="sm" variant="secondary" onClick={() => handleUseCommitSnippet(commit)}>
+                              Use commit
+                            </Button>
+                            {commit.htmlUrl && (
+                              <a
+                                href={commit.htmlUrl}
+                                target="_blank"
+                                rel="noopener noreferrer nofollow"
+                                className="text-[11px] text-primary underline"
+                              >
+                                View on GitHub
+                              </a>
+                            )}
+                          </div>
+                        </div>
+                      );
+                    })
+                  )}
+                </div>
+              </div>
             </div>
           ) : (
             <div className="space-y-4">
@@ -1620,6 +1900,13 @@ function formatLineRange(start?: number, end?: number) {
   if (start) return `#L${start}`;
   if (end) return `#L${end}`;
   return "";
+}
+
+function formatCommitDate(value?: string | null) {
+  if (!value) return "Unknown date";
+  const parsed = new Date(value);
+  if (Number.isNaN(parsed.getTime())) return value;
+  return parsed.toLocaleDateString();
 }
 
 const EXCLUDED_SAMPLE_SEGMENTS = ["node_modules", "dist", "build", ".next", ".git", ".turbo", ".venv", "__pycache__", ".gradle", ".idea"];

@@ -99,7 +99,7 @@ export function NewJobPage() {
       const next = new Set(prev);
       if (checked) {
         if (next.size >= 3) {
-          toast("Limit reached", { description: "Attach up to 3 code samples per packet." });
+          toast("Limit reached", { description: "Attach up to 3 samples per packet." });
           return prev;
         }
         next.add(sampleId);
@@ -222,7 +222,7 @@ function SampleSelector({
     <div className="rounded-2xl border border-slate-800/80 bg-slate-950/40 p-4">
       <div className="flex flex-col gap-1 md:flex-row md:items-center md:justify-between">
         <div>
-          <label className="text-sm font-semibold text-white">Code samples (optional)</label>
+          <label className="text-sm font-semibold text-white">Samples (optional)</label>
           <p className="text-xs text-muted-foreground">Pick up to 3 curated snippets to include in the first packet.</p>
         </div>
         <p className="text-xs text-muted-foreground">{selected.size}/3 selected</p>

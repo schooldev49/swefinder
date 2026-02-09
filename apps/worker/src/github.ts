@@ -136,6 +136,29 @@ export async function fetchRepoFileText(
   return { path: data.path, sha: data.sha, size: data.size, text: decoded };
 }
 
+export interface GitHubCommitRecord {
+  sha: string;
+  html_url: string;
+  commit: {
+    message: string;
+    author?: {
+      name?: string;
+      date?: string;
+    };
+  };
+}
+
+export async function fetchRepoCommits(token: string, fullName: string, perPage = 20): Promise<GitHubCommitRecord[]> {
+  const clamped = Math.min(Math.max(perPage, 1), 50);
+  const res = await fetch(`https://api.github.com/repos/${fullName}/commits?per_page=${clamped}`, {
+    headers: githubHeaders(token),
+  });
+  if (!res.ok) {
+    throw new Error("Unable to fetch commits");
+  }
+  return (await res.json()) as GitHubCommitRecord[];
+}
+
 function githubHeaders(token: string): HeadersInit {
   return {
     Authorization: `Bearer ${token}`,

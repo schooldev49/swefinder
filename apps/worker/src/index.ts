@@ -41,7 +41,15 @@ import {
   storeOAuthState,
   updateJob,
 } from "./storage";
-import { exchangeCodeForToken, fetchGitHubUserProfile, fetchRepoFileText, fetchRepoTree, fetchUserRepos } from "./github";
+import {
+  exchangeCodeForToken,
+  fetchGitHubUserProfile,
+  fetchRepoFileText,
+  fetchRepoReadme,
+  fetchRepoTree,
+  fetchRepoCommits,
+  fetchUserRepos,
+} from "./github";
 import { createSession, destroySession, getSession } from "./session";
 
 interface CreateProjectsPayload {
@@ -139,6 +147,14 @@ export default {
 
       if (url.pathname === "/api/github/file-content" && request.method === "GET") {
         return withCors(await handleGitHubFileContent(request, env), origin);
+      }
+
+      if (url.pathname === "/api/github/readme" && request.method === "GET") {
+        return withCors(await handleGitHubReadme(request, env), origin);
+      }
+
+      if (url.pathname === "/api/github/commits" && request.method === "GET") {
+        return withCors(await handleGitHubCommits(request, env), origin);
       }
 
       if (url.pathname === "/api/projects" && request.method === "POST") {
@@ -434,6 +450,50 @@ async function handleGitHubFileContent(request: Request, env: Env): Promise<Resp
     content: file.text,
     ref: ref || null,
   });
+}
+
+async function handleGitHubReadme(request: Request, env: Env): Promise<Response> {
+  const { user } = await requireUser(request, env);
+  const params = new URL(request.url).searchParams;
+  const fullName = params.get("fullName");
+  if (!fullName) {
+    return errorResponse("Missing repository fullName", 400);
+  }
+  const encryptedToken = await getEncryptedToken(env, user.id);
+  const token = await decryptToken(env, encryptedToken);
+  if (!token) {
+    throw new HttpError("Missing GitHub token", 401);
+  }
+  const readme = await fetchRepoReadme(token, fullName);
+  if (!readme) {
+    return jsonResponse({ content: null });
+  }
+  const trimmed = readme.slice(0, 20000);
+  return jsonResponse({ content: trimmed });
+}
+
+async function handleGitHubCommits(request: Request, env: Env): Promise<Response> {
+  const { user } = await requireUser(request, env);
+  const params = new URL(request.url).searchParams;
+  const fullName = params.get("fullName");
+  if (!fullName) {
+    return errorResponse("Missing repository fullName", 400);
+  }
+  const limitParam = Number.parseInt(params.get("limit") || "20", 10);
+  const limit = Number.isNaN(limitParam) ? 20 : Math.min(Math.max(limitParam, 1), 50);
+  const encryptedToken = await getEncryptedToken(env, user.id);
+  const token = await decryptToken(env, encryptedToken);
+  if (!token) {
+    throw new HttpError("Missing GitHub token", 401);
+  }
+  const commits = await fetchRepoCommits(token, fullName, limit);
+  const normalized = commits.map((commit) => ({
+    sha: commit.sha,
+    htmlUrl: commit.html_url,
+    message: commit.commit?.message || "",
+    date: commit.commit?.author?.date || null,
+  }));
+  return jsonResponse(normalized);
 }
 
 async function handleListProjects(request: Request, env: Env): Promise<Response> {
@@ -1027,6 +1087,7 @@ function buildProofCodeSamples(selectedSampleIds: string[], projects: Project[])
           id: sample.id,
           projectId: project.id,
           projectFullName: project.fullName,
+          type: sample.type || "code",
           summary: sample.summary,
           code: sample.code,
           language: sample.language,

@@ -18,9 +18,11 @@ export interface User {
 
 export type ProjectSourceType = "github" | "link";
 export type AIRole = "none" | "assist" | "co-design" | "agent-orchestration";
+export type CodeSampleType = "code" | "readme" | "commit";
 
 export interface ProjectCodeSample {
   id: string;
+  type?: CodeSampleType;
   summary: string;
   code: string;
   language?: string;
@@ -117,6 +119,7 @@ export interface EvidenceMappingWithEvidence extends EvidenceMapping {
 }
 
 export interface EvidenceSnippet {
+  type?: CodeSampleType;
   summary: string;
   code: string;
   language?: string;

@@ -22,6 +22,11 @@ import { useSession } from "@/hooks/use-session";
 import { CodeSnippet } from "@/components/ui/code-snippet";
 
 const STATUS_ORDER: Job["status"][] = ["DRAFT", "PROOF_GENERATED", "APPLIED", "INTERVIEW", "REJECTED", "OFFER"];
+const SAMPLE_TYPE_LABELS: Record<string, string> = {
+  code: "Code sample",
+  readme: "README sample",
+  commit: "Commit sample",
+};
 
 export function JobDetailPage() {
   const { id } = useParams();
@@ -164,7 +169,7 @@ export function JobDetailPage() {
       const next = new Set(prev);
       if (checked) {
         if (next.size >= 3) {
-          toast("Limit reached", { description: "Attach up to 3 code samples per packet." });
+          toast("Limit reached", { description: "Attach up to 3 samples per packet." });
           return prev;
         }
         next.add(sampleId);
@@ -427,8 +432,8 @@ function CodeSamplesSelector({
     <div className="rounded-2xl border border-slate-800/80 bg-slate-950/60 p-4">
       <div className="flex flex-col gap-1 md:flex-row md:items-center md:justify-between">
         <div>
-          <p className="text-xs uppercase tracking-wide text-muted-foreground">Attach code samples</p>
-          <p className="text-[11px] text-muted-foreground">Pick up to 3 snippets to surface in this packet.</p>
+          <p className="text-xs uppercase tracking-wide text-muted-foreground">Attach samples</p>
+          <p className="text-[11px] text-muted-foreground">Pick up to 3 code, README, or commit snippets to surface in this packet.</p>
         </div>
         <p className="text-[11px] text-muted-foreground">{selected.size}/3 selected</p>
       </div>
@@ -441,7 +446,12 @@ function CodeSamplesSelector({
                 <label className="flex flex-1 cursor-pointer items-start gap-3">
                   <Checkbox checked={selected.has(sample.id)} onCheckedChange={(value) => onToggle(sample.id, Boolean(value))} />
                   <div className="space-y-1">
-                    <p className="text-sm font-semibold text-white">{sample.summary}</p>
+                    <div className="flex flex-wrap items-center gap-2">
+                      <p className="text-sm font-semibold text-white">{sample.summary}</p>
+                      <Badge variant="outline" className="border-accent/60 text-[10px] uppercase tracking-wide text-accent">
+                        {getSampleTypeLabel(sample)}
+                      </Badge>
+                    </div>
                     <p className="text-[11px] uppercase tracking-[0.3em] text-slate-500">
                       {sample.projectFullName} {formatLineLabel(sample.filePath, sample.lineStart, sample.lineEnd)}
                     </p>
@@ -456,14 +466,8 @@ function CodeSamplesSelector({
                     )}
                   </div>
                 </label>
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="sm"
-                  className="self-start"
-                  onClick={() => setExpandedId(isExpanded ? null : sample.id)}
-                >
-                  {isExpanded ? "Hide snippet" : "View snippet"}
+                <Button type="button" variant="ghost" size="sm" className="self-start" onClick={() => setExpandedId(isExpanded ? null : sample.id)}>
+                  {isExpanded ? "Hide sample" : "View sample"}
                 </Button>
               </div>
               {isExpanded && (
@@ -473,7 +477,13 @@ function CodeSamplesSelector({
                       View source
                     </a>
                   )}
-                  <CodeSnippet code={sample.code} language={sample.language || inferLanguage(sample.filePath) || "tsx"} />
+                  {sample.type && sample.type !== "code" ? (
+                    <div className="rounded-xl border border-slate-900/70 bg-slate-900/60 p-3 text-sm text-slate-200 whitespace-pre-wrap">
+                      {sample.code}
+                    </div>
+                  ) : (
+                    <CodeSnippet code={sample.code} language={sample.language || inferLanguage(sample.filePath) || "tsx"} />
+                  )}
                 </div>
               )}
             </div>
@@ -498,9 +508,9 @@ function ProofCodeSamplesSection({ samples }: { samples: ProofPacketCodeSample[]
   return (
     <section className="space-y-3">
       <div>
-        <h3 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">Code samples</h3>
+        <h3 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">Evidence samples</h3>
         <p className="text-xs text-muted-foreground">
-          Optional deep dives for engineers. They stay collapsed so recruiters can skim.
+          Optional deep dives (code, docs, commits). They stay collapsed so recruiters can skim.
         </p>
       </div>
       <div className="grid gap-3">
@@ -510,7 +520,12 @@ function ProofCodeSamplesSection({ samples }: { samples: ProofPacketCodeSample[]
             <div key={sample.id} className="rounded-2xl border border-slate-800/80 bg-slate-950/60 p-3 text-xs text-muted-foreground">
               <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
                 <div>
-                  <p className="text-sm font-semibold text-white">{sample.summary}</p>
+                  <div className="flex flex-wrap items-center gap-2">
+                    <p className="text-sm font-semibold text-white">{sample.summary}</p>
+                    <Badge variant="outline" className="border-accent/60 text-[10px] uppercase tracking-wide text-accent">
+                      {getSampleTypeLabel(sample)}
+                    </Badge>
+                  </div>
                   <p className="text-[11px] uppercase tracking-[0.3em] text-slate-500">
                     {sample.projectFullName} {formatLineLabel(sample.filePath, sample.lineStart, sample.lineEnd)}
                   </p>
@@ -537,13 +552,19 @@ function ProofCodeSamplesSection({ samples }: { samples: ProofPacketCodeSample[]
                     className="text-xs"
                     onClick={() => toggle(sample.id)}
                   >
-                    {isOpen ? "Hide snippet" : "Preview code"}
+                    {isOpen ? "Hide sample" : "Preview sample"}
                   </Button>
                 </div>
               </div>
               {isOpen && (
                 <div className="mt-3">
-                  <CodeSnippet code={sample.code} language={sample.language || inferLanguage(sample.filePath) || "tsx"} />
+                  {sample.type && sample.type !== "code" ? (
+                    <div className="rounded-xl border border-slate-900/70 bg-slate-900/60 p-3 text-sm text-slate-200 whitespace-pre-wrap">
+                      {sample.code}
+                    </div>
+                  ) : (
+                    <CodeSnippet code={sample.code} language={sample.language || inferLanguage(sample.filePath) || "tsx"} />
+                  )}
                 </div>
               )}
             </div>
@@ -581,6 +602,10 @@ function formatAiUsage(evidence: { aiRole?: string; aiTools?: string[]; aiSuperv
   }
   if (!parts.length) return null;
   return parts.join(" · ");
+}
+
+function getSampleTypeLabel(sample?: { type?: string }) {
+  return SAMPLE_TYPE_LABELS[sample?.type || "code"] || "Code sample";
 }
 
 function RequirementCard({
@@ -623,7 +648,7 @@ function RequirementCard({
             </div>
             {selectedSample ? (
               <Badge variant="outline" className="text-[10px] uppercase tracking-wide text-emerald-300/80">
-                Code sample attached
+                {getSampleTypeLabel(selectedSample)} attached
               </Badge>
             ) : null}
           </div>
@@ -666,7 +691,7 @@ function RequirementCard({
       </div>
       <div className="space-y-2 rounded-xl border border-slate-800/70 bg-slate-950/60 p-3 text-xs text-muted-foreground">
         <div className="flex flex-wrap items-center justify-between gap-2">
-          <p className="text-[11px] uppercase tracking-wide">Attach code sample</p>
+          <p className="text-[11px] uppercase tracking-wide">Attach sample</p>
           {sampleSaving ? <Loader2 className="h-3.5 w-3.5 animate-spin text-muted-foreground" /> : null}
         </div>
         {sampleOptions.length === 0 ? (
@@ -677,10 +702,10 @@ function RequirementCard({
             value={selectedSampleId ?? ""}
             onChange={(event) => onSampleChange(event.target.value ? event.target.value : null)}
           >
-            <option value="">No code sample</option>
+            <option value="">No sample</option>
             {sampleOptions.map((sample) => (
               <option key={sample.id} value={sample.id}>
-                {sample.projectFullName} — {sample.summary.slice(0, 60)}
+                {getSampleTypeLabel(sample)} · {sample.projectFullName} — {sample.summary.slice(0, 60)}
               </option>
             ))}
           </select>
@@ -690,7 +715,9 @@ function RequirementCard({
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-xs font-semibold text-white">{selectedSample.summary}</p>
-                <p className="text-muted-foreground">{formatLineLabel(selectedSample.filePath, selectedSample.lineStart, selectedSample.lineEnd)}</p>
+                <p className="text-muted-foreground">
+                  {formatLineLabel(selectedSample.filePath, selectedSample.lineStart, selectedSample.lineEnd) || "Custom link"}
+                </p>
                 {selectedSample.tags && selectedSample.tags.length > 0 ? (
                   <div className="mt-1 flex flex-wrap gap-1">
                     {selectedSample.tags.map((tag) => (
@@ -702,18 +729,31 @@ function RequirementCard({
                 ) : null}
               </div>
               <Button type="button" variant="secondary" size="sm" onClick={() => setShowSample((prev) => !prev)}>
-                {showSample ? "Hide code sample" : "View code sample"}
+                {showSample ? "Hide sample" : `View ${getSampleTypeLabel(selectedSample).toLowerCase()}`}
               </Button>
             </div>
             {showSample ? (
-              <>
-                <CodeSnippet code={selectedSample.code} language={selectedSample.language || inferLanguage(selectedSample.filePath) || "tsx"} />
-                {selectedSample.url && (
-                  <a href={selectedSample.url} target="_blank" rel="noopener noreferrer nofollow" className="text-[11px] text-primary underline">
-                    View on GitHub
-                  </a>
-                )}
-              </>
+              selectedSample.type && selectedSample.type !== "code" ? (
+                <>
+                  <div className="rounded-lg border border-slate-800/70 bg-slate-900/50 p-3 text-sm text-slate-200 whitespace-pre-wrap">
+                    {selectedSample.code}
+                  </div>
+                  {selectedSample.url && (
+                    <a href={selectedSample.url} target="_blank" rel="noopener noreferrer nofollow" className="text-[11px] text-primary underline">
+                      View on GitHub
+                    </a>
+                  )}
+                </>
+              ) : (
+                <>
+                  <CodeSnippet code={selectedSample.code} language={selectedSample.language || inferLanguage(selectedSample.filePath) || "tsx"} />
+                  {selectedSample.url && (
+                    <a href={selectedSample.url} target="_blank" rel="noopener noreferrer nofollow" className="text-[11px] text-primary underline">
+                      View on GitHub
+                    </a>
+                  )}
+                </>
+              )
             ) : (
               <p className="text-[11px] text-muted-foreground">Keeps packets skimmable until someone clicks.</p>
             )}

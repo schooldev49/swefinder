@@ -101,6 +101,23 @@ export interface RepoTreeItem {
   size?: number;
 }
 
+export function fetchRepoReadmeContent(fullName: string) {
+  const params = new URLSearchParams({ fullName });
+  return apiFetch<{ content: string | null }>(`/github/readme?${params.toString()}`);
+}
+
+export interface RepoCommitSummary {
+  sha: string;
+  message: string;
+  htmlUrl: string;
+  date?: string | null;
+}
+
+export function fetchRepoCommitsList(fullName: string, limit = 20) {
+  const params = new URLSearchParams({ fullName, limit: limit.toString() });
+  return apiFetch<RepoCommitSummary[]>(`/github/commits?${params.toString()}`);
+}
+
 export function fetchRepoFileTree(fullName: string, ref?: string) {
   const params = new URLSearchParams({ fullName });
   if (ref) {

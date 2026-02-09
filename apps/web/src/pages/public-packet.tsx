@@ -16,9 +16,15 @@ import { Button } from "@/components/ui/button";
 const trustPoints = [
   "Requirements mapped to specific repo paths or demos.",
   "User-provided metrics stay labeled and auditable.",
-  "Proof Packet supplements — never replaces — your résumé.",
+  "Links open directly to GitHub or docs the candidate already shared—no hoops.",
   "Every packet is manually curated before sending.",
 ];
+
+const SAMPLE_TYPE_LABELS: Record<string, string> = {
+  code: "Code sample",
+  readme: "README sample",
+  commit: "Commit sample",
+};
 
 export function PublicPacketPage() {
   const { handle, packetSlug } = useParams();
@@ -59,12 +65,7 @@ function PacketView({
 
   return (
     <div className="space-y-6">
-      <div className="rounded-2xl border border-slate-900/80 bg-slate-950/60 p-4 text-sm text-slate-200">
-        <p className="text-xs uppercase tracking-[0.35em] text-muted-foreground">Attach with resume</p>
-        <p className="mt-2">
-          Use this alongside the candidate's chronological resume. Requirements are mapped directly to tangible repos, docs, and demos for quick verification.
-        </p>
-      </div>
+      
       <Card className="border-slate-900/80 bg-slate-950/80">
         <CardHeader className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
           <div className="flex items-center gap-4">
@@ -264,7 +265,7 @@ function RequirementPublicCard({
         <div className="space-y-2 rounded-xl border border-slate-900/80 bg-slate-950/70 p-3 text-xs text-muted-foreground">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-[11px] uppercase tracking-[0.3em] text-slate-500">Code sample</p>
+              <p className="text-[11px] uppercase tracking-[0.3em] text-slate-500">{getPublicSampleLabel(selectedSample)}</p>
               <p className="text-sm font-semibold text-white">{selectedSample.summary}</p>
               <p>{formatPublicLineLabel(selectedSample.filePath, selectedSample.lineStart, selectedSample.lineEnd)}</p>
               {selectedSample.tags && selectedSample.tags.length > 0 ? (
@@ -278,18 +279,31 @@ function RequirementPublicCard({
               ) : null}
             </div>
             <Button variant="secondary" size="sm" onClick={() => setOpenSample((prev) => !prev)}>
-              {openSample ? "Hide snippet" : "View snippet"}
+              {openSample ? "Hide sample" : "View sample"}
             </Button>
           </div>
           {openSample ? (
-            <>
-              <CodeSnippet code={selectedSample.code} language={selectedSample.language || inferLanguage(selectedSample.filePath) || "tsx"} />
-              {selectedSample.url && (
-                <a href={selectedSample.url} target="_blank" rel="noopener noreferrer nofollow" className="text-primary underline">
-                  View on GitHub
-                </a>
-              )}
-            </>
+            selectedSample.type && selectedSample.type !== "code" ? (
+              <>
+                <div className="rounded-lg border border-slate-900/80 bg-slate-900/60 p-3 text-sm text-slate-200 whitespace-pre-wrap">
+                  {selectedSample.code}
+                </div>
+                {selectedSample.url && (
+                  <a href={selectedSample.url} target="_blank" rel="noopener noreferrer nofollow" className="text-primary underline">
+                    View on GitHub
+                  </a>
+                )}
+              </>
+            ) : (
+              <>
+                <CodeSnippet code={selectedSample.code} language={selectedSample.language || inferLanguage(selectedSample.filePath) || "tsx"} />
+                {selectedSample.url && (
+                  <a href={selectedSample.url} target="_blank" rel="noopener noreferrer nofollow" className="text-primary underline">
+                    View on GitHub
+                  </a>
+                )}
+              </>
+            )
           ) : (
             <p className="text-[11px] text-muted-foreground">Collapsed until a reviewer chooses to dive in.</p>
           )}
@@ -312,7 +326,7 @@ function PublicCodeSamples({ samples }: { samples: ProofPacketCodeSample[] }) {
 
   return (
     <section>
-      <SectionHeading title="Code samples" subtitle="Optional deep dives for engineers—collapsed by default." />
+      <SectionHeading title="Evidence samples" subtitle="Optional deep dives for engineers—code, docs, or commits." />
       <div className="mt-4 space-y-3">
         {samples.map((sample) => {
           const open = expanded.has(sample.id);
@@ -320,7 +334,12 @@ function PublicCodeSamples({ samples }: { samples: ProofPacketCodeSample[] }) {
             <div key={sample.id} className="rounded-2xl border border-slate-900/80 bg-slate-950/60 p-4 text-xs text-muted-foreground">
               <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
                 <div>
-                  <p className="text-sm font-semibold text-white">{sample.summary}</p>
+                  <div className="flex flex-wrap items-center gap-2">
+                    <p className="text-sm font-semibold text-white">{sample.summary}</p>
+                    <Badge variant="outline" className="border-accent/60 text-[10px] uppercase tracking-wide text-accent">
+                      {getPublicSampleLabel(sample)}
+                    </Badge>
+                  </div>
                   <p className="text-[11px] uppercase tracking-[0.3em] text-slate-500">
                     {sample.projectFullName} {formatPublicLineLabel(sample.filePath, sample.lineStart, sample.lineEnd)}
                   </p>
@@ -341,13 +360,19 @@ function PublicCodeSamples({ samples }: { samples: ProofPacketCodeSample[] }) {
                     </a>
                   )}
                   <Button variant="ghost" size="sm" className="text-xs" onClick={() => toggle(sample.id)}>
-                    {open ? "Hide snippet" : "Preview code"}
+                    {open ? "Hide sample" : "Preview sample"}
                   </Button>
                 </div>
               </div>
               {open && (
                 <div className="mt-3">
-                  <CodeSnippet code={sample.code} language={sample.language || inferLanguage(sample.filePath) || "tsx"} />
+                  {sample.type && sample.type !== "code" ? (
+                    <div className="rounded-xl border border-slate-900/70 bg-slate-900/60 p-3 text-sm text-slate-200 whitespace-pre-wrap">
+                      {sample.code}
+                    </div>
+                  ) : (
+                    <CodeSnippet code={sample.code} language={sample.language || inferLanguage(sample.filePath) || "tsx"} />
+                  )}
                 </div>
               )}
             </div>
@@ -363,6 +388,10 @@ function formatPublicLineLabel(filePath?: string, start?: number, end?: number) 
   if (start && end) return `${path} #L${start}-${end}`;
   if (start) return `${path} #L${start}`;
   return path;
+}
+
+function getPublicSampleLabel(sample?: { type?: string }) {
+  return SAMPLE_TYPE_LABELS[sample?.type || "code"] || "Code sample";
 }
 
 function inferLanguage(filePath?: string) {
@@ -427,6 +456,7 @@ function EvidenceSnippetBlock({
 }) {
   const [open, setOpen] = useState(false);
   if (!snippet) return null;
+  const isCodeSample = !snippet.type || snippet.type === "code";
 
   return (
     <div className="mt-2 rounded-xl border border-slate-900/80 bg-slate-950/30 p-3 text-[11px] text-slate-300">
@@ -436,7 +466,7 @@ function EvidenceSnippetBlock({
         onClick={() => setOpen((prev) => !prev)}
         aria-expanded={open}
       >
-        <span>View code sample</span>
+        <span>View sample</span>
         <ChevronRight className={cn("h-3.5 w-3.5 transition-transform duration-200", open ? "rotate-90" : "")} aria-hidden="true" />
       </button>
       {open && (
@@ -446,7 +476,11 @@ function EvidenceSnippetBlock({
             {snippet.filePath}
             {snippet.lineStart && snippet.lineEnd ? ` · L${snippet.lineStart}–${snippet.lineEnd}` : ""}
           </p>
-          <CodeSnippet code={snippet.code} language={snippet.language} className="max-w-full text-sm" />
+          {isCodeSample ? (
+            <CodeSnippet code={snippet.code} language={snippet.language} className="max-w-full text-sm" />
+          ) : (
+            <div className="rounded-xl border border-slate-900/60 bg-slate-900/50 p-3 text-slate-200 whitespace-pre-wrap">{snippet.code}</div>
+          )}
           {snippet.url && (
             <a href={snippet.url} target="_blank" rel="noopener noreferrer nofollow" className="text-primary underline">
               Open on GitHub
