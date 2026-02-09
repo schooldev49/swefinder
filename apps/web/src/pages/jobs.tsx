@@ -1,32 +1,70 @@
-import { useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link } from "react-router-dom";
 import type { Job } from "@evidensify/types";
-import { fetchJobs } from "@/lib/api";
+import { deleteJob, fetchJobs, updateJobStatus } from "@/lib/api";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { buttonVariants } from "@/components/ui/button-variants";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Badge } from "@/components/ui/badge";
-import { cn } from "@/lib/utils";
-import { Plus } from "lucide-react";
+import { Plus, Trash2 } from "lucide-react";
 import { useSession } from "@/hooks/use-session";
 import { buildGitHubLoginUrl } from "@/lib/auth";
+import { toast } from "sonner";
+import { useState } from "react";
 
-const STATUS_BADGES: Record<Job["status"], { label: string; variant: "default" | "outline" | "success" | "warning" }> = {
-  DRAFT: { label: "Draft", variant: "outline" },
-  PROOF_GENERATED: { label: "Proof ready", variant: "success" },
-  APPLIED: { label: "Applied", variant: "default" },
-  INTERVIEW: { label: "Interview", variant: "success" },
-  REJECTED: { label: "Rejected", variant: "outline" },
-  OFFER: { label: "Offer", variant: "success" },
+const STATUS_LABELS: Record<Job["status"], string> = {
+  DRAFT: "Draft",
+  PROOF_GENERATED: "Proof ready",
+  APPLIED: "Applied",
+  INTERVIEW: "Interview",
+  REJECTED: "Rejected",
+  OFFER: "Offer",
 };
+const STATUS_OPTIONS: Array<Job["status"]> = ["DRAFT", "PROOF_GENERATED", "APPLIED", "INTERVIEW", "REJECTED", "OFFER"];
 
 export function JobsPage() {
+  const queryClient = useQueryClient();
+  const [statusTarget, setStatusTarget] = useState<string | null>(null);
+  const [deleteTarget, setDeleteTarget] = useState<string | null>(null);
   const { data: user, isLoading: sessionLoading } = useSession();
   const isAuthenticated = Boolean(user);
   const { data: jobs, isLoading } = useQuery({ queryKey: ["jobs"], queryFn: fetchJobs, enabled: isAuthenticated });
+  const statusMutation = useMutation({
+    mutationFn: ({ jobId, status }: { jobId: string; status: Job["status"] }) => updateJobStatus(jobId, status),
+    onMutate: ({ jobId }) => setStatusTarget(jobId),
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: ["jobs"] });
+      toast("Status updated");
+    },
+    onError: (error: Error) => {
+      toast("Update failed", { description: error.message });
+    },
+    onSettled: () => setStatusTarget(null),
+  });
+  const deleteMutation = useMutation({
+    mutationFn: (jobId: string) => deleteJob(jobId),
+    onMutate: (jobId: string) => setDeleteTarget(jobId),
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: ["jobs"] });
+      toast("Job deleted", { description: "Removed from your tracker and Proof Packets." });
+    },
+    onError: (error: Error) => {
+      toast("Delete failed", { description: error.message });
+    },
+    onSettled: () => setDeleteTarget(null),
+  });
+
   const handleGitHubLogin = () => {
     window.location.href = buildGitHubLoginUrl("/projects");
+  };
+
+  const handleStatusChange = (jobId: string, status: Job["status"]) => {
+    statusMutation.mutate({ jobId, status });
+  };
+
+  const handleDeleteJob = (jobId: string) => {
+    const confirmed = window.confirm("Delete this job? This also removes its Proof Packet.");
+    if (!confirmed) return;
+    deleteMutation.mutate(jobId);
   };
 
   if (!sessionLoading && !isAuthenticated) {
@@ -84,13 +122,35 @@ export function JobsPage() {
                     </div>
                   </TableCell>
                   <TableCell>
-                    <Badge variant={STATUS_BADGES[job.status].variant}>{STATUS_BADGES[job.status].label}</Badge>
+                    <select
+                      className="w-full min-w-[140px] rounded-lg border border-slate-800/80 bg-slate-950/60 px-3 py-1 text-sm text-white focus:border-accent focus:outline-none"
+                      value={job.status}
+                      disabled={statusTarget === job.id && statusMutation.isPending}
+                      onChange={(event) => handleStatusChange(job.id, event.target.value as Job["status"])}
+                    >
+                      {STATUS_OPTIONS.map((status) => (
+                        <option key={status} value={status} className="bg-slate-900 text-white">
+                          {STATUS_LABELS[status]}
+                        </option>
+                      ))}
+                    </select>
                   </TableCell>
                   <TableCell>{new Date(job.createdAt).toLocaleDateString()}</TableCell>
                   <TableCell className="text-right">
-                    <Link className={cn(buttonVariants({ variant: "ghost", size: "sm" }))} to={`/jobs/${job.id}`}>
-                      View
-                    </Link>
+                    <div className="flex items-center justify-end gap-2">
+                      <Button asChild variant="ghost" size="sm">
+                        <Link to={`/jobs/${job.id}`}>View</Link>
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => handleDeleteJob(job.id)}
+                        disabled={deleteTarget === job.id && deleteMutation.isPending}
+                      >
+                        <Trash2 className="h-4 w-4" />
+                        <span className="sr-only">Delete job</span>
+                      </Button>
+                    </div>
                   </TableCell>
                 </TableRow>
               ))}

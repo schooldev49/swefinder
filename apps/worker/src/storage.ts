@@ -149,3 +149,25 @@ export async function getJobIdByToken(env: Env, token: string): Promise<string |
 export async function getJobIdBySlug(env: Env, userId: string, slug: string): Promise<string | null> {
   return env.DATA_KV.get(jobSlugKey(userId, slug));
 }
+
+export async function deleteJobRecord(env: Env, job: Job): Promise<void> {
+  await env.DATA_KV.delete(`${JOB_PREFIX}${job.id}`);
+  await env.DATA_KV.delete(`${PROOF_PREFIX}${job.id}`);
+  if (job.shareToken) {
+    await env.DATA_KV.delete(`${JOB_TOKEN_PREFIX}${job.shareToken}`);
+  }
+  if (job.shareSlug) {
+    await env.DATA_KV.delete(jobSlugKey(job.userId, job.shareSlug));
+  }
+  const indexKey = `${JOB_INDEX_PREFIX}${job.userId}`;
+  const existingRaw = await env.DATA_KV.get(indexKey);
+  if (existingRaw) {
+    const ids = JSON.parse(existingRaw) as string[];
+    const next = ids.filter((id) => id !== job.id);
+    if (next.length > 0) {
+      await env.DATA_KV.put(indexKey, JSON.stringify(next));
+    } else {
+      await env.DATA_KV.delete(indexKey);
+    }
+  }
+}

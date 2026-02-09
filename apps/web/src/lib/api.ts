@@ -154,6 +154,12 @@ export function updateJobStatus(jobId: string, status: Job["status"]) {
   });
 }
 
+export function deleteJob(jobId: string) {
+  return apiFetch<{ id: string }>(`/jobs/${jobId}`, {
+    method: "DELETE",
+  });
+}
+
 export function logout() {
   return apiFetch<void>("/logout", { method: "POST" });
 }

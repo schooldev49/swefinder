@@ -22,6 +22,7 @@ import { decryptToken, encryptToken } from "./crypto";
 import { errorResponse, getAllowedOrigin, handleOptions, jsonResponse, parseJsonBody, withCors } from "./utils";
 import {
   consumeOAuthState,
+  deleteJobRecord,
   getEncryptedToken,
   getJob,
   getJobIdBySlug,
@@ -177,6 +178,9 @@ export default {
         const jobId = jobIdMatch.groups?.jobId || "";
         if (url.pathname.endsWith(`/api/jobs/${jobId}`) && request.method === "GET") {
           return withCors(await handleGetJob(request, env, jobId), origin);
+        }
+        if (url.pathname.endsWith(`/api/jobs/${jobId}`) && request.method === "DELETE") {
+          return withCors(await handleDeleteJob(request, env, jobId), origin);
         }
         if (url.pathname.endsWith(`/api/jobs/${jobId}/status`) && request.method === "PATCH") {
           return withCors(await handleUpdateJobStatus(request, env, jobId), origin);
@@ -573,6 +577,16 @@ async function handleGetJob(request: Request, env: Env, jobId: string): Promise<
   const hydratedJob = await ensureJobShareSlug(env, job);
   const proof = await getProofPacket(env, jobId);
   return jsonResponse({ job: hydratedJob, proofPacket: proof });
+}
+
+async function handleDeleteJob(request: Request, env: Env, jobId: string): Promise<Response> {
+  const { user } = await requireUser(request, env);
+  const job = await getJob(env, jobId);
+  if (!job || job.userId !== user.id) {
+    throw new HttpError("Job not found", 404);
+  }
+  await deleteJobRecord(env, job);
+  return jsonResponse({ id: jobId });
 }
 
 async function handleUpdateJobStatus(request: Request, env: Env, jobId: string): Promise<Response> {

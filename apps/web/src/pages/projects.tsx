@@ -24,7 +24,7 @@ import { Label } from "@/components/ui/label";
 import { cn } from "@/lib/utils";
 import { Loader2, RefreshCw, Search, Trash2, X, Pencil } from "lucide-react";
 import { toast } from "sonner";
-import type { AIRole, ProjectCodeSample } from "@evidensify/types";
+import type { AIRole, Project, ProjectCodeSample } from "@evidensify/types";
 
 const CONTEXT_OPTIONS = ["Personal", "Course", "Open Source", "Startup", "Research"];
 const AI_ROLE_OPTIONS = [
@@ -129,6 +129,25 @@ function buildPageItems(totalPages: number, currentPage: number): PageItem[] {
   return items;
 }
 
+const toEditableProject = (project: Project): EditableProject => {
+  const { userId, ...rest } = project;
+  void userId;
+  return {
+    ...rest,
+    sourceType: rest.sourceType ?? "github",
+    codeSamples: rest.codeSamples ?? [],
+    aiRole: rest.aiRole,
+    aiTools: rest.aiTools ?? [],
+    aiSupervisionNotes: rest.aiSupervisionNotes,
+  };
+};
+
+const toProjectPayload = (project: EditableProject): ProjectPayload => {
+  const { draft, ...payload } = project;
+  void draft;
+  return { ...payload, sourceType: payload.sourceType ?? "github" };
+};
+
 export function ProjectsPage() {
   const queryClient = useQueryClient();
   const { data: savedProjects, isLoading } = useQuery({ queryKey: ["projects"], queryFn: fetchProjects });
@@ -144,47 +163,43 @@ export function ProjectsPage() {
 
   useEffect(() => {
     if (savedProjects) {
-      setProjects(
-        savedProjects.map((project) => {
-          const { userId, ...rest } = project;
-          void userId;
-          return {
-            ...rest,
-            sourceType: rest.sourceType ?? "github",
-            codeSamples: rest.codeSamples ?? [],
-            aiRole: rest.aiRole,
-            aiTools: rest.aiTools ?? [],
-            aiSupervisionNotes: rest.aiSupervisionNotes,
-          };
-        })
-      );
+      setProjects(savedProjects.map(toEditableProject));
     }
   }, [savedProjects]);
 
   const saveMutation = useMutation({
-    mutationFn: (payload: EditableProject[]) => saveProjects(payload),
-    onSuccess: async (data) => {
-      await queryClient.invalidateQueries({ queryKey: ["projects"] });
-      setProjects(
-        data.map((project) => {
-          const { userId, ...rest } = project;
-          void userId;
-          return {
-            ...rest,
-            sourceType: rest.sourceType ?? "github",
-            codeSamples: rest.codeSamples ?? [],
-            aiRole: rest.aiRole,
-            aiTools: rest.aiTools ?? [],
-            aiSupervisionNotes: rest.aiSupervisionNotes,
-          };
-        })
-      );
-      toast("Projects saved", { description: "Your proof-ready projects are up to date." });
-    },
-    onError: (error: Error) => {
-      toast("Save failed", { description: error.message });
-    },
+    mutationFn: (payload: ProjectPayload[]) => saveProjects(payload),
   });
+
+  const persistProjects = (
+    nextProjects: EditableProject[],
+    options?: { toastTitle?: string; toastDescription?: string }
+  ) => {
+    const payload = nextProjects.map((project) => toProjectPayload(project));
+    saveMutation.mutate(payload, {
+      onSuccess: async (data) => {
+        await queryClient.invalidateQueries({ queryKey: ["projects"] });
+        setProjects(data.map(toEditableProject));
+        if (options?.toastTitle) {
+          toast(options.toastTitle, { description: options.toastDescription });
+        }
+      },
+      onError: (error: Error) => {
+        toast("Save failed", { description: error.message });
+      },
+    });
+  };
+
+  const applyAndPersist = (
+    builder: (current: EditableProject[]) => EditableProject[],
+    options?: { toastTitle?: string; toastDescription?: string }
+  ) => {
+    setProjects((prev) => {
+      const next = builder(prev);
+      persistProjects(next, options);
+      return next;
+    });
+  };
 
   const handleImportRepos = async () => {
     try {
@@ -306,22 +321,39 @@ export function ProjectsPage() {
       toast("Limit reached", { description: "You can showcase up to 4 projects." });
       return;
     }
-    updateProject(projectId, { isShowcased: nextState });
+    if (!projects.some((project) => project.id === projectId)) {
+      return;
+    }
+    applyAndPersist(
+      (current) =>
+        current.map((project) => (project.id === projectId ? { ...project, isShowcased: nextState } : project)),
+      {
+        toastTitle: nextState ? "Project showcased" : "Showcase updated",
+        toastDescription: nextState
+          ? "This project will appear at the top of Proof Packets."
+          : "It will stay in your list but not be highlighted.",
+      }
+    );
   };
 
   const removeProject = (projectId: string) => {
-    setProjects((prev) => prev.filter((project) => project.id !== projectId));
-    toast("Project removed", { description: "It will be excluded unless you re-import it." });
+    if (!projects.some((project) => project.id === projectId)) {
+      return;
+    }
+    applyAndPersist(
+      (current) => current.filter((project) => project.id !== projectId),
+      {
+        toastTitle: "Project removed",
+        toastDescription: "It won't appear unless you re-import it.",
+      }
+    );
   };
 
   const handleSave = () => {
-    saveMutation.mutate(
-      projects.map((project) => {
-        const { draft, ...payload } = project;
-        void draft;
-        return { ...payload, sourceType: payload.sourceType ?? "github" };
-      })
-    );
+    persistProjects(projects, {
+      toastTitle: "Projects saved",
+      toastDescription: "Your proof-ready projects are up to date.",
+    });
   };
 
   const emptyState = !isLoading && projects.length === 0;

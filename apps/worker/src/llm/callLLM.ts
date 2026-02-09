@@ -22,7 +22,7 @@ export interface LLMResponse {
 }
 
 const DEFAULT_MODEL = "gpt-5-mini";
-const DEFAULT_TEMPERATURE = 1.0;
+const DEFAULT_TEMPERATURE = 0.2;
 const DEFAULT_MAX_TOKENS = 800;
 const OPENAI_CHAT_URL = "https://api.openai.com/v1/chat/completions";
 
@@ -62,12 +62,39 @@ export async function callLLM(env: Env, req: LLMRequest): Promise<LLMResponse> {
   }
 
   const data: any = await response.json();
-  const content = data?.choices?.[0]?.message?.content;
-  if (typeof content !== "string" || !content.trim()) {
+  const choice = data?.choices?.[0];
+  const message = choice?.message;
+  let content = "";
+
+  if (typeof message?.content === "string") {
+    content = message.content;
+  } else if (Array.isArray(message?.content)) {
+    const segments = message.content
+      .map((segment: any) => extractText(segment))
+      .filter((segment: string): segment is string => Boolean(segment && segment.trim()));
+    content = segments.join("\n");
+  }
+
+  if (!content || !content.trim()) {
     throw new Error("LLM response missing content");
   }
 
   return { raw: content.trim() };
+}
+
+function extractText(segment: any): string {
+  if (!segment) return "";
+  if (typeof segment === "string") return segment;
+  if (typeof segment === "object") {
+    if (typeof segment.text === "string") return segment.text;
+    if (typeof segment.text === "object" && typeof segment.text.value === "string") {
+      return segment.text.value;
+    }
+    if (typeof segment.content === "string") return segment.content;
+    if (segment.type === "text" && typeof segment.text === "string") return segment.text;
+    if (segment.type === "output_text" && typeof segment.text === "string") return segment.text;
+  }
+  return "";
 }
 
 function buildMessages(req: LLMRequest): LLMMessage[] {
