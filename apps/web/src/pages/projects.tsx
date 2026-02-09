@@ -4,11 +4,14 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   fetchGitHubRepos,
   fetchProjects,
+  fetchRepoFileContent,
+  fetchRepoFileTree,
   saveProjects,
   suggestSnippetSummary,
   suggestSnippetTags,
   type ApiRepoSummary,
   type ProjectPayload,
+  type RepoTreeItem,
 } from "@/lib/api";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
@@ -19,9 +22,8 @@ import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Label } from "@/components/ui/label";
 import { cn } from "@/lib/utils";
-import { Loader2, RefreshCw, Trash2 } from "lucide-react";
+import { Loader2, RefreshCw, Search, Trash2, X, Pencil } from "lucide-react";
 import { toast } from "sonner";
-import { CodeSnippet } from "@/components/ui/code-snippet";
 import type { AIRole, ProjectCodeSample } from "@evidensify/types";
 
 const CONTEXT_OPTIONS = ["Personal", "Course", "Open Source", "Startup", "Research"];
@@ -217,6 +219,7 @@ export function ProjectsPage() {
         sourceType: "github",
         fullName: repo.fullName,
         htmlUrl: repo.htmlUrl,
+        defaultBranch: repo.defaultBranch,
         description: repo.description,
         primaryLanguage: repo.language,
         topics: repo.topics || [],
@@ -304,6 +307,11 @@ export function ProjectsPage() {
       return;
     }
     updateProject(projectId, { isShowcased: nextState });
+  };
+
+  const removeProject = (projectId: string) => {
+    setProjects((prev) => prev.filter((project) => project.id !== projectId));
+    toast("Project removed", { description: "It will be excluded unless you re-import it." });
   };
 
   const handleSave = () => {
@@ -491,6 +499,9 @@ export function ProjectsPage() {
                         {topic}
                       </Badge>
                     ))}
+                    <Button variant="ghost" size="sm" onClick={() => removeProject(project.id)}>
+                      Remove
+                    </Button>
                   </div>
                 </div>
                 <div className="mt-4 grid gap-4 md:grid-cols-3">
@@ -707,6 +718,28 @@ type SampleDraft = {
   code: string;
 };
 
+type SampleSelection = {
+  filePath: string;
+  language: string;
+  lineStart: number;
+  lineEnd: number;
+  sourceUrl: string;
+  code: string;
+};
+
+interface CodeSamplePickerProps {
+  project: EditableProject;
+  open: boolean;
+  onClose: () => void;
+  onSelect: (selection: SampleSelection) => void;
+}
+
+type FilePreviewState = {
+  path: string;
+  lines: string[];
+  ref: string;
+};
+
 const createEmptySampleDraft = (): SampleDraft => ({
   summary: "",
   filePath: "",
@@ -718,6 +751,7 @@ const createEmptySampleDraft = (): SampleDraft => ({
   code: "",
 });
 
+
 function ProjectCodeSamplesEditor({
   project,
   onChange,
@@ -728,12 +762,12 @@ function ProjectCodeSamplesEditor({
   projectUrl?: string;
 }) {
   const samples = project.codeSamples ?? [];
-  const [isAdding, setIsAdding] = useState(false);
+  const [modalMode, setModalMode] = useState<"create" | "edit" | null>(null);
+  const [editingSampleId, setEditingSampleId] = useState<string | null>(null);
   const [draft, setDraft] = useState<SampleDraft>(() => createEmptySampleDraft());
-  const [expandedId, setExpandedId] = useState<string | null>(null);
   const [summarySuggestion, setSummarySuggestion] = useState<string | null>(null);
   const [tagSuggestions, setTagSuggestions] = useState<string[]>([]);
-
+  const [isPickerOpen, setIsPickerOpen] = useState(false);
   const summaryMutation = useMutation({
     mutationFn: suggestSnippetSummary,
     onSuccess: (data) => {
@@ -745,7 +779,6 @@ function ProjectCodeSamplesEditor({
     },
     onError: (error: Error) => toast("Could not polish summary", { description: error.message }),
   });
-
   const tagsMutation = useMutation({
     mutationFn: suggestSnippetTags,
     onSuccess: (data) => {
@@ -757,7 +790,33 @@ function ProjectCodeSamplesEditor({
     },
     onError: (error: Error) => toast("Could not suggest tags", { description: error.message }),
   });
-
+  const openModal = (mode: "create" | "edit", sample?: ProjectCodeSample) => {
+    if (mode === "edit" && sample) {
+      setDraft({
+        summary: sample.summary || "",
+        filePath: sample.filePath || "",
+        lineStart: sample.lineStart ? sample.lineStart.toString() : "",
+        lineEnd: sample.lineEnd ? sample.lineEnd.toString() : "",
+        url: sample.url || projectUrl || "",
+        language: sample.language || "",
+        tags: (sample.tags || []).join(', '),
+        code: sample.code || "",
+      });
+      setEditingSampleId(sample.id);
+    } else {
+      setDraft(createEmptySampleDraft());
+      setEditingSampleId(null);
+    }
+    setSummarySuggestion(null);
+    setTagSuggestions([]);
+    setModalMode(mode);
+  };
+  const closeModal = () => {
+    setModalMode(null);
+    setEditingSampleId(null);
+    setSummarySuggestion(null);
+    setTagSuggestions([]);
+  };
   const handleDraftChange =
     (field: keyof SampleDraft) =>
     (event: ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
@@ -770,9 +829,14 @@ function ProjectCodeSamplesEditor({
         setTagSuggestions([]);
       }
     };
-
-  const handleAddSample = (event: FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
+  const handleDelete = (sampleId: string) => {
+    onChange(samples.filter((sample) => sample.id !== sampleId));
+    if (editingSampleId === sampleId) {
+      closeModal();
+    }
+    toast("Sample deleted", { description: "Removed from this project." });
+  };
+  const upsertSample = () => {
     const summary = draft.summary.trim();
     const code = draft.code.trim();
     if (!summary || !code) {
@@ -792,8 +856,13 @@ function ProjectCodeSamplesEditor({
       toast("Range too long", { description: `Keep snippets to ${MAX_SAMPLE_LINES} lines or less.` });
       return;
     }
-    const newSample: ProjectCodeSample = {
-      id: generateSampleId(),
+    const normalizedTags = draft.tags
+      .split(',')
+      .map((token) => token.trim())
+      .filter(Boolean)
+      .slice(0, 5);
+    const payload: ProjectCodeSample = {
+      id: editingSampleId || generateSampleId(),
       summary: summary.slice(0, 200),
       code,
       filePath: draft.filePath.trim() || undefined,
@@ -801,25 +870,32 @@ function ProjectCodeSamplesEditor({
       lineEnd,
       url: draft.url.trim() || projectUrl,
       language: (draft.language || inferLanguage(draft.filePath)).toLowerCase() || undefined,
-      tags: draft.tags
-        .split(",")
-        .map((token) => token.trim())
-        .filter(Boolean)
-        .slice(0, 5),
+      tags: normalizedTags,
     };
-    onChange([newSample, ...(samples ?? [])]);
-    setDraft(createEmptySampleDraft());
-    setIsAdding(false);
-    toast("Sample added", { description: "Short snippets keep reviewers engaged." });
-  };
-
-  const handleDelete = (sampleId: string) => {
-    onChange(samples.filter((sample) => sample.id !== sampleId));
-    if (expandedId === sampleId) {
-      setExpandedId(null);
+    if (editingSampleId) {
+      onChange(samples.map((sample) => (sample.id === editingSampleId ? { ...sample, ...payload } : sample)));
+      toast("Sample updated");
+    } else {
+      onChange([payload, ...samples]);
+      toast("Sample added", { description: "Short snippets keep reviewers engaged." });
     }
+    closeModal();
   };
-
+  const canUsePicker = project.sourceType !== "link" && Boolean(project.fullName?.includes('/'));
+  const handlePickerSelect = (selection: SampleSelection) => {
+    setDraft((prev) => ({
+      ...prev,
+      filePath: selection.filePath,
+      language: selection.language,
+      lineStart: selection.lineStart.toString(),
+      lineEnd: selection.lineEnd.toString(),
+      url: selection.sourceUrl,
+      code: selection.code,
+    }));
+    setModalMode((prev) => prev ?? "create");
+    setIsPickerOpen(false);
+    toast("Snippet captured", { description: "Review the summary and tags, then save." });
+  };
   const handleSuggestSummary = () => {
     if (!draft.summary.trim() || !draft.code.trim()) {
       toast("Add summary + code", { description: "Enter both summary and code before polishing." });
@@ -827,7 +903,6 @@ function ProjectCodeSamplesEditor({
     }
     summaryMutation.mutate({ summary: draft.summary, code: draft.code });
   };
-
   const handleSuggestTags = () => {
     if (!draft.summary.trim() || !draft.code.trim()) {
       toast("Add summary + code", { description: "Enter both summary and code before suggesting tags." });
@@ -835,21 +910,6 @@ function ProjectCodeSamplesEditor({
     }
     tagsMutation.mutate({ summary: draft.summary, code: draft.code });
   };
-
-  const applySummarySuggestion = () => {
-    if (!summarySuggestion) return;
-    setDraft((prev) => ({ ...prev, summary: summarySuggestion }));
-    setSummarySuggestion(null);
-    toast("Summary updated", { description: "AI draft applied. Review before saving." });
-  };
-
-  const applyTagSuggestions = () => {
-    if (!tagSuggestions.length) return;
-    setDraft((prev) => ({ ...prev, tags: tagSuggestions.join(", ") }));
-    setTagSuggestions([]);
-    toast("Tags inserted", { description: "Adjust them before saving if needed." });
-  };
-
   return (
     <div className="space-y-3 rounded-2xl border border-slate-900/60 bg-slate-950/40 p-4">
       <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
@@ -859,154 +919,655 @@ function ProjectCodeSamplesEditor({
             Curate 10–40 line snippets with commentary. You can attach up to 3 per Proof Packet.
           </p>
         </div>
-        <Button type="button" variant="ghost" size="sm" onClick={() => setIsAdding((prev) => !prev)}>
-          {isAdding ? "Cancel" : "Add sample"}
-        </Button>
+        <div className="flex gap-2">
+          {canUsePicker ? (
+            <Button type="button" variant="secondary" size="sm" onClick={() => setIsPickerOpen(true)}>
+              Select from GitHub
+            </Button>
+          ) : null}
+          <Button type="button" variant="ghost" size="sm" onClick={() => openModal('create')}>
+            New snippet
+          </Button>
+        </div>
       </div>
       {samples.length === 0 ? (
         <p className="text-xs text-muted-foreground">No samples saved yet.</p>
       ) : (
         <div className="space-y-3">
-          {samples.map((sample) => {
-            const isExpanded = expandedId === sample.id;
-            return (
-              <div key={sample.id} className="rounded-2xl border border-slate-900/80 bg-slate-950/60 p-3 text-xs text-muted-foreground">
-                <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-                  <div>
-                    <p className="text-sm font-semibold text-white">{sample.summary}</p>
-                    <p className="text-[11px] uppercase tracking-[0.3em] text-slate-500">
-                      {sample.filePath || "snippet"} {formatLineRange(sample.lineStart, sample.lineEnd)}
-                    </p>
-                    {sample.tags && sample.tags.length > 0 && (
-                      <div className="mt-1 flex flex-wrap gap-1">
-                        {sample.tags.map((tag) => (
-                          <Badge key={tag} variant="outline" className="text-[10px]">
-                            {tag}
-                          </Badge>
-                        ))}
-                      </div>
-                    )}
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <Button type="button" variant="secondary" size="sm" onClick={() => setExpandedId(isExpanded ? null : sample.id)}>
-                      {isExpanded ? "Hide code" : "View code"}
-                    </Button>
-                    <Button type="button" variant="ghost" size="icon" onClick={() => handleDelete(sample.id)}>
-                      <Trash2 className="h-4 w-4" />
-                      <span className="sr-only">Delete sample</span>
-                    </Button>
-                  </div>
+          {samples.map((sample) => (
+            <div key={sample.id} className="rounded-2xl border border-slate-900/80 bg-slate-950/60 p-3 text-xs text-muted-foreground">
+              <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                <div>
+                  <p className="text-sm font-semibold text-white line-clamp-2">{sample.summary}</p>
+                  <p className="text-[11px] uppercase tracking-[0.3em] text-slate-500">
+                    {sample.filePath || 'snippet'} {formatLineRange(sample.lineStart, sample.lineEnd)}
+                  </p>
+                  {sample.tags && sample.tags.length > 0 && (
+                    <div className="mt-1 flex flex-wrap gap-1">
+                      {sample.tags.map((tag) => (
+                        <Badge key={tag} variant="outline" className="text-[10px]">
+                          {tag}
+                        </Badge>
+                      ))}
+                    </div>
+                  )}
                 </div>
-                {isExpanded && (
-                  <div className="mt-3 space-y-2">
-                    {sample.url && (
-                      <a href={sample.url} target="_blank" rel="noopener noreferrer nofollow" className="text-[11px] text-primary underline">
-                        View source
-                      </a>
-                    )}
-                    <CodeSnippet code={sample.code} language={sample.language || inferLanguage(sample.filePath) || "tsx"} />
-                  </div>
-                )}
+                <div className="flex items-center gap-2">
+                  <Button variant="ghost" size="icon" onClick={() => openModal('edit', sample)}>
+                    <Pencil className="h-4 w-4" />
+                    <span className="sr-only">Edit</span>
+                  </Button>
+                  <Button variant="ghost" size="icon" onClick={() => handleDelete(sample.id)}>
+                    <Trash2 className="h-4 w-4" />
+                    <span className="sr-only">Delete</span>
+                  </Button>
+                </div>
               </div>
-            );
-          })}
+            </div>
+          ))}
         </div>
       )}
-      {isAdding && (
-        <form onSubmit={handleAddSample} className="space-y-3 rounded-2xl border border-dashed border-slate-700 p-4">
+      {modalMode ? (
+        <SampleEditorModal
+          draft={draft}
+          mode={modalMode}
+          onClose={closeModal}
+          onSave={upsertSample}
+          onDraftChange={handleDraftChange}
+          onSuggestSummary={handleSuggestSummary}
+          onSuggestTags={handleSuggestTags}
+          summarySuggestion={summarySuggestion}
+          tagSuggestions={tagSuggestions}
+          summaryPending={summaryMutation.isPending}
+          tagsPending={tagsMutation.isPending}
+          onSelectFromGitHub={canUsePicker ? () => setIsPickerOpen(true) : undefined}
+        />
+      ) : null}
+      {canUsePicker ? (
+        <CodeSamplePicker
+          project={project}
+          open={isPickerOpen}
+          onClose={() => setIsPickerOpen(false)}
+          onSelect={handlePickerSelect}
+        />
+      ) : null}
+    </div>
+  );
+}
+interface SampleEditorModalProps {
+  draft: SampleDraft;
+  mode: "create" | "edit";
+  onClose: () => void;
+  onSave: () => void;
+  onDraftChange: (field: keyof SampleDraft) => (event: ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => void;
+  onSuggestSummary: () => void;
+  onSuggestTags: () => void;
+  summarySuggestion: string | null;
+  tagSuggestions?: string[];
+  summaryPending?: boolean;
+  tagsPending?: boolean;
+  onSelectFromGitHub?: () => void;
+}
+
+function SampleEditorModal({
+  draft,
+  mode,
+  onClose,
+  onSave,
+  onDraftChange,
+  onSuggestSummary,
+  onSuggestTags,
+  summarySuggestion,
+  tagSuggestions,
+  summaryPending,
+  tagsPending,
+  onSelectFromGitHub,
+}: SampleEditorModalProps) {
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 px-4 py-6" role="dialog" aria-modal="true" onClick={onClose}>
+      <div
+        className="max-h-[90vh] w-full max-w-3xl overflow-y-auto rounded-3xl border border-slate-800 bg-slate-950 p-6 text-sm text-muted-foreground shadow-2xl"
+        onClick={(event) => event.stopPropagation()}
+      >
+        <div className="flex items-center justify-between">
+          <div>
+            <p className="text-xs uppercase tracking-[0.35em] text-muted-foreground">{mode === "edit" ? "Edit code sample" : "New code sample"}</p>
+            <h3 className="text-base font-semibold text-white">{draft.summary || "Untitled snippet"}</h3>
+          </div>
+          <button type="button" className="rounded-full border border-slate-700 p-2 text-slate-400 hover:text-white" onClick={onClose}>
+            <X className="h-4 w-4" />
+          </button>
+        </div>
+        <div className="mt-4 space-y-4">
           <div>
             <div className="flex items-center justify-between gap-2">
               <Label>Summary</Label>
-              <Button type="button" variant="ghost" size="sm" onClick={handleSuggestSummary} disabled={summaryMutation.isPending}>
-                {summaryMutation.isPending ? "Polishing..." : "Polish summary"}
+              <Button type="button" variant="ghost" size="sm" onClick={onSuggestSummary} disabled={summaryPending}>
+                {summaryPending ? "Polishing…" : "Polish summary"}
               </Button>
             </div>
-            <Input value={draft.summary} onChange={handleDraftChange("summary")} className="mt-2" placeholder="What does this snippet show?" required />
+            <Input value={draft.summary} onChange={onDraftChange("summary")} className="mt-2" placeholder="What does this snippet show?" required />
             {summarySuggestion && (
               <div className="mt-2 rounded-xl border border-slate-800/80 bg-slate-950/70 p-3 text-xs text-muted-foreground">
                 <p className="text-[11px] uppercase tracking-[0.3em] text-slate-500">AI suggestion</p>
                 <p className="text-sm text-white">{summarySuggestion}</p>
-                <div className="mt-2 flex gap-2">
-                  <Button type="button" size="sm" variant="secondary" onClick={applySummarySuggestion}>
-                    Use suggestion
-                  </Button>
-                  <Button type="button" size="sm" variant="ghost" onClick={() => setSummarySuggestion(null)}>
-                    Dismiss
-                  </Button>
-                </div>
+                <p className="mt-2 text-[11px] text-muted-foreground">Copy in the phrasing you like before saving.</p>
               </div>
             )}
           </div>
           <div className="grid gap-3 md:grid-cols-2">
             <div>
               <Label>File path</Label>
-              <Input value={draft.filePath} onChange={handleDraftChange("filePath")} className="mt-2" placeholder="src/pipelines/features.py" />
+              <Input value={draft.filePath} onChange={onDraftChange("filePath")} className="mt-2" placeholder="src/pipelines/features.py" />
             </div>
             <div>
               <Label>Language</Label>
-              <Input value={draft.language} onChange={handleDraftChange("language")} className="mt-2" placeholder="python" />
+              <Input value={draft.language} onChange={onDraftChange("language")} className="mt-2" placeholder="python" />
             </div>
           </div>
           <div className="grid gap-3 md:grid-cols-2">
             <div className="grid grid-cols-2 gap-3">
               <div>
                 <Label>Start line</Label>
-                <Input type="number" min={1} value={draft.lineStart} onChange={handleDraftChange("lineStart")} className="mt-2" />
+                <Input type="number" min={1} value={draft.lineStart} onChange={onDraftChange("lineStart")} className="mt-2" />
               </div>
               <div>
                 <Label>End line</Label>
-                <Input type="number" min={1} value={draft.lineEnd} onChange={handleDraftChange("lineEnd")} className="mt-2" />
+                <Input type="number" min={1} value={draft.lineEnd} onChange={onDraftChange("lineEnd")} className="mt-2" />
               </div>
             </div>
             <div>
               <Label>Source URL</Label>
-              <Input value={draft.url} onChange={handleDraftChange("url")} className="mt-2" placeholder="https://github.com/demo/file#L1-L20" />
+              <Input value={draft.url} onChange={onDraftChange("url")} className="mt-2" placeholder="https://github.com/demo/file#L1-L20" />
             </div>
           </div>
           <div>
             <div className="flex items-center justify-between gap-2">
               <Label>Tags</Label>
-              <Button type="button" variant="ghost" size="sm" onClick={handleSuggestTags} disabled={tagsMutation.isPending}>
-                {tagsMutation.isPending ? "Suggesting..." : "Suggest tags"}
+              <Button type="button" variant="ghost" size="sm" onClick={onSuggestTags} disabled={tagsPending}>
+                {tagsPending ? "Suggesting…" : "Suggest tags"}
               </Button>
             </div>
-            <Input value={draft.tags} onChange={handleDraftChange("tags")} className="mt-2" placeholder="ml, evaluation, guardrails" />
+            <Input value={draft.tags} onChange={onDraftChange("tags")} className="mt-2" placeholder="ml, evaluation, guardrails" />
             <p className="mt-1 text-[11px] text-muted-foreground">Comma-separated, up to 5 tags.</p>
-            {tagSuggestions.length > 0 && (
+            {tagSuggestions && tagSuggestions.length > 0 && (
               <div className="mt-2 rounded-xl border border-slate-800/80 bg-slate-950/70 p-3 text-xs text-muted-foreground">
-                <p className="text-[11px] uppercase tracking-[0.3em] text-slate-500">AI suggestions</p>
-                <div className="mt-1 flex flex-wrap gap-2">
+                <p className="text-[11px] uppercase tracking-[0.3em] text-slate-500">Suggested tags</p>
+                <div className="mt-1 flex flex-wrap gap-1">
                   {tagSuggestions.map((tag) => (
                     <Badge key={tag} variant="outline" className="text-[10px]">
                       {tag}
                     </Badge>
                   ))}
                 </div>
-                <div className="mt-2 flex gap-2">
-                  <Button type="button" size="sm" variant="secondary" onClick={applyTagSuggestions}>
-                    Insert tags
-                  </Button>
-                  <Button type="button" size="sm" variant="ghost" onClick={() => setTagSuggestions([])}>
-                    Dismiss
-                  </Button>
-                </div>
+                <p className="mt-1 text-[11px] text-muted-foreground">Copy the ones that fit best.</p>
               </div>
             )}
           </div>
           <div>
             <Label>Code</Label>
-            <Textarea value={draft.code} onChange={handleDraftChange("code")} className="mt-2 font-mono text-xs" rows={6} placeholder="Paste 10–40 lines of code" required />
+            <Textarea value={draft.code} onChange={onDraftChange("code")} className="mt-2 font-mono text-xs" rows={6} placeholder="Paste 10–40 lines of code" required />
             <p className="mt-1 text-[11px] text-muted-foreground">
               Limit {MAX_SAMPLE_LINES} lines / {MAX_SAMPLE_CODE_CHARS} characters.
             </p>
           </div>
-          <div className="flex justify-end">
-            <Button type="submit" size="sm">
-              Save sample
+          <div className="flex items-center justify-between gap-2">
+            {onSelectFromGitHub ? (
+              <Button type="button" variant="secondary" onClick={onSelectFromGitHub}>
+                Select lines from GitHub
+              </Button>
+            ) : (
+              <span />
+            )}
+            <div className="flex gap-2">
+              <Button type="button" variant="ghost" onClick={onClose}>
+                Cancel
+              </Button>
+              <Button type="button" onClick={onSave}>
+                {mode === "edit" ? "Save changes" : "Add sample"}
+              </Button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function CodeSamplePicker({ project, open, onClose, onSelect }: CodeSamplePickerProps) {
+  const isGitHubProject = project.sourceType !== "link" && Boolean(project.fullName?.includes("/"));
+  const defaultBranch = project.defaultBranch || "main";
+  const [activeTab, setActiveTab] = useState<"browse" | "link">("browse");
+  const [tree, setTree] = useState<RepoTreeItem[]>([]);
+  const [treeLoading, setTreeLoading] = useState(false);
+  const [treeError, setTreeError] = useState<string | null>(null);
+  const [searchTerm, setSearchTerm] = useState("");
+  const [selectedPath, setSelectedPath] = useState<string | null>(null);
+  const [filePreview, setFilePreview] = useState<FilePreviewState | null>(null);
+  const [fileLoading, setFileLoading] = useState(false);
+  const [fileError, setFileError] = useState<string | null>(null);
+  const [selection, setSelection] = useState<{ start: number; end: number } | null>(null);
+  const [blobUrl, setBlobUrl] = useState("");
+  const [blobError, setBlobError] = useState<string | null>(null);
+  const [blobLoading, setBlobLoading] = useState(false);
+
+  useEffect(() => {
+    if (!open) return;
+    const previous = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.body.style.overflow = previous;
+    };
+  }, [open]);
+
+  useEffect(() => {
+    let isMounted = true;
+    if (open && isGitHubProject) {
+      setTreeLoading(true);
+      setTreeError(null);
+      fetchRepoFileTree(project.fullName, defaultBranch)
+        .then((data) => {
+          if (!isMounted) return;
+          setTree(data);
+        })
+        .catch((error: Error) => {
+          if (!isMounted) return;
+          setTreeError(error.message);
+        })
+        .finally(() => {
+          if (!isMounted) return;
+          setTreeLoading(false);
+        });
+    }
+    return () => {
+      isMounted = false;
+    };
+  }, [open, project.fullName, defaultBranch, isGitHubProject]);
+
+  useEffect(() => {
+    if (!open) {
+      setActiveTab("browse");
+      setSelectedPath(null);
+      setFilePreview(null);
+      setSelection(null);
+      setFileError(null);
+      setBlobError(null);
+    }
+  }, [open]);
+
+  if (!open || !isGitHubProject) {
+    return null;
+  }
+
+  const filteredFiles = useMemo(() => {
+    const term = searchTerm.toLowerCase();
+    return tree
+      .filter((entry) => isSnippetEligible(entry))
+      .filter((entry) => entry.path.toLowerCase().includes(term))
+      .sort((a, b) => a.path.localeCompare(b.path));
+  }, [tree, searchTerm]);
+
+  const selectedLineCount = selection ? selection.end - selection.start + 1 : 0;
+  const selectedCode =
+    selection && filePreview
+      ? filePreview.lines.slice(selection.start - 1, selection.end).join("\n")
+      : "";
+  const selectedCharCount = selectedCode.length;
+  const selectionTooLong = selectedLineCount > MAX_SAMPLE_LINES || selectedCharCount > MAX_SAMPLE_CODE_CHARS;
+
+  const handleFetchFile = async (path: string, refOverride?: string, preset?: { start?: number; end?: number }) => {
+    setSelectedPath(path);
+    setFileError(null);
+    setFileLoading(true);
+    setSelection(null);
+    try {
+      const data = await fetchRepoFileContent(project.fullName, path, refOverride || defaultBranch);
+      const normalized = data.content.replace(/\r\n/g, "\n");
+      const previewLines = normalized.split("\n");
+      setFilePreview({ path: data.path, lines: previewLines, ref: (data.ref as string) || refOverride || defaultBranch });
+      if (preset?.start) {
+        const start = clampLine(preset.start, previewLines.length);
+        const end = clampLine(preset.end ?? preset.start ?? start, previewLines.length);
+        setSelection({ start: Math.min(start, end), end: Math.max(start, end) });
+      }
+    } catch (error) {
+      setFileError((error as Error).message);
+    } finally {
+      setFileLoading(false);
+    }
+  };
+
+  const handleLineClick = (lineNumber: number) => {
+    setSelection((prev) => {
+      if (!prev) {
+        return { start: lineNumber, end: lineNumber };
+      }
+      if (prev.start === prev.end) {
+        if (lineNumber === prev.start) {
+          return prev;
+        }
+        return { start: Math.min(prev.start, lineNumber), end: Math.max(prev.start, lineNumber) };
+      }
+      return { start: lineNumber, end: lineNumber };
+    });
+  };
+
+  const handleLineInputChange = (field: "start" | "end") => (event: ChangeEvent<HTMLInputElement>) => {
+    if (!filePreview) return;
+    const value = Number.parseInt(event.target.value, 10);
+    if (Number.isNaN(value)) {
+      setSelection(null);
+      return;
+    }
+    const clamped = clampLine(value, filePreview.lines.length);
+    setSelection((prev) => {
+      if (!prev) {
+        return { start: clamped, end: clamped };
+      }
+      if (field === "start") {
+        return { start: Math.min(clamped, prev.end), end: Math.max(clamped, prev.end) };
+      }
+      return { start: Math.min(prev.start, clamped), end: Math.max(prev.start, clamped) };
+    });
+  };
+
+  const handleUseSnippet = () => {
+    if (!filePreview || !selection || selectionTooLong || selectedLineCount <= 0) return;
+    const language = inferLanguage(filePreview.path) || "text";
+    const url = buildGitHubBlobUrl(project.fullName, filePreview.ref, filePreview.path, selection.start, selection.end);
+    onSelect({
+      filePath: filePreview.path,
+      language,
+      lineStart: selection.start,
+      lineEnd: selection.end,
+      sourceUrl: url,
+      code: selectedCode,
+    });
+  };
+
+  const handleBlobSubmit = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    setBlobError(null);
+    const parsed = parseGitHubBlobUrl(blobUrl.trim());
+    if (!parsed) {
+      setBlobError("Enter a valid GitHub blob URL with #L anchors.");
+      return;
+    }
+    const repoFullName = `${parsed.owner}/${parsed.repo}`.toLowerCase();
+    if (repoFullName !== project.fullName.toLowerCase()) {
+      setBlobError("URL must point to this repository.");
+      return;
+    }
+    setActiveTab("browse");
+    setBlobLoading(true);
+    try {
+      await handleFetchFile(parsed.path, parsed.branch, {
+        start: parsed.startLine,
+        end: parsed.endLine,
+      });
+      setBlobError(null);
+      setSelectedPath(parsed.path);
+    } catch (error) {
+      setBlobError((error as Error).message);
+    } finally {
+      setBlobLoading(false);
+    }
+  };
+
+  const renderPreview = () => (
+    <div className="space-y-3">
+      <div className="flex items-center justify-between">
+        <div>
+          <p className="text-sm font-medium text-white">
+            {filePreview ? filePreview.path : "Select a file"}
+          </p>
+          <p className="text-[11px] uppercase tracking-[0.3em] text-slate-500">{filePreview ? filePreview.ref : ""}</p>
+        </div>
+        {filePreview ? (
+          <button
+            type="button"
+            className="text-xs text-primary underline"
+            onClick={() => {
+              setSelection(null);
+              setFilePreview(null);
+            }}
+          >
+            Clear file
+          </button>
+        ) : null}
+      </div>
+      {fileError ? <p className="text-xs text-red-400">{fileError}</p> : null}
+      <div className="h-72 overflow-y-auto rounded-2xl border border-slate-800/80 bg-slate-950/60">
+        {fileLoading ? (
+          <div className="flex h-full items-center justify-center text-sm text-muted-foreground">
+            <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Loading file…
+          </div>
+        ) : filePreview ? (
+          <div className="text-xs font-mono">
+            {filePreview.lines.map((line: string, index: number) => {
+              const lineNumber = index + 1;
+              const isSelected = selection && lineNumber >= selection.start && lineNumber <= selection.end;
+              return (
+                <div
+                  key={lineNumber}
+                  className={cn(
+                    "flex border-b border-slate-900/40",
+                    isSelected ? "bg-slate-800/60 text-white" : "text-slate-300"
+                  )}
+                >
+                  <button
+                    type="button"
+                    className="w-12 flex-shrink-0 border-r border-slate-900/40 px-2 text-right text-[11px] text-slate-500 hover:text-white"
+                    onClick={() => handleLineClick(lineNumber)}
+                  >
+                    {lineNumber}
+                  </button>
+                  <pre className="flex-1 whitespace-pre-wrap px-3 py-1">{line || "\u00A0"}</pre>
+                </div>
+              );
+            })}
+          </div>
+        ) : (
+          <div className="flex h-full items-center justify-center text-sm text-muted-foreground">
+            Choose a file to preview code.
+          </div>
+        )}
+      </div>
+      {filePreview ? (
+        <div className="grid gap-3 md:grid-cols-2">
+          <div className="flex items-center gap-3">
+            <label className="flex flex-col text-xs text-muted-foreground">
+              Start line
+              <Input
+                type="number"
+                min={1}
+                value={selection?.start ?? ""}
+                onChange={handleLineInputChange("start")}
+                className="mt-1"
+              />
+            </label>
+            <label className="flex flex-col text-xs text-muted-foreground">
+              End line
+              <Input
+                type="number"
+                min={1}
+                value={selection?.end ?? ""}
+                onChange={handleLineInputChange("end")}
+                className="mt-1"
+              />
+            </label>
+            <Button type="button" variant="ghost" size="sm" onClick={() => setSelection(null)}>
+              Clear selection
             </Button>
           </div>
-        </form>
-      )}
+          <div className="text-xs text-slate-300">
+            <p>
+              Lines:{" "}
+              <span className={selectionTooLong ? "text-red-400" : "text-white"}>
+                {selectedLineCount} / {MAX_SAMPLE_LINES}
+              </span>
+            </p>
+            <p>
+              Characters:{" "}
+              <span className={selectedCharCount > MAX_SAMPLE_CODE_CHARS ? "text-red-400" : "text-white"}>
+                {selectedCharCount} / {MAX_SAMPLE_CODE_CHARS}
+              </span>
+            </p>
+            {selectionTooLong ? (
+              <p className="text-red-400">Trim the selection to keep it under the limits.</p>
+            ) : null}
+          </div>
+        </div>
+      ) : null}
+    </div>
+  );
+
+  const handleOverlayClick = () => {
+    setBlobError(null);
+    setFileError(null);
+    onClose();
+  };
+
+  const filteredList = activeTab === "browse" ? filteredFiles : [];
+
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 px-4 py-6"
+      role="dialog"
+      aria-modal="true"
+      onClick={handleOverlayClick}
+    >
+      <div
+        className="relative max-h-[90vh] w-full max-w-5xl overflow-hidden rounded-3xl border border-slate-800 bg-slate-950 shadow-2xl"
+        onClick={(event) => event.stopPropagation()}
+      >
+        <header className="flex items-center justify-between border-b border-slate-800 px-6 py-4">
+          <div>
+            <p className="text-sm uppercase tracking-[0.4em] text-slate-500">Select code sample</p>
+            <p className="text-base font-semibold text-white">{project.fullName}</p>
+          </div>
+          <button
+            type="button"
+            onClick={handleOverlayClick}
+            className="rounded-full border border-slate-700 p-2 text-slate-400 hover:text-white"
+          >
+            <X className="h-4 w-4" />
+          </button>
+        </header>
+        <div className="border-b border-slate-800 px-6 py-3">
+          <div className="inline-flex rounded-full border border-slate-800 bg-slate-950 p-1 text-xs font-medium text-white">
+            <button
+              type="button"
+              className={cn(
+                "rounded-full px-3 py-1 transition-colors",
+                activeTab === "browse" ? "bg-slate-800 text-white" : "text-slate-400"
+              )}
+              onClick={() => setActiveTab("browse")}
+            >
+              Browse files
+            </button>
+            <button
+              type="button"
+              className={cn(
+                "rounded-full px-3 py-1 transition-colors",
+                activeTab === "link" ? "bg-slate-800 text-white" : "text-slate-400"
+              )}
+              onClick={() => setActiveTab("link")}
+            >
+              Paste GitHub URL
+            </button>
+          </div>
+        </div>
+        <div className="space-y-4 overflow-y-auto px-6 py-4">
+          {activeTab === "browse" ? (
+            <div className="grid gap-4 md:grid-cols-[280px_1fr]">
+              <div className="rounded-2xl border border-slate-800/80 bg-slate-950/60 p-3">
+                <div className="flex items-center gap-2 rounded-xl border border-slate-800 bg-slate-900/60 px-3">
+                  <Search className="h-4 w-4 text-slate-500" />
+                  <Input
+                    value={searchTerm}
+                    onChange={(event) => setSearchTerm(event.target.value)}
+                    placeholder="Search files..."
+                    className="border-0 bg-transparent text-sm focus-visible:ring-0"
+                  />
+                </div>
+                <div className="mt-3 h-64 overflow-y-auto">
+                  {treeLoading ? (
+                    <p className="text-center text-xs text-muted-foreground">Loading repository…</p>
+                  ) : treeError ? (
+                    <p className="text-center text-xs text-red-400">{treeError}</p>
+                  ) : filteredList.length === 0 ? (
+                    <p className="text-xs text-muted-foreground">No eligible files yet.</p>
+                  ) : (
+                    <ul className="space-y-1 text-sm">
+                      {filteredList.map((file) => {
+                        const active = selectedPath === file.path;
+                        return (
+                          <li key={file.path}>
+                            <button
+                              type="button"
+                              onClick={() => handleFetchFile(file.path)}
+                              className={cn(
+                                "w-full rounded-xl border px-3 py-2 text-left text-xs transition-colors",
+                                active ? "border-accent/60 bg-accent/10 text-white" : "border-slate-800 bg-slate-900/40 text-slate-300"
+                              )}
+                            >
+                              <p className="font-semibold text-white">{file.path.split("/").pop()}</p>
+                              <p className="text-[11px] text-slate-400">{file.path}</p>
+                            </button>
+                          </li>
+                        );
+                      })}
+                    </ul>
+                  )}
+                </div>
+                <p className="mt-2 text-[11px] text-muted-foreground">
+                  Only text-based files under {(MAX_SAMPLE_CODE_CHARS * 5).toLocaleString()} bytes are listed. Search for paths like{" "}
+                  <code>src/hooks/useRoom.ts</code>.
+                </p>
+              </div>
+              <div>{renderPreview()}</div>
+            </div>
+          ) : (
+            <div className="space-y-4">
+              <form onSubmit={handleBlobSubmit} className="space-y-2">
+                <Label>GitHub blob URL</Label>
+                <Input
+                  value={blobUrl}
+                  onChange={(event) => setBlobUrl(event.target.value)}
+                  placeholder="https://github.com/user/repo/blob/main/src/file.ts#L10-L40"
+                />
+                {blobError ? <p className="text-xs text-red-400">{blobError}</p> : null}
+                <div className="flex gap-2">
+                  <Button type="submit" disabled={blobLoading}>
+                    {blobLoading ? "Loading…" : "Load snippet"}
+                  </Button>
+                  <Button type="button" variant="ghost" onClick={() => setBlobUrl("")}>
+                    Clear
+                  </Button>
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  Paste a link directly from GitHub with line numbers (e.g., <code>#L10-L45</code>). Must reference this repository.
+                </p>
+              </form>
+              {renderPreview()}
+            </div>
+          )}
+        </div>
+        <div className="flex items-center justify-between border-t border-slate-800 px-6 py-4">
+          <div className="text-xs text-slate-400">
+            Snippets are capped at {MAX_SAMPLE_LINES} lines and {MAX_SAMPLE_CODE_CHARS} characters to keep packets readable.
+          </div>
+          <div className="flex gap-2">
+            <Button type="button" variant="ghost" onClick={handleOverlayClick}>
+              Cancel
+            </Button>
+            <Button type="button" onClick={handleUseSnippet} disabled={!selection || selectionTooLong || !filePreview}>
+              Use snippet
+            </Button>
+          </div>
+        </div>
+      </div>
     </div>
   );
 }
@@ -1032,4 +1593,85 @@ function formatLineRange(start?: number, end?: number) {
   if (start) return `#L${start}`;
   if (end) return `#L${end}`;
   return "";
+}
+
+const EXCLUDED_SAMPLE_SEGMENTS = ["node_modules", "dist", "build", ".next", ".git", ".turbo", ".venv", "__pycache__", ".gradle", ".idea"];
+const ALLOWED_SAMPLE_EXTENSIONS = [
+  ".ts",
+  ".tsx",
+  ".js",
+  ".jsx",
+  ".py",
+  ".rs",
+  ".go",
+  ".java",
+  ".kt",
+  ".swift",
+  ".rb",
+  ".php",
+  ".cs",
+  ".cpp",
+  ".c",
+  ".sql",
+  ".md",
+];
+const MAX_PICKER_FILE_BYTES = 350_000;
+
+function isSnippetEligible(entry: RepoTreeItem): boolean {
+  if (!entry || !entry.path) return false;
+  if (entry.size && entry.size > MAX_PICKER_FILE_BYTES) return false;
+  if (isInExcludedDirectory(entry.path)) return false;
+  return hasAllowedExtension(entry.path);
+}
+
+function hasAllowedExtension(path: string) {
+  const lower = path.toLowerCase();
+  return ALLOWED_SAMPLE_EXTENSIONS.some((ext) => lower.endsWith(ext));
+}
+
+function isInExcludedDirectory(path: string) {
+  return EXCLUDED_SAMPLE_SEGMENTS.some((segment) => path.split("/").includes(segment));
+}
+
+function clampLine(value: number | undefined, max: number) {
+  if (!value || Number.isNaN(value)) return 1;
+  return Math.min(Math.max(1, value), Math.max(1, max));
+}
+
+function buildGitHubBlobUrl(fullName: string, ref: string, filePath: string, start: number, end: number) {
+  const encodedPath = filePath
+    .split("/")
+    .map((segment) => encodeURIComponent(segment))
+    .join("/");
+  const safeRef = encodeURIComponent(ref || "main");
+  const anchor = start === end ? `#L${start}` : `#L${start}-L${end}`;
+  return `https://github.com/${fullName}/blob/${safeRef}/${encodedPath}${anchor}`;
+}
+
+function parseGitHubBlobUrl(raw: string) {
+  if (!raw) return null;
+  try {
+    const url = new URL(raw);
+    if (!url.hostname.endsWith("github.com")) return null;
+    const parts = url.pathname.split("/").filter(Boolean);
+    if (parts.length < 5) return null;
+    const blobIndex = parts.indexOf("blob");
+    if (blobIndex === -1 || blobIndex + 2 >= parts.length) return null;
+    const owner = parts[0];
+    const repo = parts[1];
+    const branch = decodeURIComponent(parts[blobIndex + 1]);
+    const path = parts.slice(blobIndex + 2).join("/");
+    let startLine: number | undefined;
+    let endLine: number | undefined;
+    if (url.hash && url.hash.startsWith("#L")) {
+      const range = url.hash.slice(2).split("-L");
+      startLine = Number.parseInt(range[0], 10);
+      if (range[1]) {
+        endLine = Number.parseInt(range[1], 10);
+      }
+    }
+    return { owner, repo, branch, path, startLine, endLine };
+  } catch {
+    return null;
+  }
 }

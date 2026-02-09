@@ -4,6 +4,7 @@ export interface ApiRepoSummary {
   id: string;
   name: string;
   fullName: string;
+  defaultBranch?: string;
   description?: string;
   htmlUrl: string;
   language?: string;
@@ -93,6 +94,35 @@ export function saveProjects(projects: ProjectPayload[]) {
 
 export function fetchGitHubRepos() {
   return apiFetch<ApiRepoSummary[]>("/github/repos");
+}
+
+export interface RepoTreeItem {
+  path: string;
+  size?: number;
+}
+
+export function fetchRepoFileTree(fullName: string, ref?: string) {
+  const params = new URLSearchParams({ fullName });
+  if (ref) {
+    params.set("ref", ref);
+  }
+  return apiFetch<RepoTreeItem[]>(`/github/file-tree?${params.toString()}`);
+}
+
+export interface RepoFileResponse {
+  path: string;
+  sha: string;
+  size: number;
+  content: string;
+  ref?: string | null;
+}
+
+export function fetchRepoFileContent(fullName: string, path: string, ref?: string) {
+  const params = new URLSearchParams({ fullName, path });
+  if (ref) {
+    params.set("ref", ref);
+  }
+  return apiFetch<RepoFileResponse>(`/github/file-content?${params.toString()}`);
 }
 
 export function createJob(payload: CreateJobPayload) {

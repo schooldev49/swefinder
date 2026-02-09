@@ -40,7 +40,7 @@ import {
   storeOAuthState,
   updateJob,
 } from "./storage";
-import { exchangeCodeForToken, fetchGitHubUserProfile, fetchUserRepos } from "./github";
+import { exchangeCodeForToken, fetchGitHubUserProfile, fetchRepoFileText, fetchRepoTree, fetchUserRepos } from "./github";
 import { createSession, destroySession, getSession } from "./session";
 
 interface CreateProjectsPayload {
@@ -130,6 +130,14 @@ export default {
 
       if (url.pathname === "/api/github/repos" && request.method === "GET") {
         return withCors(await handleGitHubRepos(request, env), origin);
+      }
+
+      if (url.pathname === "/api/github/file-tree" && request.method === "GET") {
+        return withCors(await handleGitHubFileTree(request, env), origin);
+      }
+
+      if (url.pathname === "/api/github/file-content" && request.method === "GET") {
+        return withCors(await handleGitHubFileContent(request, env), origin);
       }
 
       if (url.pathname === "/api/projects" && request.method === "POST") {
@@ -362,6 +370,7 @@ async function handleGitHubRepos(request: Request, env: Env): Promise<Response> 
       id: `${repo.id}`,
       name: repo.name,
       fullName: repo.full_name,
+      defaultBranch: repo.default_branch,
       description: repo.description,
       htmlUrl: repo.html_url,
       language: repo.language,
@@ -371,6 +380,56 @@ async function handleGitHubRepos(request: Request, env: Env): Promise<Response> 
       fork: repo.fork,
     }))
   );
+}
+
+async function handleGitHubFileTree(request: Request, env: Env): Promise<Response> {
+  const { user } = await requireUser(request, env);
+  const params = new URL(request.url).searchParams;
+  const fullName = params.get("fullName");
+  if (!fullName) {
+    return errorResponse("Missing repository fullName", 400);
+  }
+  const ref = params.get("ref") || undefined;
+  const encryptedToken = await getEncryptedToken(env, user.id);
+  const token = await decryptToken(env, encryptedToken);
+  if (!token) {
+    throw new HttpError("Missing GitHub token", 401);
+  }
+  const tree = await fetchRepoTree(token, fullName, ref);
+  const blobs = tree
+    .filter((entry) => entry.type === "blob")
+    .map((entry) => ({
+      path: entry.path,
+      size: entry.size ?? 0,
+    }));
+  return jsonResponse(blobs);
+}
+
+async function handleGitHubFileContent(request: Request, env: Env): Promise<Response> {
+  const { user } = await requireUser(request, env);
+  const params = new URL(request.url).searchParams;
+  const fullName = params.get("fullName");
+  const path = params.get("path");
+  if (!fullName || !path) {
+    return errorResponse("Missing repository or path", 400);
+  }
+  const ref = params.get("ref") || undefined;
+  const encryptedToken = await getEncryptedToken(env, user.id);
+  const token = await decryptToken(env, encryptedToken);
+  if (!token) {
+    throw new HttpError("Missing GitHub token", 401);
+  }
+  const file = await fetchRepoFileText(token, fullName, path, ref);
+  if (file.size > 350_000) {
+    throw new HttpError("File too large to preview. Pick a smaller snippet.", 400);
+  }
+  return jsonResponse({
+    path: file.path,
+    sha: file.sha,
+    size: file.size,
+    content: file.text,
+    ref: ref || null,
+  });
 }
 
 async function handleListProjects(request: Request, env: Env): Promise<Response> {
@@ -757,6 +816,7 @@ function normalizeProjectPayload(
     externalUrl,
     description: project.description,
     primaryLanguage: project.primaryLanguage,
+    defaultBranch: project.defaultBranch,
     topics,
     lastUpdated: project.lastUpdated || now,
     demoUrl: project.demoUrl,

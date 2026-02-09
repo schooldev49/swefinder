@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { CheckCircle2, ChevronRight } from "lucide-react";
@@ -215,6 +215,14 @@ function RequirementPublicCard({
 }) {
   const selectedSample = sampleOptions.find((sample) => sample.id === selectedSampleId);
   const trimmedMappings = mappings.slice(0, 2);
+  const [openSample, setOpenSample] = useState(false);
+
+  useEffect(() => {
+    if (!selectedSample) {
+      setOpenSample(false);
+    }
+  }, [selectedSample]);
+
   return (
     <div className="rounded-2xl border border-slate-900/80 bg-slate-950/60 p-4 space-y-3">
       <div>
@@ -254,14 +262,36 @@ function RequirementPublicCard({
       </div>
       {selectedSample && (
         <div className="space-y-2 rounded-xl border border-slate-900/80 bg-slate-950/70 p-3 text-xs text-muted-foreground">
-          <p className="text-[11px] uppercase tracking-[0.3em] text-slate-500">Code sample</p>
-          <p className="text-sm font-semibold text-white">{selectedSample.summary}</p>
-          <p>{formatPublicLineLabel(selectedSample.filePath, selectedSample.lineStart, selectedSample.lineEnd)}</p>
-          <CodeSnippet code={selectedSample.code} language={selectedSample.language || inferLanguage(selectedSample.filePath) || "tsx"} />
-          {selectedSample.url && (
-            <a href={selectedSample.url} target="_blank" rel="noopener noreferrer nofollow" className="text-primary underline">
-              View on GitHub
-            </a>
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-[11px] uppercase tracking-[0.3em] text-slate-500">Code sample</p>
+              <p className="text-sm font-semibold text-white">{selectedSample.summary}</p>
+              <p>{formatPublicLineLabel(selectedSample.filePath, selectedSample.lineStart, selectedSample.lineEnd)}</p>
+              {selectedSample.tags && selectedSample.tags.length > 0 ? (
+                <div className="mt-1 flex flex-wrap gap-1">
+                  {selectedSample.tags.map((tag) => (
+                    <Badge key={tag} variant="outline" className="text-[10px]">
+                      {tag}
+                    </Badge>
+                  ))}
+                </div>
+              ) : null}
+            </div>
+            <Button variant="secondary" size="sm" onClick={() => setOpenSample((prev) => !prev)}>
+              {openSample ? "Hide snippet" : "View snippet"}
+            </Button>
+          </div>
+          {openSample ? (
+            <>
+              <CodeSnippet code={selectedSample.code} language={selectedSample.language || inferLanguage(selectedSample.filePath) || "tsx"} />
+              {selectedSample.url && (
+                <a href={selectedSample.url} target="_blank" rel="noopener noreferrer nofollow" className="text-primary underline">
+                  View on GitHub
+                </a>
+              )}
+            </>
+          ) : (
+            <p className="text-[11px] text-muted-foreground">Collapsed until a reviewer chooses to dive in.</p>
           )}
         </div>
       )}
@@ -294,6 +324,15 @@ function PublicCodeSamples({ samples }: { samples: ProofPacketCodeSample[] }) {
                   <p className="text-[11px] uppercase tracking-[0.3em] text-slate-500">
                     {sample.projectFullName} {formatPublicLineLabel(sample.filePath, sample.lineStart, sample.lineEnd)}
                   </p>
+                  {sample.tags && sample.tags.length > 0 ? (
+                    <div className="mt-1 flex flex-wrap gap-1">
+                      {sample.tags.map((tag) => (
+                        <Badge key={tag} variant="outline" className="text-[10px]">
+                          {tag}
+                        </Badge>
+                      ))}
+                    </div>
+                  ) : null}
                 </div>
                 <div className="flex items-center gap-2">
                   {sample.url && (

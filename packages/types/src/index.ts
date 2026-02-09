@@ -40,6 +40,7 @@ export interface Project {
   fullName: string; // repo full name or custom title
   htmlUrl: string; // repo URL or canonical project URL
   externalUrl?: string; // optional additional link for external projects
+  defaultBranch?: string;
   description?: string;
   primaryLanguage?: string;
   topics: string[];

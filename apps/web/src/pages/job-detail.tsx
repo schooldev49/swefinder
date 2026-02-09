@@ -514,6 +514,15 @@ function ProofCodeSamplesSection({ samples }: { samples: ProofPacketCodeSample[]
                   <p className="text-[11px] uppercase tracking-[0.3em] text-slate-500">
                     {sample.projectFullName} {formatLineLabel(sample.filePath, sample.lineStart, sample.lineEnd)}
                   </p>
+                  {sample.tags && sample.tags.length > 0 ? (
+                    <div className="mt-1 flex flex-wrap gap-1">
+                      {sample.tags.map((tag) => (
+                        <Badge key={tag} variant="outline" className="text-[10px]">
+                          {tag}
+                        </Badge>
+                      ))}
+                    </div>
+                  ) : null}
                 </div>
                 <div className="flex items-center gap-2">
                   {sample.url && (
@@ -595,6 +604,14 @@ function RequirementCard({
 }) {
   const selectedSample = sampleOptions.find((sample) => sample.id === selectedSampleId);
   const hasEvidence = mappings.length > 0;
+  const [showSample, setShowSample] = useState(false);
+
+  useEffect(() => {
+    if (!selectedSample) {
+      setShowSample(false);
+    }
+  }, [selectedSample]);
+
   return (
     <div className="rounded-2xl border border-slate-800/80 bg-slate-950/60 p-4 space-y-3">
       <div className="space-y-2">
@@ -670,22 +687,36 @@ function RequirementCard({
         )}
         {selectedSample && (
           <div className="space-y-2 rounded-lg border border-slate-800/70 bg-slate-950/70 p-3 text-[11px] text-muted-foreground">
-            <p className="text-xs font-semibold text-white">{selectedSample.summary}</p>
-            <p>{formatLineLabel(selectedSample.filePath, selectedSample.lineStart, selectedSample.lineEnd)}</p>
-            <CodeSnippet code={selectedSample.code} language={selectedSample.language || inferLanguage(selectedSample.filePath) || "tsx"} />
-          </div>
-        )}
-        {selectedSample && (
-          <div className="space-y-1 rounded-lg border border-slate-800/70 bg-slate-950/70 p-2">
-            <p className="text-xs font-semibold text-white">{selectedSample.summary}</p>
-            <p className="text-[11px] text-muted-foreground">{formatLineLabel(selectedSample.filePath, selectedSample.lineStart, selectedSample.lineEnd)}</p>
-            <div className="flex flex-wrap gap-2">
-              {selectedSample.url && (
-                <a href={selectedSample.url} target="_blank" rel="noopener noreferrer" className="text-[11px] text-primary underline">
-                  View on GitHub
-                </a>
-              )}
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-xs font-semibold text-white">{selectedSample.summary}</p>
+                <p className="text-muted-foreground">{formatLineLabel(selectedSample.filePath, selectedSample.lineStart, selectedSample.lineEnd)}</p>
+                {selectedSample.tags && selectedSample.tags.length > 0 ? (
+                  <div className="mt-1 flex flex-wrap gap-1">
+                    {selectedSample.tags.map((tag) => (
+                      <Badge key={tag} variant="outline" className="text-[10px]">
+                        {tag}
+                      </Badge>
+                    ))}
+                  </div>
+                ) : null}
+              </div>
+              <Button type="button" variant="secondary" size="sm" onClick={() => setShowSample((prev) => !prev)}>
+                {showSample ? "Hide code sample" : "View code sample"}
+              </Button>
             </div>
+            {showSample ? (
+              <>
+                <CodeSnippet code={selectedSample.code} language={selectedSample.language || inferLanguage(selectedSample.filePath) || "tsx"} />
+                {selectedSample.url && (
+                  <a href={selectedSample.url} target="_blank" rel="noopener noreferrer nofollow" className="text-[11px] text-primary underline">
+                    View on GitHub
+                  </a>
+                )}
+              </>
+            ) : (
+              <p className="text-[11px] text-muted-foreground">Keeps packets skimmable until someone clicks.</p>
+            )}
           </div>
         )}
       </div>

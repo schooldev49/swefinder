@@ -19,6 +19,7 @@ export interface GitHubRepo {
   fork: boolean;
   updated_at: string;
   stargazers_count: number;
+  default_branch: string;
 }
 
 interface GitHubTokenResponse {
@@ -82,6 +83,57 @@ export async function fetchRepoReadme(token: string, fullName: string): Promise<
   } catch {
     return null;
   }
+}
+
+export interface GitHubTreeEntry {
+  path: string;
+  type: "blob" | "tree";
+  size?: number;
+}
+
+export async function fetchRepoTree(token: string, fullName: string, ref?: string): Promise<GitHubTreeEntry[]> {
+  const sha = encodeURIComponent(ref || "HEAD");
+  const res = await fetch(`https://api.github.com/repos/${fullName}/git/trees/${sha}?recursive=1`, {
+    headers: githubHeaders(token),
+  });
+  if (!res.ok) {
+    throw new Error("Unable to fetch repository tree");
+  }
+  const data = (await res.json()) as { tree: GitHubTreeEntry[] };
+  return data.tree || [];
+}
+
+export interface GitHubFileContent {
+  path: string;
+  sha: string;
+  size: number;
+  encoding: string;
+  content: string;
+}
+
+export async function fetchRepoFileText(
+  token: string,
+  fullName: string,
+  path: string,
+  ref?: string
+): Promise<{ path: string; sha: string; size: number; text: string }> {
+  const encodedPath = path.split("/").map(encodeURIComponent).join("/");
+  const refParam = ref ? `?ref=${encodeURIComponent(ref)}` : "";
+  const res = await fetch(`https://api.github.com/repos/${fullName}/contents/${encodedPath}${refParam}`, {
+    headers: githubHeaders(token),
+  });
+  if (res.status === 404) {
+    throw new Error("File not found");
+  }
+  if (!res.ok) {
+    throw new Error("Unable to fetch file contents");
+  }
+  const data = (await res.json()) as GitHubFileContent & { decoded_content?: string };
+  if (data.encoding !== "base64" || !data.content) {
+    throw new Error("Unsupported file encoding");
+  }
+  const decoded = atob(data.content.replace(/\n/g, ""));
+  return { path: data.path, sha: data.sha, size: data.size, text: decoded };
 }
 
 function githubHeaders(token: string): HeadersInit {
