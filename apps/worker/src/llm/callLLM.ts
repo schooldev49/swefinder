@@ -33,13 +33,19 @@ export async function callLLM(env: Env, req: LLMRequest): Promise<LLMResponse> {
   }
 
   const messages = buildMessages(req);
-  const body = {
+  const body: Record<string, unknown> = {
     model: req.model ?? DEFAULT_MODEL,
     messages,
     temperature: req.temperature ?? DEFAULT_TEMPERATURE,
-    max_tokens: req.maxTokens ?? DEFAULT_MAX_TOKENS,
-    ...(req.responseFormat === "json" ? { response_format: { type: "json_object" as const } } : {}),
   };
+
+  if (req.maxTokens ?? DEFAULT_MAX_TOKENS) {
+    body.max_completion_tokens = req.maxTokens ?? DEFAULT_MAX_TOKENS;
+  }
+
+  if (req.responseFormat === "json") {
+    body.response_format = { type: "json_object" as const };
+  }
 
   const response = await fetch(OPENAI_CHAT_URL, {
     method: "POST",
