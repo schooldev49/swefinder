@@ -171,11 +171,11 @@ export function updateProfile(payload: UpdateProfilePayload) {
 }
 
 export function fetchPublicProfile(slug: string) {
-  return shareFetch<{ user: User; projects: Project[] }>(`/share/users/${slug}`);
+  return shareFetch<{ user: User; projects: Project[] }>(`/share/u/${slug}`);
 }
 
 export function fetchSharedPacket(handle: string, packetSlug: string) {
   return shareFetch<{ user: User; job: Job; proofPacket: ProofPacket | null }>(
-    `/share/users/${handle}/packets/${packetSlug}`
+    `/share/u/${handle}/packets/${packetSlug}`
   );
 }

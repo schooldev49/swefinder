@@ -48,7 +48,7 @@ export function ProfilePage() {
 
   const origin = typeof window !== "undefined" ? window.location.origin : "";
   const trimmedSlug = slug.trim().toLowerCase();
-  const profileUrl = trimmedSlug ? `${origin}/users/${trimmedSlug}` : "";
+  const profileUrl = trimmedSlug ? `${origin}/u/${trimmedSlug}` : "";
   const initialSlug = profileQuery.data?.user.profileSlug ?? "";
   const initialPublic = Boolean(profileQuery.data?.user.profilePublic);
   const hasChanges = trimmedSlug !== initialSlug || isPublic !== initialPublic;
@@ -95,7 +95,7 @@ export function ProfilePage() {
               className="max-w-md"
             />
             <p className="text-xs text-muted-foreground">
-              Your profile lives at <span className="text-white/80">/users/{trimmedSlug || "<handle>"}</span>
+              Your profile lives at <span className="text-white/80">/u/{trimmedSlug || "<handle>"}</span>
             </p>
             {slugTooShort && <p className="text-xs text-red-400">Handle must be at least 3 characters.</p>}
           </div>
@@ -144,7 +144,7 @@ export function ProfilePage() {
               <div>
                 <p className="text-sm font-medium text-white">Proof profile</p>
                 <p className="text-xs text-muted-foreground">
-                  This is the reusable link for /users/{trimmedSlug || "handle"}.
+                  This is the reusable link for /u/{trimmedSlug || "handle"}.
                 </p>
                 {!isPublic && (
                   <p className="text-xs text-amber-400">Enable “Make profile discoverable” to share this publicly.</p>
@@ -180,7 +180,7 @@ export function ProfilePage() {
                   Job-specific Proof Packets
                 </p>
                 <p className="text-xs text-muted-foreground">
-                  Each link is scoped to one job: /users/{trimmedSlug || "handle"}/&lt;job-slug&gt;
+                  Each link is scoped to one job: /u/{trimmedSlug || "handle"}/&lt;job-slug&gt;
                 </p>
               </div>
               <Button variant="ghost" size="sm" asChild>
@@ -217,7 +217,7 @@ export function ProfilePage() {
                         </TableCell>
                         <TableCell>
                           {link ? (
-                            <code className="text-xs text-primary">{`/users/${trimmedSlug}/${job.shareSlug}`}</code>
+                            <code className="text-xs text-primary">{`/u/${trimmedSlug}/${job.shareSlug}`}</code>
                           ) : (
                             <span className="text-xs text-muted-foreground">Set your profile handle first</span>
                           )}

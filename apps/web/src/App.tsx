@@ -60,11 +60,11 @@ const router = createBrowserRouter([
     ],
   },
   {
-    path: "/users/:handle",
+    path: "/u/:handle",
     element: <PublicProfilePage />,
   },
   {
-    path: "/users/:handle/:packetSlug",
+    path: "/u/:handle/:packetSlug",
     element: <PublicPacketPage />,
   },
   {

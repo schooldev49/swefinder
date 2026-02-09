@@ -48,7 +48,7 @@ export function JobDetailPage() {
   const proofSamples = proof?.codeSamples ?? [];
   const origin = typeof window !== "undefined" ? window.location.origin : "";
   const shareLink =
-    session?.profileSlug && job?.shareSlug ? `${origin}/users/${session.profileSlug}/${job.shareSlug}` : "";
+    session?.profileSlug && job?.shareSlug ? `${origin}/u/${session.profileSlug}/${job.shareSlug}` : "";
 
   const citations = useMemo(() => {
     if (!proof) return [];
@@ -778,7 +778,7 @@ function ShareLinkCallout({
         <div>
           <p className="text-xs uppercase tracking-wide text-muted-foreground">Shareable Proof Packet URL</p>
           <p className="font-mono text-sm text-white">
-            {profileSlug && jobSlug ? `/users/${profileSlug}/${jobSlug}` : "Set your proof profile handle first"}
+            {profileSlug && jobSlug ? `/u/${profileSlug}/${jobSlug}` : "Set your proof profile handle first"}
           </p>
           <p className="text-xs text-muted-foreground">
             This link always reflects the projects you selected, so reviewers know you curated it for their team.
