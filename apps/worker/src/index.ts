@@ -186,13 +186,13 @@ export default {
         return withCors(await handlePublicProfile(request, env, profileSlugMatch.groups?.slug || ""), origin);
       }
 
-      const userProfileMatch = url.pathname.match(/^\/share\/users\/(?<slug>[a-z0-9-]+)$/i);
+      const userProfileMatch = url.pathname.match(/^\/share\/u\/(?<slug>[a-z0-9-]+)$/i);
       if (userProfileMatch && request.method === "GET") {
         return withCors(await handlePublicProfile(request, env, userProfileMatch.groups?.slug || ""), origin);
       }
 
       const userPacketMatch = url.pathname.match(
-        /^\/share\/users\/(?<slug>[a-z0-9-]+)\/(?:(?:packets)\/)?(?<packetSlug>[a-z0-9-]+)/i
+        /^\/share\/u\/(?<slug>[a-z0-9-]+)\/(?:(?:packets)\/)?(?<packetSlug>[a-z0-9-]+)/i
       );
       if (userPacketMatch && request.method === "GET") {
         return withCors(
