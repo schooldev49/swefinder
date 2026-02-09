@@ -1256,9 +1256,13 @@ function CodeSamplePicker({ project, onClose, onSelect }: CodeSamplePickerProps)
         return { start: clamped, end: clamped };
       }
       if (field === "start") {
-        return { start: Math.min(clamped, prev.end), end: Math.max(clamped, prev.end) };
+        const nextStart = clamped;
+        const nextEnd = prev.end !== undefined && prev.end < nextStart ? nextStart : prev.end ?? nextStart;
+        return { start: nextStart, end: nextEnd };
       }
-      return { start: Math.min(prev.start, clamped), end: Math.max(prev.start, clamped) };
+      const safeStart = prev.start ?? clamped;
+      const nextEnd = clamped < safeStart ? safeStart : clamped;
+      return { start: safeStart, end: nextEnd };
     });
   };
 
