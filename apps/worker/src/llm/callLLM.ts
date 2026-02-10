@@ -22,7 +22,7 @@ export interface LLMResponse {
 }
 
 const DEFAULT_MODEL = "gpt-5-mini";
-const DEFAULT_TEMPERATURE = 0.2;
+const DEFAULT_TEMPERATURE = 1.0;
 const DEFAULT_MAX_TOKENS = 800;
 const OPENAI_CHAT_URL = "https://api.openai.com/v1/chat/completions";
 
