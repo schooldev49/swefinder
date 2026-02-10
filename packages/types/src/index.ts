@@ -43,6 +43,7 @@ export interface ProjectCodeSample {
   createdAt?: string;
   updatedAt?: string;
   sourceLocked?: boolean;
+  isPrivate?: boolean;
 }
 
 export interface Project {
@@ -53,6 +54,7 @@ export interface Project {
   htmlUrl: string; // repo URL or canonical project URL
   externalUrl?: string; // optional additional link for external projects
   defaultBranch?: string;
+  isPrivate?: boolean;
   description?: string;
   primaryLanguage?: string;
   topics: string[];
@@ -102,6 +104,7 @@ export interface Evidence {
   projectId: string;
   projectFullName: string;
   sourceType?: ProjectSourceType;
+  isPrivate?: boolean;
   title: string;
   description?: string;
   repoPath?: string;
@@ -148,6 +151,7 @@ export interface ProofPacketCodeSample extends EvidenceSnippet {
   readmeHeading?: string;
   commitEntries?: CommitEntry[];
   sourceLocked?: boolean;
+  isPrivate?: boolean;
 }
 
 export interface ProofPacket {

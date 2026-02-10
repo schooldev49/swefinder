@@ -392,12 +392,13 @@ function ProjectSelector({ projects, selected, onChange }: { projects: Project[]
           >
             <Checkbox checked={selected.has(project.id)} onCheckedChange={(value) => toggleProject(project.id, Boolean(value))} />
             <div className="space-y-1">
-              <div className="flex flex-wrap items-center gap-2">
-                <p className="text-sm font-medium text-white">{project.fullName}</p>
-                <Badge variant={project.sourceType === "link" ? "outline" : "default"} className="text-[10px]">
-                  {project.sourceType === "link" ? "Link" : "GitHub"}
-                </Badge>
-              </div>
+            <div className="flex flex-wrap items-center gap-2">
+              <p className="text-sm font-medium text-white">{project.fullName}</p>
+              <Badge variant={project.sourceType === "link" ? "outline" : "default"} className="text-[10px]">
+                {project.sourceType === "link" ? "Link" : "GitHub"}
+              </Badge>
+              {project.isPrivate ? <PrivateRepoBadge /> : null}
+            </div>
               {project.description && <p className="text-xs text-muted-foreground">{project.description}</p>}
               {project.htmlUrl && (
                 <a href={project.htmlUrl} target="_blank" rel="noopener noreferrer nofollow" className="text-[11px] text-accent">
@@ -452,6 +453,7 @@ function CodeSamplesSelector({
                       <Badge variant="outline" className="border-accent/60 text-[10px] uppercase tracking-wide text-accent">
                         {getSampleTypeLabel(sample)}
                       </Badge>
+                      {sample.isPrivate ? <PrivateRepoBadge /> : null}
                     </div>
                     <p className="text-[11px] uppercase tracking-[0.3em] text-slate-500">
                       {sample.projectFullName} {formatLineLabel(sample.filePath, sample.lineStart, sample.lineEnd)}
@@ -526,6 +528,7 @@ function ProofCodeSamplesSection({ samples }: { samples: ProofPacketCodeSample[]
                     <Badge variant="outline" className="border-accent/60 text-[10px] uppercase tracking-wide text-accent">
                       {getSampleTypeLabel(sample)}
                     </Badge>
+                    {sample.isPrivate ? <PrivateRepoBadge /> : null}
                   </div>
                   <p className="text-[11px] uppercase tracking-[0.3em] text-slate-500">
                     {sample.projectFullName} {formatLineLabel(sample.filePath, sample.lineStart, sample.lineEnd)}
@@ -582,6 +585,14 @@ function formatLineLabel(filePath?: string, start?: number, end?: number) {
   if (start && end) return `${path} #L${start}-${end}`;
   if (start) return `${path} #L${start}`;
   return path;
+}
+
+function PrivateRepoBadge() {
+  return (
+    <Badge variant="outline" className="border-amber-400/40 bg-amber-400/10 text-[10px] uppercase tracking-wide text-amber-200">
+      Private repo
+    </Badge>
+  );
 }
 
 function SampleHighlightMeta({ sample, variant = "internal" }: { sample?: { type?: string; readmeHeading?: string; commitEntries?: CommitEntry[] }; variant?: "internal" | "public" }) {
@@ -715,7 +726,10 @@ function RequirementCard({
           mappings.map((mapping) => (
             <div key={mapping.id} className="rounded-lg border border-slate-800/80 bg-slate-950/70 p-3 text-xs text-muted-foreground">
             <div className="flex flex-col gap-1">
-              <p className="font-semibold text-white">{mapping.evidence.projectFullName}</p>
+              <div className="flex flex-wrap items-center gap-2">
+                <p className="font-semibold text-white">{mapping.evidence.projectFullName}</p>
+                {mapping.evidence.isPrivate ? <PrivateRepoBadge /> : null}
+              </div>
               {mapping.evidence.description && <p className="text-slate-300">{mapping.evidence.description}</p>}
               <div className="flex flex-wrap items-center gap-2 text-[11px]">
                 {mapping.evidence.fileUrl && (
@@ -762,13 +776,14 @@ function RequirementCard({
         )}
         {selectedSample && (
           <div className="space-y-2 rounded-lg border border-slate-800/70 bg-slate-950/70 p-3 text-[11px] text-muted-foreground">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-xs font-semibold text-white">{selectedSample.summary}</p>
-                <p className="text-muted-foreground">
-                  {formatLineLabel(selectedSample.filePath, selectedSample.lineStart, selectedSample.lineEnd) || "Custom link"}
-                </p>
-                <SampleHighlightMeta sample={selectedSample} />
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-xs font-semibold text-white">{selectedSample.summary}</p>
+                  <p className="text-muted-foreground">
+                    {formatLineLabel(selectedSample.filePath, selectedSample.lineStart, selectedSample.lineEnd) || "Custom link"}
+                  </p>
+                  {selectedSample.isPrivate ? <PrivateRepoBadge /> : null}
+                  <SampleHighlightMeta sample={selectedSample} />
                 {selectedSample.tags && selectedSample.tags.length > 0 ? (
                   <div className="mt-1 flex flex-wrap gap-1">
                     {selectedSample.tags.map((tag) => (

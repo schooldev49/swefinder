@@ -4,6 +4,7 @@ export interface ApiRepoSummary {
   id: string;
   name: string;
   fullName: string;
+  isPrivate?: boolean;
   defaultBranch?: string;
   description?: string;
   htmlUrl: string;

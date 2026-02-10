@@ -242,6 +242,7 @@ function RequirementPublicCard({
           trimmedMappings.map((mapping) => (
             <div key={mapping.id} className="rounded-xl border border-slate-900/80 p-3 text-xs text-muted-foreground">
               <p className="font-semibold text-white">{mapping.evidence.projectFullName}</p>
+              {mapping.evidence.isPrivate ? <PrivateRepoBadgePublic /> : null}
               {mapping.rationale && <p>{mapping.rationale}</p>}
               {mapping.evidence.fileUrl && (
                 <a
@@ -264,11 +265,12 @@ function RequirementPublicCard({
       {selectedSample && (
         <div className="space-y-2 rounded-xl border border-slate-900/80 bg-slate-950/70 p-3 text-xs text-muted-foreground">
           <div className="flex items-center justify-between">
-            <div>
-              <p className="text-[11px] uppercase tracking-[0.3em] text-slate-500">{getPublicSampleLabel(selectedSample)}</p>
-              <p className="text-sm font-semibold text-white">{selectedSample.summary}</p>
-              <p>{formatPublicLineLabel(selectedSample.filePath, selectedSample.lineStart, selectedSample.lineEnd)}</p>
-              <SampleHighlightMetaPublic sample={selectedSample} />
+                <div>
+                  <p className="text-[11px] uppercase tracking-[0.3em] text-slate-500">{getPublicSampleLabel(selectedSample)}</p>
+                  <p className="text-sm font-semibold text-white">{selectedSample.summary}</p>
+                  <p>{formatPublicLineLabel(selectedSample.filePath, selectedSample.lineStart, selectedSample.lineEnd)}</p>
+                  {selectedSample.isPrivate ? <PrivateRepoBadgePublic /> : null}
+                  <SampleHighlightMetaPublic sample={selectedSample} />
               {selectedSample.tags && selectedSample.tags.length > 0 ? (
                 <div className="mt-1 flex flex-wrap gap-1">
                   {selectedSample.tags.map((tag) => (
@@ -340,6 +342,7 @@ function PublicCodeSamples({ samples }: { samples: ProofPacketCodeSample[] }) {
                     <Badge variant="outline" className="border-accent/60 text-[10px] uppercase tracking-wide text-accent">
                       {getPublicSampleLabel(sample)}
                     </Badge>
+                    {sample.isPrivate ? <PrivateRepoBadgePublic /> : null}
                   </div>
                   <p className="text-[11px] uppercase tracking-[0.3em] text-slate-500">
                     {sample.projectFullName} {formatPublicLineLabel(sample.filePath, sample.lineStart, sample.lineEnd)}
@@ -435,6 +438,14 @@ function PublicCommitTrail({ entries }: { entries: CommitEntry[] }) {
 function truncateTextPublic(value: string, max = 80) {
   if (!value) return "";
   return value.length <= max ? value : `${value.slice(0, max - 1)}…`;
+}
+
+function PrivateRepoBadgePublic() {
+  return (
+    <Badge variant="outline" className="border-amber-300/40 bg-amber-300/10 text-[10px] uppercase tracking-wide text-amber-200">
+      Private repo
+    </Badge>
+  );
 }
 
 function getPublicSampleLabel(sample?: { type?: string }) {

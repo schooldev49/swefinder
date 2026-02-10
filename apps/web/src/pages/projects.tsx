@@ -39,7 +39,6 @@ const AI_ROLE_OPTIONS = [
 const MAX_SHOWCASED = 4;
 const MAX_SAMPLE_LINES = 40;
 const MAX_SAMPLE_CODE_CHARS = 2000;
-const DOC_EXCERPT_CHARS = 800;
 const PROJECTS_CHECKLIST = [
   {
     title: "Import repos",
@@ -263,6 +262,7 @@ export function ProjectsPage() {
         fullName: repo.fullName,
         htmlUrl: repo.htmlUrl,
         defaultBranch: repo.defaultBranch,
+        isPrivate: Boolean(repo.isPrivate),
         description: repo.description,
         primaryLanguage: repo.language,
         topics: repo.topics || [],
@@ -314,6 +314,7 @@ export function ProjectsPage() {
       fullName: title,
       htmlUrl: url,
       externalUrl: url,
+       isPrivate: false,
       description: externalForm.description.trim() || undefined,
       topics,
       lastUpdated: new Date().toISOString(),
@@ -805,14 +806,6 @@ type FilePreviewState = {
   path: string;
   lines: string[];
   ref: string;
-};
-
-type ReadmeSection = {
-  heading: string;
-  content: string;
-  startLine: number;
-  endLine: number;
-  anchor?: string;
 };
 
 const createEmptySampleDraft = (): SampleDraft => ({
@@ -1393,6 +1386,7 @@ function CodeSamplePicker({ project, initialTab = "code", onClose, onSelect }: C
   const [readmeContent, setReadmeContent] = useState<string | null>(null);
   const [readmeLoading, setReadmeLoading] = useState(false);
   const [readmeError, setReadmeError] = useState<string | null>(null);
+  const [readmeSelection, setReadmeSelection] = useState<{ start: number; end: number } | null>(null);
   const [commits, setCommits] = useState<RepoCommitSummary[]>([]);
   const [commitsLoading, setCommitsLoading] = useState(false);
   const [commitsError, setCommitsError] = useState<string | null>(null);
@@ -1451,7 +1445,14 @@ function CodeSamplePicker({ project, initialTab = "code", onClose, onSelect }: C
     }
   }, [activeTab, isGitHubProject, readmeContent, readmeLoading, commits.length, commitsLoading]);
 
-  const readmeSections = useMemo(() => (readmeContent ? buildReadmeSections(readmeContent) : []), [readmeContent]);
+  const readmeLines = useMemo(() => (readmeContent ? readmeContent.replace(/\r\n/g, "\n").split("\n") : []), [readmeContent]);
+  const readmeSelectedLineCount = readmeSelection ? readmeSelection.end - readmeSelection.start + 1 : 0;
+  const readmeSelectedCode =
+    readmeSelection && readmeLines.length
+      ? readmeLines.slice(readmeSelection.start - 1, readmeSelection.end).join("\n")
+      : "";
+  const readmeSelectionTooLong =
+    readmeSelectedLineCount > MAX_SAMPLE_LINES || readmeSelectedCode.length > MAX_SAMPLE_CODE_CHARS;
 
   const filteredFiles = useMemo(() => {
     const term = searchTerm.toLowerCase();
@@ -1462,9 +1463,10 @@ function CodeSamplePicker({ project, initialTab = "code", onClose, onSelect }: C
   }, [tree, searchTerm]);
 
   const loadReadme = async () => {
-    if (readmeLoading || readmeContent !== null || !isGitHubProject) return;
+    if (readmeLoading || !isGitHubProject) return;
     setReadmeLoading(true);
     setReadmeError(null);
+    setReadmeSelection(null);
     try {
       const data = await fetchRepoReadmeContent(project.fullName);
       setReadmeContent(data.content || "");
@@ -1561,6 +1563,72 @@ function CodeSamplePicker({ project, initialTab = "code", onClose, onSelect }: C
     });
   };
 
+  const handleReadmeLineClick = (lineNumber: number) => {
+    setReadmeSelection((prev) => {
+      if (!prev) {
+        return { start: lineNumber, end: lineNumber };
+      }
+      if (prev.start === prev.end) {
+        if (lineNumber === prev.start) {
+          return prev;
+        }
+        return { start: Math.min(prev.start, lineNumber), end: Math.max(prev.start, lineNumber) };
+      }
+      return { start: lineNumber, end: lineNumber };
+    });
+  };
+
+  const handleReadmeLineInputChange = (field: "start" | "end") => (event: ChangeEvent<HTMLInputElement>) => {
+    if (!readmeLines.length) return;
+    const value = Number.parseInt(event.target.value, 10);
+    if (Number.isNaN(value)) {
+      setReadmeSelection(null);
+      return;
+    }
+    const clamped = clampLine(value, readmeLines.length);
+    setReadmeSelection((prev) => {
+      if (!prev) {
+        return { start: clamped, end: clamped };
+      }
+      if (field === "start") {
+        const nextStart = clamped;
+        const nextEnd = prev.end !== undefined && prev.end < nextStart ? nextStart : prev.end ?? nextStart;
+        return { start: nextStart, end: nextEnd };
+      }
+      const safeStart = prev.start ?? clamped;
+      const nextEnd = clamped < safeStart ? safeStart : clamped;
+      return { start: safeStart, end: nextEnd };
+    });
+  };
+
+  const handleUseReadmeSelection = () => {
+    if (!readmeLines.length || !readmeSelection) {
+      setReadmeError("Load the README and select lines first.");
+      return;
+    }
+    if (readmeSelectionTooLong || readmeSelectedLineCount <= 0) {
+      setReadmeError("Selection is empty or too long.");
+      return;
+    }
+    const { start, end } = readmeSelection;
+    const trimmed = readmeSelectedCode.trim();
+    if (!trimmed) {
+      setReadmeError("Selected lines are empty.");
+      return;
+    }
+    const url = buildGitHubBlobUrl(project.fullName, defaultBranch, "README.md", start, end);
+    onSelect({
+      type: "readme",
+      filePath: "README.md",
+      language: "markdown",
+      lineStart: start,
+      lineEnd: end,
+      sourceUrl: url,
+      code: readmeSelectedCode,
+    });
+    toast("README snippet captured", { description: `Lines ${start}–${end}` });
+  };
+
   const handleUseSnippet = () => {
     if (!filePreview || !selection || selectionTooLong || selectedLineCount <= 0) return;
     const language = inferLanguage(filePreview.path) || "text";
@@ -1573,45 +1641,6 @@ function CodeSamplePicker({ project, initialTab = "code", onClose, onSelect }: C
       lineEnd: selection.end,
       sourceUrl: url,
       code: selectedCode,
-    });
-  };
-
-  const handleUseReadmeSnippet = () => {
-    if (!readmeContent || !readmeContent.trim()) {
-      setReadmeError("README content not available.");
-      return;
-    }
-    const excerpt = readmeContent.replace(/\r\n/g, "\n").trim().slice(0, DOC_EXCERPT_CHARS);
-    if (!excerpt) {
-      setReadmeError("README excerpt is empty.");
-      return;
-    }
-    const sourceUrl = project.htmlUrl ? `${project.htmlUrl}#readme` : `https://github.com/${project.fullName}#readme`;
-    onSelect({
-      type: "readme",
-      filePath: "README.md",
-      language: "markdown",
-      code: excerpt,
-      sourceUrl,
-    });
-  };
-
-  const handleUseReadmeSection = (section: ReadmeSection) => {
-    const trimmed = section.content.trim();
-    if (!trimmed) {
-      setReadmeError("Section is empty.");
-      return;
-    }
-    const sourceUrl = project.htmlUrl ? `${project.htmlUrl}#readme` : `https://github.com/${project.fullName}#readme`;
-    onSelect({
-      type: "readme",
-      filePath: section.heading ? `README.md – ${section.heading}` : "README.md",
-      language: "markdown",
-      code: trimmed.slice(0, DOC_EXCERPT_CHARS),
-      sourceUrl: section.anchor ? `${sourceUrl.replace(/#readme$/, "")}${section.anchor.startsWith("#") ? section.anchor : `#${section.anchor}`}` : sourceUrl,
-      readmeHeading: section.heading,
-      lineStart: section.startLine,
-      lineEnd: section.endLine,
     });
   };
 
@@ -1797,6 +1826,7 @@ function CodeSamplePicker({ project, initialTab = "code", onClose, onSelect }: C
     setBlobError(null);
     setFileError(null);
     setSelectedCommitShas(new Set());
+    setReadmeSelection(null);
     onClose();
   };
 
@@ -1916,46 +1946,108 @@ function CodeSamplePicker({ project, initialTab = "code", onClose, onSelect }: C
                 <div className="flex items-center justify-between">
                   <div>
                     <p className="text-sm font-semibold text-white">README highlight</p>
-                    <p className="text-xs text-muted-foreground">Pick a section that explains design choices or results.</p>
+                    <p className="text-xs text-muted-foreground">Preview the markdown and capture exact line ranges.</p>
                   </div>
                   <Button type="button" variant="ghost" size="sm" onClick={loadReadme} disabled={readmeLoading}>
-                    Refresh
+                    {readmeLoading ? (
+                      <>
+                        <Loader2 className="mr-2 h-3.5 w-3.5 animate-spin" /> Loading
+                      </>
+                    ) : (
+                      "Load README"
+                    )}
                   </Button>
                 </div>
-                <div className="mt-3 space-y-2">
-                  {readmeLoading ? (
-                    <div className="rounded-xl border border-slate-800/70 bg-slate-950/50 p-4 text-xs text-muted-foreground">
-                      <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Loading README…
-                    </div>
-                  ) : readmeError ? (
-                    <p className="text-xs text-red-400">{readmeError}</p>
-                  ) : readmeSections.length > 0 ? (
-                    readmeSections.slice(0, 6).map((section, index) => (
-                      <div key={`${section.heading}-${index}`} className="rounded-xl border border-slate-800/70 bg-slate-950/50 p-3 text-xs text-muted-foreground">
-                        <p className="text-sm font-semibold text-white">{section.heading}</p>
-                        <p className="mt-1 line-clamp-3 text-slate-300">{section.content}</p>
-                        <p className="mt-1 text-[11px] text-slate-500">Lines {section.startLine}–{section.endLine}</p>
-                        <div className="mt-2 flex justify-end">
-                          <Button type="button" size="sm" onClick={() => handleUseReadmeSection(section)}>
-                            Use this section
-                          </Button>
-                        </div>
+                {readmeError ? <p className="mt-3 text-xs text-red-400">{readmeError}</p> : null}
+                {readmeLoading ? (
+                  <div className="mt-3 flex h-64 items-center justify-center text-xs text-muted-foreground">
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Fetching README…
+                  </div>
+                ) : readmeLines.length > 0 ? (
+                  <div className="mt-3 space-y-3">
+                    <div className="h-64 overflow-y-auto rounded-2xl border border-slate-800/80 bg-slate-950/50">
+                      <div className="text-xs font-mono">
+                        {readmeLines.map((line, index) => {
+                          const lineNumber = index + 1;
+                          const isSelected =
+                            readmeSelection && lineNumber >= readmeSelection.start && lineNumber <= readmeSelection.end;
+                          return (
+                            <div
+                              key={lineNumber}
+                              className={cn(
+                                "flex border-b border-slate-900/40",
+                                isSelected ? "bg-slate-800/60 text-white" : "text-slate-300"
+                              )}
+                            >
+                              <button
+                                type="button"
+                                className="w-12 flex-shrink-0 border-r border-slate-900/40 px-2 text-right text-[11px] text-slate-500 hover:text-white"
+                                onClick={() => handleReadmeLineClick(lineNumber)}
+                              >
+                                {lineNumber}
+                              </button>
+                              <pre className="flex-1 whitespace-pre-wrap px-3 py-1">{line || " "}</pre>
+                            </div>
+                          );
+                        })}
                       </div>
-                    ))
-                  ) : readmeContent ? (
-                    <div className="rounded-xl border border-slate-800/70 bg-slate-950/50 p-3 text-xs text-muted-foreground">
-                      <p className="text-sm font-semibold text-white">Entire README</p>
-                      <p className="mt-1 line-clamp-3 text-slate-300">{readmeContent.slice(0, DOC_EXCERPT_CHARS)}</p>
-                      <div className="mt-2 flex justify-end">
-                        <Button type="button" size="sm" onClick={handleUseReadmeSnippet}>
-                          Use excerpt
+                    </div>
+                    <div className="grid gap-3 md:grid-cols-2">
+                      <div className="flex items-center gap-3">
+                        <label className="flex flex-col text-xs text-muted-foreground">
+                          Start line
+                          <Input
+                            type="number"
+                            min={1}
+                            value={readmeSelection?.start ?? ""}
+                            onChange={handleReadmeLineInputChange("start")}
+                            className="mt-1"
+                          />
+                        </label>
+                        <label className="flex flex-col text-xs text-muted-foreground">
+                          End line
+                          <Input
+                            type="number"
+                            min={1}
+                            value={readmeSelection?.end ?? ""}
+                            onChange={handleReadmeLineInputChange("end")}
+                            className="mt-1"
+                          />
+                        </label>
+                        <Button type="button" variant="ghost" size="sm" onClick={() => setReadmeSelection(null)}>
+                          Clear
                         </Button>
                       </div>
+                      <div className="text-xs text-slate-300">
+                        <p>
+                          Lines: {" "}
+                          <span className={readmeSelectionTooLong ? "text-red-400" : "text-white"}>
+                            {readmeSelectedLineCount} / {MAX_SAMPLE_LINES}
+                          </span>
+                        </p>
+                        <p>
+                          Characters: {" "}
+                          <span className={readmeSelectedCode.length > MAX_SAMPLE_CODE_CHARS ? "text-red-400" : "text-white"}>
+                            {readmeSelectedCode.length} / {MAX_SAMPLE_CODE_CHARS}
+                          </span>
+                        </p>
+                        {readmeSelectionTooLong ? <p className="text-red-400">Trim the selection.</p> : null}
+                      </div>
                     </div>
-                  ) : (
-                    <p className="text-xs text-muted-foreground">No README detected for this repo.</p>
-                  )}
-                </div>
+                    <div className="flex justify-end gap-2 text-xs">
+                      <Button
+                        type="button"
+                        size="sm"
+                        onClick={handleUseReadmeSelection}
+                        disabled={!readmeSelection || readmeSelectionTooLong || !readmeSelectedLineCount}
+                      >
+                        Use selected lines
+                      </Button>
+                    </div>
+                  </div>
+                ) : (
+                  <p className="mt-3 text-xs text-muted-foreground">Load the README to capture a documentation excerpt.</p>
+                )}
               </div>
               <div className="rounded-2xl border border-slate-800/80 bg-slate-950/60 p-4">
                 <div className="flex items-center justify-between">
@@ -2170,48 +2262,4 @@ function parseGitHubBlobUrl(raw: string) {
   } catch {
     return null;
   }
-}
-
-function buildReadmeSections(content: string): ReadmeSection[] {
-  const lines = content.split(/\r?\n/);
-  const sections: ReadmeSection[] = [];
-  let currentHeading = "Overview";
-  let buffer: string[] = [];
-  let sectionStartLine = 1;
-
-  const pushSection = (endLine: number) => {
-    const text = buffer.join("\n").trim();
-    if (text) {
-      sections.push({
-        heading: currentHeading,
-        content: text,
-        startLine: sectionStartLine,
-        endLine,
-        anchor: currentHeading ? `#${slugifyHeading(currentHeading)}` : undefined,
-      });
-    }
-  };
-
-  lines.forEach((line, index) => {
-    const headingMatch = line.match(/^(#{1,6})\s+(.*)/);
-    if (headingMatch) {
-      pushSection(index);
-      currentHeading = headingMatch[2].trim() || currentHeading;
-      buffer = [];
-      sectionStartLine = index + 2; // start after heading line
-    } else {
-      buffer.push(line);
-    }
-  });
-  pushSection(lines.length);
-  return sections.filter((section) => section.content.length > 0).slice(0, 12);
-}
-
-function slugifyHeading(heading: string) {
-  return heading
-    .trim()
-    .toLowerCase()
-    .replace(/[^a-z0-9\s-]/g, "")
-    .replace(/\s+/g, "-")
-    .replace(/-+/g, "-");
 }

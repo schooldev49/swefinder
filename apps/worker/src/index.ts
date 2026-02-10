@@ -390,6 +390,7 @@ async function handleGitHubRepos(request: Request, env: Env): Promise<Response> 
       id: `${repo.id}`,
       name: repo.name,
       fullName: repo.full_name,
+      isPrivate: repo.private,
       defaultBranch: repo.default_branch,
       description: repo.description,
       htmlUrl: repo.html_url,
@@ -759,6 +760,7 @@ function buildEvidenceFromMapping(mapping: any, projects: Project[]): EvidenceMa
     projectId: project?.id || crypto.randomUUID(),
     projectFullName: mapping.projectFullName || project?.fullName || "",
     sourceType: project?.sourceType,
+    isPrivate: project?.isPrivate,
     title: mapping.title || project?.fullName || "Evidence",
     description: mapping.description || project?.description,
     repoPath: mapping.repoPath,
@@ -893,6 +895,7 @@ function normalizeProjectPayload(
     description: project.description,
     primaryLanguage: project.primaryLanguage,
     defaultBranch: project.defaultBranch,
+    isPrivate: Boolean(project.isPrivate),
     topics,
     lastUpdated: project.lastUpdated || now,
     demoUrl: project.demoUrl,
@@ -946,6 +949,8 @@ function normalizeCodeSamples(samples?: ProjectCodeSample[]): ProjectCodeSample[
       tags: (sample.tags || []).map((tag) => tag.trim()).filter(Boolean).slice(0, 5),
       createdAt: sample.createdAt || now,
       updatedAt: now,
+      sourceLocked: Boolean(sample.sourceLocked),
+      isPrivate: sample.isPrivate,
     });
   }
   return sanitized;
@@ -1143,6 +1148,8 @@ function mapProjectSample(project: Project, sample: ProjectCodeSample): ProofPac
     tags: sample.tags,
     readmeHeading: sample.readmeHeading,
     commitEntries: sample.commitEntries,
+    sourceLocked: sample.sourceLocked,
+    isPrivate: project.isPrivate,
   };
 }
 
