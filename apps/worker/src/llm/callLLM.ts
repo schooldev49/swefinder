@@ -85,14 +85,37 @@ export async function callLLM(env: Env, req: LLMRequest): Promise<LLMResponse> {
 function extractText(segment: any): string {
   if (!segment) return "";
   if (typeof segment === "string") return segment;
+  const extractFromArray = (arr: any[]): string =>
+    arr
+      .map((item) => {
+        if (!item) return "";
+        if (typeof item === "string") return item;
+        if (typeof item === "object") {
+          if (typeof item.text === "string") return item.text;
+          if (typeof item.text === "object" && typeof item.text.value === "string") return item.text.value;
+          if (Array.isArray(item.text)) {
+            return extractFromArray(item.text);
+          }
+          if (typeof item.content === "string") return item.content;
+        }
+        return "";
+      })
+      .filter(Boolean)
+      .join("\n");
   if (typeof segment === "object") {
     if (typeof segment.text === "string") return segment.text;
     if (typeof segment.text === "object" && typeof segment.text.value === "string") {
       return segment.text.value;
     }
+    if (Array.isArray(segment.text)) {
+      return extractFromArray(segment.text);
+    }
     if (typeof segment.content === "string") return segment.content;
     if (segment.type === "text" && typeof segment.text === "string") return segment.text;
     if (segment.type === "output_text" && typeof segment.text === "string") return segment.text;
+    if (segment.type === "output_text" && Array.isArray(segment.text)) {
+      return extractFromArray(segment.text);
+    }
   }
   return "";
 }

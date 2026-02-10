@@ -1380,6 +1380,7 @@ function CodeSamplePicker({ project, initialTab = "code", onClose, onSelect }: C
   const [fileLoading, setFileLoading] = useState(false);
   const [fileError, setFileError] = useState<string | null>(null);
   const [selection, setSelection] = useState<{ start: number; end: number } | null>(null);
+  const [lineInputs, setLineInputs] = useState<{ start: string; end: string }>({ start: "", end: "" });
   const [blobUrl, setBlobUrl] = useState("");
   const [blobError, setBlobError] = useState<string | null>(null);
   const [blobLoading, setBlobLoading] = useState(false);
@@ -1503,11 +1504,20 @@ function CodeSamplePicker({ project, initialTab = "code", onClose, onSelect }: C
   const selectedCharCount = selectedCode.length;
   const selectionTooLong = selectedLineCount > MAX_SAMPLE_LINES || selectedCharCount > MAX_SAMPLE_CODE_CHARS;
 
+  useEffect(() => {
+    if (selection) {
+      setLineInputs({ start: selection.start.toString(), end: selection.end.toString() });
+    } else {
+      setLineInputs({ start: "", end: "" });
+    }
+  }, [selection]);
+
   const handleFetchFile = async (path: string, refOverride?: string, preset?: { start?: number; end?: number }) => {
     setSelectedPath(path);
     setFileError(null);
     setFileLoading(true);
     setSelection(null);
+    setLineInputs({ start: "", end: "" });
     try {
       const data = await fetchRepoFileContent(project.fullName, path, refOverride || defaultBranch);
       const normalized = data.content.replace(/\r\n/g, "\n");
@@ -1541,10 +1551,11 @@ function CodeSamplePicker({ project, initialTab = "code", onClose, onSelect }: C
   };
 
   const handleLineInputChange = (field: "start" | "end") => (event: ChangeEvent<HTMLInputElement>) => {
+    const raw = event.target.value;
+    setLineInputs((prev) => ({ ...prev, [field]: raw }));
     if (!filePreview) return;
-    const value = Number.parseInt(event.target.value, 10);
+    const value = Number.parseInt(raw, 10);
     if (Number.isNaN(value)) {
-      setSelection(null);
       return;
     }
     const clamped = clampLine(value, filePreview.lines.length);
@@ -1781,7 +1792,7 @@ function CodeSamplePicker({ project, initialTab = "code", onClose, onSelect }: C
               <Input
                 type="number"
                 min={1}
-                value={selection?.start ?? ""}
+                value={lineInputs.start}
                 onChange={handleLineInputChange("start")}
                 className="mt-1"
               />
@@ -1791,7 +1802,7 @@ function CodeSamplePicker({ project, initialTab = "code", onClose, onSelect }: C
               <Input
                 type="number"
                 min={1}
-                value={selection?.end ?? ""}
+                value={lineInputs.end}
                 onChange={handleLineInputChange("end")}
                 className="mt-1"
               />
