@@ -779,6 +779,7 @@ type SampleDraft = {
   code: string;
   readmeHeading?: string;
   commitEntries?: CommitEntry[];
+  sourceLocked: boolean;
 };
 
 type SampleSelection = {
@@ -809,6 +810,9 @@ type FilePreviewState = {
 type ReadmeSection = {
   heading: string;
   content: string;
+  startLine: number;
+  endLine: number;
+  anchor?: string;
 };
 
 const createEmptySampleDraft = (): SampleDraft => ({
@@ -821,6 +825,7 @@ const createEmptySampleDraft = (): SampleDraft => ({
   language: "",
   tags: "",
   code: "",
+  sourceLocked: false,
 });
 
 
@@ -877,6 +882,7 @@ function ProjectCodeSamplesEditor({
         code: sample.code || "",
         readmeHeading: sample.readmeHeading,
         commitEntries: sample.commitEntries,
+        sourceLocked: Boolean(sample.sourceLocked),
       });
       setEditingSampleId(sample.id);
     } else {
@@ -978,6 +984,7 @@ function ProjectCodeSamplesEditor({
         date: entry.date,
         htmlUrl: entry.htmlUrl,
       })),
+      sourceLocked: draft.sourceLocked,
     };
     if (editingSampleId) {
       onChange(samples.map((sample) => (sample.id === editingSampleId ? { ...sample, ...payload } : sample)));
@@ -1001,10 +1008,25 @@ function ProjectCodeSamplesEditor({
       code: selection.code,
       readmeHeading: selection.readmeHeading,
       commitEntries: selection.commitEntries,
+      sourceLocked: true,
     }));
     setModalMode((prev) => prev ?? "create");
     setIsPickerOpen(false);
     toast("Snippet captured", { description: "Review the summary and tags, then save." });
+  };
+  const handleUnlockSourceFields = () => {
+    setDraft((prev) => ({
+      ...prev,
+      sourceLocked: false,
+      filePath: "",
+      lineStart: "",
+      lineEnd: "",
+      url: projectUrl || "",
+      code: "",
+      readmeHeading: undefined,
+      commitEntries: undefined,
+    }));
+    toast("Fields unlocked", { description: "You can edit the snippet manually." });
   };
   const handleSuggestSummary = () => {
     if (!draft.summary.trim() || !draft.code.trim()) {
@@ -1035,9 +1057,7 @@ function ProjectCodeSamplesEditor({
               Select from GitHub
             </Button>
           ) : null}
-          <Button type="button" variant="ghost" size="sm" onClick={() => openModal('create')}>
-            New snippet
-          </Button>
+         
         </div>
       </div>
       {samples.length === 0 ? (
@@ -1097,6 +1117,7 @@ function ProjectCodeSamplesEditor({
           summaryPending={summaryMutation.isPending}
           tagsPending={tagsMutation.isPending}
           onSelectFromGitHub={canUsePicker ? openPickerForType : undefined}
+          onUnlockSourceFields={handleUnlockSourceFields}
         />
       ) : null}
       {canUsePicker && isPickerOpen ? (
@@ -1124,6 +1145,7 @@ interface SampleEditorModalProps {
   summaryPending?: boolean;
   tagsPending?: boolean;
   onSelectFromGitHub?: (type: CodeSampleType) => void;
+  onUnlockSourceFields?: () => void;
 }
 
 function SampleEditorModal({
@@ -1140,6 +1162,7 @@ function SampleEditorModal({
   summaryPending,
   tagsPending,
   onSelectFromGitHub,
+  onUnlockSourceFields,
 }: SampleEditorModalProps) {
   const typeCopy = SAMPLE_TYPE_OPTIONS.find((option) => option.value === draft.type);
   const codeLabel = draft.type === "code" ? "Code" : "Excerpt";
@@ -1202,7 +1225,14 @@ function SampleEditorModal({
           <div className="grid gap-3 md:grid-cols-2">
             <div>
               <Label>File path</Label>
-              <Input value={draft.filePath} onChange={onDraftChange("filePath")} className="mt-2" placeholder="src/pipelines/features.py" />
+              <Input
+                value={draft.filePath}
+                onChange={onDraftChange("filePath")}
+                className={cn("mt-2", draft.sourceLocked && "bg-slate-900/60 text-slate-400")}
+                placeholder="src/pipelines/features.py"
+                readOnly={draft.sourceLocked}
+                aria-readonly={draft.sourceLocked}
+              />
             </div>
             <div>
               <Label>Language</Label>
@@ -1214,24 +1244,66 @@ function SampleEditorModal({
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <Label>Start line</Label>
-                  <Input type="number" min={1} value={draft.lineStart} onChange={onDraftChange("lineStart")} className="mt-2" />
+                  <Input
+                    type="number"
+                    min={1}
+                    value={draft.lineStart}
+                    onChange={onDraftChange("lineStart")}
+                    className={cn("mt-2", draft.sourceLocked && "bg-slate-900/60 text-slate-400")}
+                    readOnly={draft.sourceLocked}
+                    aria-readonly={draft.sourceLocked}
+                  />
                 </div>
                 <div>
                   <Label>End line</Label>
-                  <Input type="number" min={1} value={draft.lineEnd} onChange={onDraftChange("lineEnd")} className="mt-2" />
+                  <Input
+                    type="number"
+                    min={1}
+                    value={draft.lineEnd}
+                    onChange={onDraftChange("lineEnd")}
+                    className={cn("mt-2", draft.sourceLocked && "bg-slate-900/60 text-slate-400")}
+                    readOnly={draft.sourceLocked}
+                    aria-readonly={draft.sourceLocked}
+                  />
                 </div>
               </div>
               <div>
                 <Label>Source URL</Label>
-                <Input value={draft.url} onChange={onDraftChange("url")} className="mt-2" placeholder="https://github.com/demo/file#L1-L20" />
+                <Input
+                  value={draft.url}
+                  onChange={onDraftChange("url")}
+                  className={cn("mt-2", draft.sourceLocked && "bg-slate-900/60 text-slate-400")}
+                  placeholder="https://github.com/demo/file#L1-L20"
+                  readOnly={draft.sourceLocked}
+                  aria-readonly={draft.sourceLocked}
+                />
               </div>
             </div>
           ) : (
             <div>
               <Label>Source URL</Label>
-              <Input value={draft.url} onChange={onDraftChange("url")} className="mt-2" placeholder="https://github.com/demo/file#L1-L20" />
+              <Input
+                value={draft.url}
+                onChange={onDraftChange("url")}
+                className={cn("mt-2", draft.sourceLocked && "bg-slate-900/60 text-slate-400")}
+                placeholder="https://github.com/demo/file#L1-L20"
+                readOnly={draft.sourceLocked}
+                aria-readonly={draft.sourceLocked}
+              />
             </div>
           )}
+          {draft.sourceLocked ? (
+            <div className="rounded-xl border border-amber-500/30 bg-amber-500/5 px-3 py-2 text-[11px] text-amber-200">
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <p>Source fields locked because this snippet came directly from GitHub.</p>
+                {onUnlockSourceFields ? (
+                  <Button type="button" variant="ghost" size="sm" className="text-[11px]" onClick={onUnlockSourceFields}>
+                    Clear & unlock
+                  </Button>
+                ) : null}
+              </div>
+            </div>
+          ) : null}
           <div>
             <div className="flex items-center justify-between gap-2">
               <Label>Tags</Label>
@@ -1260,10 +1332,16 @@ function SampleEditorModal({
             <Textarea
               value={draft.code}
               onChange={onDraftChange("code")}
-              className={cn("mt-2 text-xs", draft.type === "code" ? "font-mono" : "font-sans")}
+              className={cn(
+                "mt-2 text-xs",
+                draft.type === "code" ? "font-mono" : "font-sans",
+                draft.sourceLocked && "bg-slate-900/60 text-slate-400"
+              )}
               rows={draft.type === "code" ? 6 : 5}
               placeholder={codePlaceholder}
               required
+              readOnly={draft.sourceLocked}
+              aria-readonly={draft.sourceLocked}
             />
             {draft.type === "code" ? (
               <p className="mt-1 text-[11px] text-muted-foreground">
@@ -1530,8 +1608,10 @@ function CodeSamplePicker({ project, initialTab = "code", onClose, onSelect }: C
       filePath: section.heading ? `README.md – ${section.heading}` : "README.md",
       language: "markdown",
       code: trimmed.slice(0, DOC_EXCERPT_CHARS),
-      sourceUrl,
+      sourceUrl: section.anchor ? `${sourceUrl.replace(/#readme$/, "")}${section.anchor.startsWith("#") ? section.anchor : `#${section.anchor}`}` : sourceUrl,
       readmeHeading: section.heading,
+      lineStart: section.startLine,
+      lineEnd: section.endLine,
     });
   };
 
@@ -1854,6 +1934,7 @@ function CodeSamplePicker({ project, initialTab = "code", onClose, onSelect }: C
                       <div key={`${section.heading}-${index}`} className="rounded-xl border border-slate-800/70 bg-slate-950/50 p-3 text-xs text-muted-foreground">
                         <p className="text-sm font-semibold text-white">{section.heading}</p>
                         <p className="mt-1 line-clamp-3 text-slate-300">{section.content}</p>
+                        <p className="mt-1 text-[11px] text-slate-500">Lines {section.startLine}–{section.endLine}</p>
                         <div className="mt-2 flex justify-end">
                           <Button type="button" size="sm" onClick={() => handleUseReadmeSection(section)}>
                             Use this section
@@ -2096,24 +2177,41 @@ function buildReadmeSections(content: string): ReadmeSection[] {
   const sections: ReadmeSection[] = [];
   let currentHeading = "Overview";
   let buffer: string[] = [];
+  let sectionStartLine = 1;
 
-  const pushSection = () => {
+  const pushSection = (endLine: number) => {
     const text = buffer.join("\n").trim();
     if (text) {
-      sections.push({ heading: currentHeading, content: text });
+      sections.push({
+        heading: currentHeading,
+        content: text,
+        startLine: sectionStartLine,
+        endLine,
+        anchor: currentHeading ? `#${slugifyHeading(currentHeading)}` : undefined,
+      });
     }
   };
 
-  for (const line of lines) {
+  lines.forEach((line, index) => {
     const headingMatch = line.match(/^(#{1,6})\s+(.*)/);
     if (headingMatch) {
-      pushSection();
+      pushSection(index);
       currentHeading = headingMatch[2].trim() || currentHeading;
       buffer = [];
+      sectionStartLine = index + 2; // start after heading line
     } else {
       buffer.push(line);
     }
-  }
-  pushSection();
-  return sections.slice(0, 12);
+  });
+  pushSection(lines.length);
+  return sections.filter((section) => section.content.length > 0).slice(0, 12);
+}
+
+function slugifyHeading(heading: string) {
+  return heading
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9\s-]/g, "")
+    .replace(/\s+/g, "-")
+    .replace(/-+/g, "-");
 }

@@ -42,6 +42,7 @@ export interface ProjectCodeSample {
   commitEntries?: CommitEntry[];
   createdAt?: string;
   updatedAt?: string;
+  sourceLocked?: boolean;
 }
 
 export interface Project {
@@ -146,6 +147,7 @@ export interface ProofPacketCodeSample extends EvidenceSnippet {
   tags?: string[];
   readmeHeading?: string;
   commitEntries?: CommitEntry[];
+  sourceLocked?: boolean;
 }
 
 export interface ProofPacket {
