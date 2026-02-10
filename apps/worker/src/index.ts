@@ -682,7 +682,7 @@ async function handleGenerateProofPacket(request: Request, env: Env, jobId: stri
     throw new HttpError("Select at least one project", 400);
   }
   const selectedSampleIds = Array.isArray(payload.selectedSampleIds) ? payload.selectedSampleIds : [];
-  const codeSamples = buildProofCodeSamples(selectedSampleIds, selectedProjects);
+  const sampleSelection = buildProofCodeSamples(selectedSampleIds, selectedProjects);
 
   let requirements: Requirement[] = [];
   let mappings: EvidenceMappingWithEvidence[] = [];
@@ -705,7 +705,9 @@ async function handleGenerateProofPacket(request: Request, env: Env, jobId: stri
     bullets: bulletsResult.bullets,
     outreachNote: bulletsResult.outreachNote,
     createdAt: new Date().toISOString(),
-    codeSamples,
+    codeSamples: sampleSelection.codeSamples,
+    readmeHighlight: sampleSelection.readmeSample,
+    commitTrail: sampleSelection.commitSample,
   };
 
   await saveProofPacket(env, proofPacket);
@@ -1073,35 +1075,75 @@ async function ensureJobShareSlug(env: Env, job: Job): Promise<Job> {
 
 const MAX_PACKET_CODE_SAMPLES = 3;
 
-function buildProofCodeSamples(selectedSampleIds: string[], projects: Project[]): ProofPacketCodeSample[] {
+interface ProofSampleSelection {
+  codeSamples: ProofPacketCodeSample[];
+  readmeSample?: ProofPacketCodeSample;
+  commitSample?: ProofPacketCodeSample;
+}
+
+function buildProofCodeSamples(selectedSampleIds: string[], projects: Project[]): ProofSampleSelection {
+  const result: ProofSampleSelection = { codeSamples: [] };
   if (!selectedSampleIds || selectedSampleIds.length === 0) {
-    return [];
+    return result;
   }
-  const trimmedIds = Array.from(new Set(selectedSampleIds)).slice(0, MAX_PACKET_CODE_SAMPLES);
-  const samples: ProofPacketCodeSample[] = [];
-  for (const id of trimmedIds) {
-    for (const project of projects) {
-      const sample = project.codeSamples?.find((entry) => entry.id === id);
-      if (sample) {
-        samples.push({
-          id: sample.id,
-          projectId: project.id,
-          projectFullName: project.fullName,
-          type: sample.type || "code",
-          summary: sample.summary,
-          code: sample.code,
-          language: sample.language,
-          filePath: sample.filePath,
-          lineStart: sample.lineStart,
-          lineEnd: sample.lineEnd,
-          url: sample.url,
-          tags: sample.tags,
-        });
-        break;
+
+  const uniqueIds = Array.from(new Set(selectedSampleIds));
+
+  for (const id of uniqueIds) {
+    if (result.codeSamples.length >= MAX_PACKET_CODE_SAMPLES && result.readmeSample && result.commitSample) {
+      break;
+    }
+    const { project, sample } = findProjectSample(projects, id);
+    if (!project || !sample) continue;
+
+    const normalized = mapProjectSample(project, sample);
+    if (sample.type === "readme") {
+      if (!result.readmeSample) {
+        result.readmeSample = normalized;
       }
+      continue;
+    }
+    if (sample.type === "commit") {
+      if (!result.commitSample) {
+        result.commitSample = normalized;
+      }
+      continue;
+    }
+    if (result.codeSamples.length < MAX_PACKET_CODE_SAMPLES) {
+      result.codeSamples.push(normalized);
     }
   }
-  return samples;
+
+  return result;
+}
+
+function findProjectSample(projects: Project[], sampleId: string) {
+  for (const project of projects) {
+    const sample = project.codeSamples?.find((entry) => entry.id === sampleId);
+    if (sample) {
+      return { project, sample };
+    }
+  }
+  return { project: undefined, sample: undefined };
+}
+
+function mapProjectSample(project: Project, sample: ProjectCodeSample): ProofPacketCodeSample {
+  return {
+    id: sample.id,
+    projectId: project.id,
+    projectFullName: project.fullName,
+    type: sample.type || "code",
+    summary: sample.summary,
+    code: sample.code,
+    language: sample.language,
+    filePath: sample.filePath,
+    lineStart: sample.lineStart,
+    lineEnd: sample.lineEnd,
+    url: sample.url,
+    tags: sample.tags,
+    readmeHeading: sample.readmeHeading,
+    commitEntries: sample.commitEntries,
+  };
 }
 
 const MAX_SNIPPET_CODE_LENGTH = 4000;

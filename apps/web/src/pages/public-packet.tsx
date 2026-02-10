@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { CheckCircle2, ChevronRight } from "lucide-react";
-import type { Evidence, EvidenceMappingWithEvidence, ProofPacketCodeSample } from "@evidensify/types";
+import type { CommitEntry, Evidence, EvidenceMappingWithEvidence, ProofPacketCodeSample } from "@evidensify/types";
 import { fetchSharedPacket } from "@/lib/api";
 import { PublicShareLayout } from "@/components/layout/public-share-layout";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -268,6 +268,7 @@ function RequirementPublicCard({
               <p className="text-[11px] uppercase tracking-[0.3em] text-slate-500">{getPublicSampleLabel(selectedSample)}</p>
               <p className="text-sm font-semibold text-white">{selectedSample.summary}</p>
               <p>{formatPublicLineLabel(selectedSample.filePath, selectedSample.lineStart, selectedSample.lineEnd)}</p>
+              <SampleHighlightMetaPublic sample={selectedSample} />
               {selectedSample.tags && selectedSample.tags.length > 0 ? (
                 <div className="mt-1 flex flex-wrap gap-1">
                   {selectedSample.tags.map((tag) => (
@@ -343,6 +344,7 @@ function PublicCodeSamples({ samples }: { samples: ProofPacketCodeSample[] }) {
                   <p className="text-[11px] uppercase tracking-[0.3em] text-slate-500">
                     {sample.projectFullName} {formatPublicLineLabel(sample.filePath, sample.lineStart, sample.lineEnd)}
                   </p>
+                  <SampleHighlightMetaPublic sample={sample} />
                   {sample.tags && sample.tags.length > 0 ? (
                     <div className="mt-1 flex flex-wrap gap-1">
                       {sample.tags.map((tag) => (
@@ -388,6 +390,51 @@ function formatPublicLineLabel(filePath?: string, start?: number, end?: number) 
   if (start && end) return `${path} #L${start}-${end}`;
   if (start) return `${path} #L${start}`;
   return path;
+}
+
+function SampleHighlightMetaPublic({ sample }: { sample?: { type?: string; readmeHeading?: string; commitEntries?: CommitEntry[] } }) {
+  if (!sample) return null;
+  const showHeading = sample.type === "readme" && sample.readmeHeading;
+  const entries = sample.type === "commit" ? sample.commitEntries ?? [] : [];
+  if (!showHeading && entries.length === 0) return null;
+  return (
+    <div className="mt-1 space-y-2">
+      {showHeading ? <p className="text-[11px] text-slate-400">README section: {sample.readmeHeading}</p> : null}
+      {entries.length > 0 ? <PublicCommitTrail entries={entries} /> : null}
+    </div>
+  );
+}
+
+function PublicCommitTrail({ entries }: { entries: CommitEntry[] }) {
+  if (!entries.length) return null;
+  return (
+    <div className="mt-2 rounded-lg border border-slate-900/70 bg-slate-900/40 p-2 text-[11px] text-slate-300">
+      <p className="text-[10px] uppercase tracking-[0.3em] text-slate-500">Commit trail · {entries.length} entr{entries.length === 1 ? "y" : "ies"}</p>
+      <ul className="mt-1 space-y-1">
+        {entries.map((entry) => {
+          const label = truncateTextPublic(entry.message?.split("\n")[0] || entry.sha, 90);
+          const shortSha = entry.sha ? entry.sha.slice(0, 7) : "commit";
+          return (
+            <li key={entry.sha} className="flex items-center gap-2">
+              <span className="flex-1 truncate">{label}</span>
+              {entry.htmlUrl ? (
+                <a href={entry.htmlUrl} target="_blank" rel="noopener noreferrer nofollow" className="font-mono text-[10px] text-primary underline">
+                  #{shortSha}
+                </a>
+              ) : (
+                <span className="font-mono text-[10px] text-slate-500">#{shortSha}</span>
+              )}
+            </li>
+          );
+        })}
+      </ul>
+    </div>
+  );
+}
+
+function truncateTextPublic(value: string, max = 80) {
+  if (!value) return "";
+  return value.length <= max ? value : `${value.slice(0, max - 1)}…`;
 }
 
 function getPublicSampleLabel(sample?: { type?: string }) {

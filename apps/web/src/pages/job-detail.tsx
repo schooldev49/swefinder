@@ -3,6 +3,7 @@ import { useEffect, useMemo, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type {
+  CommitEntry,
   EvidenceMappingWithEvidence,
   Job,
   Project,
@@ -529,6 +530,7 @@ function ProofCodeSamplesSection({ samples }: { samples: ProofPacketCodeSample[]
                   <p className="text-[11px] uppercase tracking-[0.3em] text-slate-500">
                     {sample.projectFullName} {formatLineLabel(sample.filePath, sample.lineStart, sample.lineEnd)}
                   </p>
+                  <SampleHighlightMeta sample={sample} />
                   {sample.tags && sample.tags.length > 0 ? (
                     <div className="mt-1 flex flex-wrap gap-1">
                       {sample.tags.map((tag) => (
@@ -580,6 +582,54 @@ function formatLineLabel(filePath?: string, start?: number, end?: number) {
   if (start && end) return `${path} #L${start}-${end}`;
   if (start) return `${path} #L${start}`;
   return path;
+}
+
+function SampleHighlightMeta({ sample, variant = "internal" }: { sample?: { type?: string; readmeHeading?: string; commitEntries?: CommitEntry[] }; variant?: "internal" | "public" }) {
+  if (!sample) return null;
+  const showHeading = sample.type === "readme" && sample.readmeHeading;
+  const entries = sample.type === "commit" ? sample.commitEntries ?? [] : [];
+  if (!showHeading && entries.length === 0) return null;
+  const textClass = variant === "public" ? "text-slate-400" : "text-muted-foreground";
+  return (
+    <div className="mt-1 space-y-2">
+      {showHeading ? <p className={`text-[11px] ${textClass}`}>README section: {sample.readmeHeading}</p> : null}
+      {entries.length > 0 ? <CommitTrailList entries={entries} variant={variant} /> : null}
+    </div>
+  );
+}
+
+function CommitTrailList({ entries, variant = "internal" }: { entries: CommitEntry[]; variant?: "internal" | "public" }) {
+  if (!entries.length) return null;
+  const boxClasses = variant === "public" ? "border-slate-900/70 bg-slate-900/40" : "border-slate-900/70 bg-slate-900/40";
+  const textClass = variant === "public" ? "text-slate-300" : "text-slate-200";
+  return (
+    <div className={`mt-2 rounded-lg border ${boxClasses} p-2 text-[11px]`}> 
+      <p className="text-[10px] uppercase tracking-[0.3em] text-slate-500">Commit trail · {entries.length} entr{entries.length === 1 ? "y" : "ies"}</p>
+      <ul className="mt-1 space-y-1">
+        {entries.map((entry) => {
+          const label = truncateText(entry.message?.split("\n")[0] || entry.sha, 90);
+          const shortSha = entry.sha ? entry.sha.slice(0, 7) : "commit";
+          return (
+            <li key={entry.sha} className="flex items-center gap-2">
+              <span className={`flex-1 truncate ${textClass}`}>{label}</span>
+              {entry.htmlUrl ? (
+                <a href={entry.htmlUrl} target="_blank" rel="noopener noreferrer nofollow" className="font-mono text-[10px] text-primary underline">
+                  #{shortSha}
+                </a>
+              ) : (
+                <span className="font-mono text-[10px] text-slate-500">#{shortSha}</span>
+              )}
+            </li>
+          );
+        })}
+      </ul>
+    </div>
+  );
+}
+
+function truncateText(value: string, max = 80) {
+  if (!value) return "";
+  return value.length <= max ? value : `${value.slice(0, max - 1)}…`;
 }
 
 const AI_ROLE_LABELS: Record<string, string> = {
@@ -690,10 +740,10 @@ function RequirementCard({
         )}
       </div>
       <div className="space-y-2 rounded-xl border border-slate-800/70 bg-slate-950/60 p-3 text-xs text-muted-foreground">
-        <div className="flex flex-wrap items-center justify-between gap-2">
-          <p className="text-[11px] uppercase tracking-wide">Attach sample</p>
-          {sampleSaving ? <Loader2 className="h-3.5 w-3.5 animate-spin text-muted-foreground" /> : null}
-        </div>
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <p className="text-[11px] uppercase tracking-wide">Attach sample</p>
+                  {sampleSaving ? <Loader2 className="h-3.5 w-3.5 animate-spin text-muted-foreground" /> : null}
+                </div>
         {sampleOptions.length === 0 ? (
           <p>No snippets yet. Add one from the Projects page, then regenerate.</p>
         ) : (
@@ -718,6 +768,7 @@ function RequirementCard({
                 <p className="text-muted-foreground">
                   {formatLineLabel(selectedSample.filePath, selectedSample.lineStart, selectedSample.lineEnd) || "Custom link"}
                 </p>
+                <SampleHighlightMeta sample={selectedSample} />
                 {selectedSample.tags && selectedSample.tags.length > 0 ? (
                   <div className="mt-1 flex flex-wrap gap-1">
                     {selectedSample.tags.map((tag) => (

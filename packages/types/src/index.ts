@@ -20,6 +20,13 @@ export type ProjectSourceType = "github" | "link";
 export type AIRole = "none" | "assist" | "co-design" | "agent-orchestration";
 export type CodeSampleType = "code" | "readme" | "commit";
 
+export interface CommitEntry {
+  sha: string;
+  message: string;
+  date?: string | null;
+  htmlUrl?: string;
+}
+
 export interface ProjectCodeSample {
   id: string;
   type?: CodeSampleType;
@@ -31,6 +38,8 @@ export interface ProjectCodeSample {
   lineEnd?: number;
   url?: string;
   tags?: string[];
+  readmeHeading?: string;
+  commitEntries?: CommitEntry[];
   createdAt?: string;
   updatedAt?: string;
 }
@@ -133,7 +142,10 @@ export interface ProofPacketCodeSample extends EvidenceSnippet {
   id: string;
   projectId: string;
   projectFullName: string;
+  type?: CodeSampleType;
   tags?: string[];
+  readmeHeading?: string;
+  commitEntries?: CommitEntry[];
 }
 
 export interface ProofPacket {
@@ -147,6 +159,8 @@ export interface ProofPacket {
   outreachNote: string;
   createdAt: string;
   codeSamples?: ProofPacketCodeSample[];
+  readmeHighlight?: ProofPacketCodeSample;
+  commitTrail?: ProofPacketCodeSample;
   requirementSampleMap?: Record<string, string | null>;
 }
 
