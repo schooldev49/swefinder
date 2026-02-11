@@ -13,7 +13,16 @@ import type {
   RequirementCoverage,
   Requirement,
 } from "@evidensify/types";
-import { createJobSample, fetchJob, fetchProjects, generateProof, updateJobStatus, updateRequirementCoverage } from "@/lib/api";
+import {
+  createJobSample,
+  fetchJob,
+  fetchProjects,
+  generateProof,
+  suggestPacketWording,
+  updateJobRequirements,
+  updateJobStatus,
+  updateRequirementCoverage,
+} from "@/lib/api";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -58,6 +67,7 @@ export function JobDetailPage() {
   const [outreachDraft, setOutreachDraft] = useState("");
   const [selectedSamples, setSelectedSamples] = useState<Set<string>>(new Set());
   const [selectedRequirementId, setSelectedRequirementId] = useState<string | null>(null);
+  const [requirementDrafts, setRequirementDrafts] = useState<Requirement[]>([]);
   const [coverageMap, setCoverageMap] = useState<Record<string, RequirementCoverage>>({});
   const [coverageDraft, setCoverageDraft] = useState<RequirementCoverage | null>(null);
   const [sampleDraft, setSampleDraft] = useState<JobSampleDraft>({
@@ -128,6 +138,7 @@ export function JobDetailPage() {
     if (!proof) {
       setBulletDrafts([]);
       setOutreachDraft("");
+      setRequirementDrafts([]);
       setSelectedSamples(new Set());
       setCoverageMap({});
       setCoverageDraft(null);
@@ -137,6 +148,7 @@ export function JobDetailPage() {
     setBulletDrafts(proof.bullets);
     setOutreachDraft(proof.outreachNote);
     setCoverageMap(proof.requirementCoverageMap || {});
+    setRequirementDrafts(proof.requirements.slice(0, 5));
     setSelectedRequirementId((prev) => prev ?? proof.requirements[0]?.id ?? null);
     setCoverageDraft(null);
     setSelectedSamples(new Set(proof.codeSamples?.map((sample) => sample.id) ?? []));
@@ -175,12 +187,43 @@ export function JobDetailPage() {
       generateProof(jobId, {
         selectedProjectIds: Array.from(selectedProjects),
         selectedSampleIds: Array.from(selectedSamples),
+        requirements: requirementDrafts.map((requirement, index) => ({
+          id: requirement.id,
+          text: requirement.text,
+          priority: 10 - index,
+          notes: requirement.notes,
+        })),
       }),
     onSuccess: async (packet) => {
       toast("Proof refreshed", { description: packet.title });
       await queryClient.invalidateQueries({ queryKey: ["job", jobId] });
     },
     onError: (error: Error) => toast("Could not regenerate", { description: error.message }),
+  });
+  const saveRequirementsMutation = useMutation({
+    mutationFn: () =>
+      updateJobRequirements(jobId, {
+        requirements: requirementDrafts.map((requirement, index) => ({
+          id: requirement.id,
+          text: requirement.text,
+          priority: 10 - index,
+          notes: requirement.notes,
+        })),
+      }),
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: ["job", jobId] });
+      toast("Requirements saved");
+    },
+    onError: (error: Error) => toast("Could not save requirements", { description: error.message }),
+  });
+  const suggestWordingMutation = useMutation({
+    mutationFn: () => suggestPacketWording(jobId, { bullets: bulletDrafts, outreachNote: outreachDraft }),
+    onSuccess: (data) => {
+      if (data.bullets?.length) setBulletDrafts(data.bullets);
+      setOutreachDraft(data.outreachNote || "");
+      toast("Grammar polished");
+    },
+    onError: (error: Error) => toast("Could not suggest wording", { description: error.message }),
   });
 
   const requirementCoverageMutation = useMutation({
@@ -230,7 +273,7 @@ export function JobDetailPage() {
     });
   };
 
-  const proofRequirements = (proof?.requirements ?? []).slice(0, 5);
+  const proofRequirements = requirementDrafts.slice(0, 5);
   const selectedRequirement = proofRequirements.find((requirement) => requirement.id === selectedRequirementId) ?? proofRequirements[0] ?? null;
   const activeCoverage = selectedRequirement ? coverageMap[selectedRequirement.id] : undefined;
   const editableCoverage = coverageDraft ?? (selectedRequirement
@@ -379,12 +422,18 @@ export function JobDetailPage() {
               <section className="space-y-2">
                 <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
                   <h3 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">Key requirements</h3>
-                  <div className="text-xs text-muted-foreground">
-                    <span>{backedCount}/{proofRequirements.length} backed</span>
-                    <span className="mx-2">•</span>
-                    <span className={strongPacket ? "text-emerald-300" : "text-slate-400"}>
-                      {strongPacket ? "Strong packet" : "Lighter packet"}
-                    </span>
+                  <div className="flex items-center gap-2">
+                    <div className="text-xs text-muted-foreground">
+                      <span>{backedCount}/{proofRequirements.length} backed</span>
+                      <span className="mx-2">•</span>
+                      <span className={strongPacket ? "text-emerald-300" : "text-slate-400"}>
+                        {strongPacket ? "Strong packet" : "Lighter packet"}
+                      </span>
+                    </div>
+                    <Button type="button" size="sm" variant="outline" onClick={() => saveRequirementsMutation.mutate()} disabled={saveRequirementsMutation.isPending}>
+                      {saveRequirementsMutation.isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+                      Save requirements
+                    </Button>
                   </div>
                 </div>
                 <div className="mt-3 grid gap-4 lg:grid-cols-[minmax(0,0.9fr)_minmax(0,1.1fr)]">
@@ -421,6 +470,11 @@ export function JobDetailPage() {
                     {selectedRequirement && editableCoverage ? (
                       <RequirementEvidenceEditor
                         requirement={selectedRequirement}
+                        onRequirementTextChange={(value) =>
+                          setRequirementDrafts((prev) =>
+                            prev.map((entry) => (entry.id === selectedRequirement.id ? { ...entry, text: value } : entry))
+                          )
+                        }
                         projects={projectOptions}
                         selectedProjects={editableCoverage.projectIds || []}
                         onToggleProject={(projectId, checked) => {
@@ -479,6 +533,10 @@ export function JobDetailPage() {
               <section>
                 <div className="flex items-center justify-between">
                   <h3 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">Resume bullets</h3>
+                  <Button type="button" variant="outline" size="sm" onClick={() => suggestWordingMutation.mutate()} disabled={suggestWordingMutation.isPending}>
+                    {suggestWordingMutation.isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+                    Suggest wording
+                  </Button>
                 </div>
                 <div className="mt-3 space-y-3">
                   {bulletDrafts.map((bullet, index) => (
@@ -814,6 +872,7 @@ function getSampleTypeLabel(sample?: { type?: string }) {
 
 function RequirementEvidenceEditor({
   requirement,
+  onRequirementTextChange,
   projects,
   selectedProjects,
   onToggleProject,
@@ -830,6 +889,7 @@ function RequirementEvidenceEditor({
   creatingSample,
 }: {
   requirement: Requirement;
+  onRequirementTextChange: (value: string) => void;
   projects: Project[];
   selectedProjects: string[];
   onToggleProject: (projectId: string, checked: boolean) => void;
@@ -849,7 +909,13 @@ function RequirementEvidenceEditor({
     <div className="space-y-4">
       <div>
         <p className="text-[11px] uppercase tracking-[0.35em] text-muted-foreground">Selected requirement</p>
-        <p className="mt-1 text-sm font-semibold text-white">{requirement.text}</p>
+        <Textarea
+          value={requirement.text}
+          onChange={(event) => onRequirementTextChange(event.target.value.slice(0, 240))}
+          rows={2}
+          className="mt-1 bg-slate-950/80 text-sm"
+          placeholder="Requirement text"
+        />
         <p className="mt-1 text-[11px] text-muted-foreground">Priority {requirement.priority}</p>
       </div>
 

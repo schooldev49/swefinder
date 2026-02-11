@@ -19,6 +19,7 @@ export function NewJobPage() {
   const [selectedProjects, setSelectedProjects] = useState<Set<string>>(new Set());
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [selectedSamples, setSelectedSamples] = useState<Set<string>>(new Set());
+  const [requirementsText, setRequirementsText] = useState("");
   const navigate = useNavigate();
 
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
@@ -28,6 +29,16 @@ export function NewJobPage() {
     const rawDescription = formData.get("description")?.toString().trim() || "";
     if (!title || !rawDescription) {
       toast("Missing fields", { description: "Add a job title and paste the JD." });
+      return;
+    }
+    const requirements = requirementsText
+      .split("\n")
+      .map((line) => line.trim())
+      .filter(Boolean)
+      .slice(0, 5)
+      .map((text, index) => ({ id: `req-${index + 1}`, text, priority: 10 - index }));
+    if (requirements.length === 0) {
+      toast("Add requirements", { description: "Enter at least one technical requirement." });
       return;
     }
     if (selectedProjects.size === 0) {
@@ -45,6 +56,7 @@ export function NewJobPage() {
       await generateProof(job.id, {
         selectedProjectIds: Array.from(selectedProjects),
         selectedSampleIds: Array.from(selectedSamples),
+        requirements,
       });
       toast("Proof packet in progress", { description: "We saved the job and generated your first packet." });
       navigate(`/jobs/${job.id}`);
@@ -135,6 +147,18 @@ export function NewJobPage() {
           <div>
             <label className="text-sm font-semibold text-white">Job description</label>
             <Textarea name="description" className="mt-2" rows={10} placeholder="Paste the JD here" required />
+          </div>
+          <div>
+            <label className="text-sm font-semibold text-white">Technical requirements (one per line)</label>
+            <Textarea
+              value={requirementsText}
+              onChange={(event) => setRequirementsText(event.target.value)}
+              className="mt-2"
+              rows={6}
+              placeholder={"Example:\nBuild Python APIs and data pipelines\nRun ML experiments and report metrics\nCollaborate across product and engineering"}
+              required
+            />
+            <p className="mt-1 text-xs text-muted-foreground">Manual only. You can edit these later on the job page.</p>
           </div>
           <div>
             <div className="flex items-center justify-between">

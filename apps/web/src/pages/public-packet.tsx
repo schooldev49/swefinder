@@ -79,6 +79,25 @@ function PacketView({
           {proof?.summary ? (
             <CardContent className="pt-0">
               <p className="rounded-xl border border-slate-900/80 bg-slate-950/60 px-3 py-2 text-sm text-slate-200">{proof.summary}</p>
+              <div className="mt-3 grid gap-2 md:grid-cols-3">
+                <Button variant="outline" size="sm" asChild>
+                  <a href="#packet-requirements">Requirements</a>
+                </Button>
+                <Button variant="outline" size="sm" asChild>
+                  <a href="#packet-citations">Citations</a>
+                </Button>
+                {data.job.jobUrl ? (
+                  <Button variant="outline" size="sm" asChild>
+                    <a href={data.job.jobUrl} target="_blank" rel="noopener noreferrer">
+                      Original JD
+                    </a>
+                  </Button>
+                ) : (
+                  <Button variant="outline" size="sm" disabled>
+                    Original JD
+                  </Button>
+                )}
+              </div>
             </CardContent>
           ) : null}
       </Card>
@@ -90,7 +109,7 @@ function PacketView({
             <CardDescription>Skim requirements first, then open links for verification.</CardDescription>
           </CardHeader>
           <CardContent className="space-y-8">
-            <section>
+            <section id="packet-requirements">
               <SectionHeading title="Key requirements" subtitle="Each mapped to concrete repos or docs." />
               <div className="mt-4 grid gap-4 md:grid-cols-2">
                 {proof.requirements.slice(0, 5).map((requirement) => (
@@ -126,7 +145,7 @@ function PacketView({
                 {proof.outreachNote}
               </div>
             </section>
-            <section>
+            <section id="packet-citations">
               <SectionHeading title="Evidence citations" subtitle="Click through to verify code, notebooks, or demos." />
               {citations.length === 0 ? (
                 <p className="text-xs text-muted-foreground">No citations available.</p>

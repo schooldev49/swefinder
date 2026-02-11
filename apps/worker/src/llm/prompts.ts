@@ -83,3 +83,42 @@ ${params.summary}
 CODE SNIPPET:
 ${params.code}`;
 }
+
+export function buildGrammarPolishPrompt(params: {
+  bullets: string[];
+  outreachNote: string;
+  requirements: Requirement[];
+  mappings: EvidenceMappingWithEvidence[];
+}): string {
+  const requirements = JSON.stringify(params.requirements, null, 2);
+  const evidence = JSON.stringify(
+    params.mappings.map((mapping) => ({
+      requirementId: mapping.requirementId,
+      project: mapping.evidence.projectFullName,
+      description: mapping.evidence.description,
+      rationale: mapping.rationale,
+      links: [mapping.evidence.fileUrl, mapping.evidence.demoUrl].filter(Boolean),
+    })),
+    null,
+    2
+  );
+  const input = JSON.stringify({ bullets: params.bullets, outreachNote: params.outreachNote }, null, 2);
+  return `SYSTEM:
+${HONESTY_PLEDGE}
+
+TASK:
+Polish grammar, readability, and concision only.
+Do not add facts, numbers, technologies, outcomes, links, or claims.
+Do not remove key technical facts already present.
+Keep each bullet as one sentence and keep meaning unchanged.
+Respond only with valid JSON: {"bullets":[""],"outreachNote":"string"}.
+
+REQUIREMENTS:
+${requirements}
+
+EVIDENCE:
+${evidence}
+
+TEXT TO POLISH:
+${input}`;
+}

@@ -1,4 +1,4 @@
-import type { Job, ProofPacket, ProofPacketCodeSample, Project, RequirementCoverage, User } from "@evidensify/types";
+import type { Job, ProofPacket, ProofPacketCodeSample, Project, Requirement, RequirementCoverage, User } from "@evidensify/types";
 
 export interface ApiRepoSummary {
   id: string;
@@ -25,6 +25,7 @@ export interface CreateJobPayload {
 export interface GeneratePayload {
   selectedProjectIds: string[];
   selectedSampleIds?: string[];
+  requirements?: Array<{ id?: string; text: string; priority?: number; notes?: string }>;
   requirementCoverage?: RequirementCoverage[];
   userMetrics?: Record<string, { label: string; value: string }>;
 }
@@ -213,6 +214,31 @@ export function updateRequirementCoverage(
     requirementSampleMap: Record<string, string | null>;
     mappings: ProofPacket["mappings"];
   }>(`/jobs/${jobId}/requirement-coverage`, {
+    method: "POST",
+    body: JSON.stringify(payload),
+  });
+}
+
+export function updateJobRequirements(
+  jobId: string,
+  payload: { requirements: Array<{ id?: string; text: string; priority?: number; notes?: string }> }
+) {
+  return apiFetch<{
+    requirements: Requirement[];
+    requirementCoverageMap: Record<string, RequirementCoverage>;
+    requirementSampleMap: Record<string, string | null>;
+    mappings: ProofPacket["mappings"];
+  }>(`/jobs/${jobId}/requirements`, {
+    method: "POST",
+    body: JSON.stringify(payload),
+  });
+}
+
+export function suggestPacketWording(
+  jobId: string,
+  payload: { bullets: string[]; outreachNote: string }
+) {
+  return apiFetch<{ bullets: string[]; outreachNote: string }>(`/jobs/${jobId}/suggest-wording`, {
     method: "POST",
     body: JSON.stringify(payload),
   });

@@ -12,8 +12,7 @@ import type {
 } from "@evidensify/types";
 import { callLLM } from "./llm/callLLM";
 import {
-  buildBulletsAndOutreachPrompt,
-  buildRequirementsPrompt,
+  buildGrammarPolishPrompt,
   buildSnippetSummaryPrompt,
   buildSnippetTagsPrompt,
 } from "./llm/prompts";
@@ -75,6 +74,7 @@ interface CreateJobPayload {
 interface GeneratePayload {
   selectedProjectIds: string[];
   selectedSampleIds?: string[];
+  requirements?: Array<{ id?: string; text: string; priority?: number; notes?: string }>;
   requirementCoverage?: RequirementCoverage[];
   userMetrics?: Record<string, { label: string; value: string }>;
 }
@@ -114,6 +114,15 @@ interface CreateJobSamplePayload {
   readmeHeading?: string;
   commitEntries?: ProjectCodeSample["commitEntries"];
   saveToProject?: boolean;
+}
+
+interface UpdateRequirementsPayload {
+  requirements: Array<{ id?: string; text: string; priority?: number; notes?: string }>;
+}
+
+interface SuggestPacketWordingPayload {
+  bullets?: string[];
+  outreachNote?: string;
 }
 
 class HttpError extends Error {
@@ -234,8 +243,14 @@ export default {
         if (url.pathname.endsWith(`/api/jobs/${jobId}/requirement-coverage`) && request.method === "POST") {
           return withCors(await handleUpdateRequirementCoverage(request, env, jobId), origin);
         }
+        if (url.pathname.endsWith(`/api/jobs/${jobId}/requirements`) && request.method === "POST") {
+          return withCors(await handleUpdateRequirements(request, env, jobId), origin);
+        }
         if (url.pathname.endsWith(`/api/jobs/${jobId}/samples`) && request.method === "POST") {
           return withCors(await handleCreateJobSample(request, env, jobId), origin);
+        }
+        if (url.pathname.endsWith(`/api/jobs/${jobId}/suggest-wording`) && request.method === "POST") {
+          return withCors(await handleSuggestPacketWording(request, env, jobId), origin);
         }
       }
 
@@ -769,6 +784,77 @@ async function handleCreateJobSample(request: Request, env: Env, jobId: string):
   return jsonResponse({ sample: proofSample, codeSamples: proof.codeSamples || [] });
 }
 
+async function handleUpdateRequirements(request: Request, env: Env, jobId: string): Promise<Response> {
+  const { user } = await requireUser(request, env);
+  const payload = await parseJsonBody<UpdateRequirementsPayload>(request);
+  const job = await getJob(env, jobId);
+  if (!job || job.userId !== user.id) throw new HttpError("Job not found", 404);
+  const proof = await getProofPacket(env, jobId);
+  if (!proof) throw new HttpError("Generate a Proof Packet first", 400);
+
+  const requirements = normalizeRequirementsInput(payload.requirements, job.id);
+  const nextRequirementIds = new Set(requirements.map((entry) => entry.id));
+  const nextCoverageMap = Object.fromEntries(
+    Object.entries(proof.requirementCoverageMap || {}).filter(([requirementId]) => nextRequirementIds.has(requirementId))
+  );
+  const nextSampleMap = Object.fromEntries(
+    Object.entries(proof.requirementSampleMap || {}).filter(([requirementId]) => nextRequirementIds.has(requirementId))
+  );
+  const projects = await listProjects(env, user.id);
+  const mappings = buildMappingsFromCoverage(requirements, projects, Object.values(nextCoverageMap), proof.codeSamples || []);
+
+  proof.requirements = requirements;
+  proof.requirementCoverageMap = nextCoverageMap;
+  proof.requirementSampleMap = nextSampleMap;
+  proof.mappings = mappings;
+  await saveProofPacket(env, proof);
+
+  return jsonResponse({
+    requirements,
+    requirementCoverageMap: nextCoverageMap,
+    requirementSampleMap: nextSampleMap,
+    mappings,
+  });
+}
+
+async function handleSuggestPacketWording(request: Request, env: Env, jobId: string): Promise<Response> {
+  const { user } = await requireUser(request, env);
+  const payload = await parseJsonBody<SuggestPacketWordingPayload>(request);
+  const job = await getJob(env, jobId);
+  if (!job || job.userId !== user.id) throw new HttpError("Job not found", 404);
+  const proof = await getProofPacket(env, jobId);
+  if (!proof) throw new HttpError("Generate a Proof Packet first", 400);
+
+  const bullets = (payload.bullets || []).map((entry) => entry.trim()).filter(Boolean).slice(0, 8);
+  const outreachNote = (payload.outreachNote || "").trim();
+  if (!bullets.length && !outreachNote) {
+    throw new HttpError("Provide bullets or outreach text to polish", 400);
+  }
+
+  const response = await callLLM(env, {
+    systemPrompt: "You only polish grammar and clarity. Do not add or remove factual claims.",
+    userPrompt: buildGrammarPolishPrompt({
+      bullets,
+      outreachNote,
+      requirements: proof.requirements,
+      mappings: proof.mappings,
+    }),
+    responseFormat: "json",
+  });
+
+  let polished: { bullets?: string[]; outreachNote?: string };
+  try {
+    polished = JSON.parse(response.raw) as { bullets?: string[]; outreachNote?: string };
+  } catch {
+    throw new HttpError("Could not parse wording suggestion", 502);
+  }
+
+  return jsonResponse({
+    bullets: (polished.bullets || []).map((entry) => entry.trim()).filter(Boolean),
+    outreachNote: (polished.outreachNote || "").trim(),
+  });
+}
+
 async function handleGetJob(request: Request, env: Env, jobId: string): Promise<Response> {
   const { user } = await requireUser(request, env);
   const job = await getJob(env, jobId);
@@ -824,37 +910,23 @@ async function handleGenerateProofPacket(request: Request, env: Env, jobId: stri
   }
   const selectedSampleIds = Array.isArray(payload.selectedSampleIds) ? payload.selectedSampleIds : [];
   const sampleSelection = buildProofCodeSamples(selectedSampleIds, selectedProjects);
+  const existingProof = await getProofPacket(env, jobId);
+  const requirements = normalizeRequirementsInput(payload.requirements, job.id, existingProof?.requirements);
   const requirementCoverage = normalizeRequirementCoverage(payload.requirementCoverage, selectedProjects, sampleSelection.codeSamples);
   const requirementCoverageMap = toRequirementCoverageMap(requirementCoverage);
   const requirementSampleMap = toRequirementSampleMap(requirementCoverage);
-
-  let requirements: Requirement[] = [];
-  let mappings: EvidenceMappingWithEvidence[] = [];
-  let bulletsResult: { bullets: string[]; outreachNote: string; summary: string };
-  try {
-    requirements = await runLLMForRequirements(env, job.rawDescription);
-    mappings = buildMappingsFromCoverage(requirements, selectedProjects, requirementCoverage, sampleSelection.codeSamples);
-    bulletsResult =
-      mappings.length > 0
-        ? await runLLMForBullets(env, requirements, mappings)
-        : {
-            bullets: [],
-            outreachNote: "",
-            summary: "Requirement-first packet. Add project evidence for each requirement.",
-          };
-  } catch (error) {
-    throw new HttpError(error instanceof Error ? error.message : "LLM generation failed", 502);
-  }
+  const mappings = buildMappingsFromCoverage(requirements, selectedProjects, requirementCoverage, sampleSelection.codeSamples);
+  const defaultSummary = "Requirement-first packet. Candidate-curated links and rationale only.";
 
   const proofPacket: ProofPacket = {
     id: crypto.randomUUID(),
     jobId: job.id,
     title: `Proof Packet – ${job.title}${job.company ? ` @ ${job.company}` : ""}`,
-    summary: bulletsResult.summary,
+    summary: existingProof?.summary || defaultSummary,
     requirements,
     mappings,
-    bullets: bulletsResult.bullets,
-    outreachNote: bulletsResult.outreachNote,
+    bullets: existingProof?.bullets || [],
+    outreachNote: existingProof?.outreachNote || "",
     createdAt: new Date().toISOString(),
     codeSamples: sampleSelection.codeSamples,
     readmeHighlight: sampleSelection.readmeSample,
@@ -869,24 +941,6 @@ async function handleGenerateProofPacket(request: Request, env: Env, jobId: stri
   await updateJob(env, job);
 
   return jsonResponse(proofPacket);
-}
-
-async function runLLMForRequirements(env: Env, jobDescription: string): Promise<Requirement[]> {
-  const response = await callLLM(env, {
-    systemPrompt: "You extract key job requirements.",
-    userPrompt: buildRequirementsPrompt(jobDescription),
-    responseFormat: "json",
-  });
-  return JSON.parse(response.raw) as Requirement[];
-}
-
-async function runLLMForBullets(env: Env, requirements: Requirement[], mappings: EvidenceMappingWithEvidence[]) {
-  const response = await callLLM(env, {
-    systemPrompt: "You craft plain-text resume bullets and outreach notes grounded in real evidence.",
-    userPrompt: buildBulletsAndOutreachPrompt({ requirements, mappings }),
-    responseFormat: "json",
-  });
-  return JSON.parse(response.raw) as { bullets: string[]; outreachNote: string; summary: string };
 }
 
 async function runLLMForSnippetSummary(env: Env, summary: string, code: string): Promise<string> {
@@ -1221,6 +1275,35 @@ function normalizeRequirementCoverage(
         rationale: rationale || undefined,
       };
     });
+}
+
+function normalizeRequirementsInput(
+  input: Array<{ id?: string; text: string; priority?: number; notes?: string }> | undefined,
+  jobId: string,
+  fallback?: Requirement[]
+): Requirement[] {
+  const source = input && input.length > 0 ? input : fallback || [];
+  const cleaned = source
+    .map((entry, index) => {
+      const text = (entry.text || "").trim();
+      if (!text) return null;
+      const id = (entry.id || `req-${index + 1}`).trim();
+      const priority = typeof entry.priority === "number" ? Math.max(1, Math.min(10, Math.floor(entry.priority))) : 10 - index;
+      const notes = entry.notes?.trim();
+      return {
+        id,
+        jobId,
+        text: text.slice(0, 240),
+        priority,
+        notes: notes ? notes.slice(0, 240) : undefined,
+      } as Requirement;
+    })
+    .filter((entry): entry is Requirement => Boolean(entry))
+    .slice(0, 5);
+  if (!cleaned.length) {
+    throw new HttpError("Add at least one requirement before generating", 400);
+  }
+  return cleaned.map((entry, index) => ({ ...entry, priority: 10 - index }));
 }
 
 function toRequirementCoverageMap(input: RequirementCoverage[]): Record<string, RequirementCoverage> {

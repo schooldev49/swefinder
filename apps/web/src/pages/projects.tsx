@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import type { ChangeEvent, FormEvent } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { Link } from "react-router-dom";
 import {
   fetchGitHubRepos,
   fetchProjects,
@@ -411,6 +412,28 @@ export function ProjectsPage() {
 
   return (
     <div className="space-y-6">
+      <div className="rounded-2xl border border-slate-800/70 bg-slate-950/60 p-4">
+        <div className="grid gap-2 md:grid-cols-3">
+          <Button asChild className="justify-between">
+            <Link to="/jobs/new">
+              Create packet
+              <span>Go</span>
+            </Link>
+          </Button>
+          <Button asChild variant="outline" className="justify-between">
+            <Link to="/jobs">
+              Open job tracker
+              <span>Go</span>
+            </Link>
+          </Button>
+          <Button asChild variant="outline" className="justify-between">
+            <Link to="/profile">
+              Manage public profile
+              <span>Go</span>
+            </Link>
+          </Button>
+        </div>
+      </div>
       <div className="rounded-2xl border border-slate-800/70 bg-slate-950/50 p-5">
         <p className="text-xs uppercase tracking-[0.35em] text-muted-foreground">Setup checklist</p>
         <div className="mt-4 grid gap-4 md:grid-cols-3">

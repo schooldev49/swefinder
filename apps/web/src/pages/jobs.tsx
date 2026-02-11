@@ -91,7 +91,7 @@ export function JobsPage() {
       <CardHeader className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
         <div>
           <CardTitle className="text-white">Job tracker</CardTitle>
-          <CardDescription>Every JD, Proof Packet, and status in one view.</CardDescription>
+          <CardDescription>Track packet status and move faster on follow-up actions.</CardDescription>
         </div>
         <Button asChild>
           <Link to="/jobs/new">
@@ -100,6 +100,17 @@ export function JobsPage() {
         </Button>
       </CardHeader>
       <CardContent>
+        <div className="mb-4 grid gap-2 md:grid-cols-3">
+          <Button asChild variant="outline" className="justify-between">
+            <Link to="/projects">Update projects</Link>
+          </Button>
+          <Button asChild variant="outline" className="justify-between">
+            <Link to="/jobs/new">Add new role</Link>
+          </Button>
+          <Button asChild variant="outline" className="justify-between">
+            <Link to="/profile">Public profile</Link>
+          </Button>
+        </div>
         {isLoading ? (
           <div className="h-32 animate-pulse rounded-xl bg-slate-900/60" />
         ) : jobs && jobs.length > 0 ? (

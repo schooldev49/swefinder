@@ -65,6 +65,7 @@ export function AppLayout() {
                 <div className="h-8 w-28 animate-pulse rounded-full bg-slate-800" />
               ) : isAuthenticated && user ? (
                 <div className="flex items-center gap-3">
+                  <p className="hidden text-sm text-slate-300 md:block">Hi {user.githubLogin}</p>
                   <Button
                     variant="ghost"
                     size="sm"
