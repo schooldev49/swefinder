@@ -139,13 +139,13 @@ export function LandingPage() {
           <p className="text-xs uppercase tracking-[0.45em] text-slate-400">Made by students for students</p>
           <div className="space-y-4">
             <h1 className="text-4xl font-semibold leading-tight text-white md:text-5xl">
-              Attach proof, not fluff.
+              Requirement-first packet builder.
             </h1>
             <p className="text-base text-slate-300 md:text-lg">
-              Evidensify builds a Proof Packet you can send next to your chronological resume. Requirements are mapped to real repos, demos, and optional samples (code, docs, commits) so reviewers can verify your work fast.
+              Evidensify builds a Proof Packet you send next to your resume. You choose the requirement evidence manually so every claim is traceable.
             </p>
             <p className="text-sm text-slate-400">
-              Every sentence comes from you. If you used AI, note how. If you did not, leave it blank. Recruiters care more about clarity than hype.
+              LLM help is optional for requirement extraction and wording polish only. Mapping stays candidate-controlled.
             </p>
           </div>
           <div className="flex flex-col gap-3 sm:flex-row">{primaryCta}</div>
@@ -211,40 +211,18 @@ export function LandingPage() {
         </div>
       </section>
 
-      <section className="mx-auto max-w-6xl px-4 sm:px-6">
-        <div className="rounded-3xl border border-slate-800/70 bg-slate-950/60 p-6">
-          <h2 className="text-xl font-semibold text-white">How it works</h2>
-          <div className="mt-4 grid gap-4 md:grid-cols-4">
-            {[
-              { title: "Paste the JD", description: "Tell us the role so we can extract the top requirements." },
-              { title: "Pick repos", description: "Select a few repos or demos you can walk through live." },
-              { title: "Map requirements", description: "Link each requirement to real artifacts and note AI usage." },
-              { title: "Send with resume", description: "Attach the Proof Packet next to your chronological resume." },
-            ].map((step) => (
-              <div key={step.title} className="rounded-2xl border border-slate-800/60 bg-slate-950/50 p-4 text-sm text-slate-200">
-                <p className="text-sm font-semibold text-white">{step.title}</p>
-                <p className="mt-1 text-xs text-slate-400">{step.description}</p>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
-
       <section className="mx-auto max-w-6xl px-4 pb-8 sm:px-6">
         <div className="rounded-3xl border border-slate-800/70 bg-slate-950/60 p-6 shadow-xl shadow-slate-950/30">
-          <h2 className="text-2xl font-semibold text-white">Requirement-proof mapping beats portfolio spam</h2>
+          <h2 className="text-2xl font-semibold text-white">Built for fast technical review</h2>
           <p className="mt-3 text-sm text-slate-300">
-            Hiring managers skim for structure, thoughtful comments, and honest context. Evidensify links each requirement to the repo paths, docs, demos, and optional samples (code, docs, commits) that prove it.
+            Keep packets concise while still detailed. Show only the requirements you can back and add one focused sample when it helps.
           </p>
           <ul className="mt-4 space-y-2 text-sm text-slate-300">
             <li className="flex items-start gap-2">
-              <CheckCircle className="mt-0.5 h-4 w-4 text-accent" /> Showcase a few dialed-in projects with READMEs, tests, or notebooks that explain your approach.
+              <CheckCircle className="mt-0.5 h-4 w-4 text-accent" /> Back each requirement with one or two concrete project links.
             </li>
             <li className="flex items-start gap-2">
-              <CheckCircle className="mt-0.5 h-4 w-4 text-accent" /> Skip tutorial repos or anything that signals poor judgment.
-            </li>
-            <li className="flex items-start gap-2">
-              <CheckCircle className="mt-0.5 h-4 w-4 text-accent" /> Use 10–20 line snippets to spotlight decisions, edge cases, or thoughtful comments, not walls of boilerplate.
+              <CheckCircle className="mt-0.5 h-4 w-4 text-accent" /> Add optional code, README, or commit samples only where they strengthen proof.
             </li>
           </ul>
           <p className="mt-3 text-xs uppercase tracking-[0.35em] text-slate-500">Built for reviewers who spend ~30 seconds before diving deeper.</p>
@@ -278,7 +256,7 @@ export function LandingPage() {
           <div>
             <p className="font-semibold text-white">Is this a replacement for my resume?</p>
             <p className="mt-1 text-slate-300">
-              No. ProofCraft organizes your repo evidence so reviewers can verify your resume faster. Attach the Proof Packet alongside your normal chronological resume.
+              No. Evidensify organizes requirement-linked proof so reviewers can verify your resume faster.
             </p>
           </div>
         </div>

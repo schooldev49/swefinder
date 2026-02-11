@@ -1,4 +1,4 @@
-import type { Job, ProofPacket, Project, User } from "@evidensify/types";
+import type { Job, ProofPacket, ProofPacketCodeSample, Project, RequirementCoverage, User } from "@evidensify/types";
 
 export interface ApiRepoSummary {
   id: string;
@@ -25,6 +25,7 @@ export interface CreateJobPayload {
 export interface GeneratePayload {
   selectedProjectIds: string[];
   selectedSampleIds?: string[];
+  requirementCoverage?: RequirementCoverage[];
   userMetrics?: Record<string, { label: string; value: string }>;
 }
 
@@ -198,6 +199,44 @@ export function suggestSnippetTags(payload: SnippetSuggestionPayload) {
 
 export function updateRequirementSample(jobId: string, payload: { requirementId: string; sampleId: string | null }) {
   return apiFetch<{ requirementSampleMap: Record<string, string | null> }>(`/jobs/${jobId}/requirement-samples`, {
+    method: "POST",
+    body: JSON.stringify(payload),
+  });
+}
+
+export function updateRequirementCoverage(
+  jobId: string,
+  payload: { requirementId: string; projectIds: string[]; sampleId: string | null; rationale: string }
+) {
+  return apiFetch<{
+    requirementCoverageMap: Record<string, RequirementCoverage>;
+    requirementSampleMap: Record<string, string | null>;
+    mappings: ProofPacket["mappings"];
+  }>(`/jobs/${jobId}/requirement-coverage`, {
+    method: "POST",
+    body: JSON.stringify(payload),
+  });
+}
+
+export function createJobSample(
+  jobId: string,
+  payload: {
+    projectId: string;
+    type?: "code" | "readme" | "commit";
+    summary: string;
+    code: string;
+    language?: string;
+    filePath?: string;
+    lineStart?: number;
+    lineEnd?: number;
+    url?: string;
+    tags?: string[];
+    readmeHeading?: string;
+    commitEntries?: { sha: string; message: string; date?: string | null; htmlUrl?: string }[];
+    saveToProject?: boolean;
+  }
+) {
+  return apiFetch<{ sample: ProofPacketCodeSample; codeSamples: ProofPacketCodeSample[] }>(`/jobs/${jobId}/samples`, {
     method: "POST",
     body: JSON.stringify(payload),
   });

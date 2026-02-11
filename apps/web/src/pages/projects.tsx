@@ -46,11 +46,11 @@ const PROJECTS_CHECKLIST = [
   },
   {
     title: "Add context & AI usage",
-    detail: "Explain design choices, note how you used (or skipped) AI, and add short samples (code, docs, commits).",
+    detail: "Explain design choices and note how you used (or skipped) AI.",
   },
   {
     title: "Generate packets",
-    detail: "Head to Jobs → New job to map these projects to a JD-specific Proof Packet.",
+    detail: "Head to Jobs → New job to map requirements and add optional samples there.",
   },
 ];
 
@@ -658,11 +658,10 @@ export function ProjectsPage() {
                     />
                   </label>
                 </div>
-                <ProjectCodeSamplesEditor
-                  project={project}
-                  onChange={(samples) => updateProject(project.id, { codeSamples: samples })}
-                  projectUrl={project.htmlUrl}
-                />
+                <div className="mt-4 rounded-2xl border border-slate-800/70 bg-slate-950/50 p-4 text-xs text-muted-foreground">
+                  <p className="text-[11px] uppercase tracking-[0.3em] text-slate-500">Samples</p>
+                  <p className="mt-2">Add code, README, or commit samples while mapping requirements inside each job packet.</p>
+                </div>
               </div>
             ))}
           </div>
@@ -822,7 +821,7 @@ const createEmptySampleDraft = (): SampleDraft => ({
 });
 
 
-function ProjectCodeSamplesEditor({
+export function ProjectCodeSamplesEditor({
   project,
   onChange,
   projectUrl,

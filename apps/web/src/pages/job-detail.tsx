@@ -6,16 +6,19 @@ import type {
   CommitEntry,
   EvidenceMappingWithEvidence,
   Job,
+  CodeSampleType,
   Project,
   ProofPacketCodeSample,
   ProjectCodeSample,
+  RequirementCoverage,
   Requirement,
 } from "@evidensify/types";
-import { fetchJob, fetchProjects, generateProof, updateJobStatus, updateRequirementSample } from "@/lib/api";
+import { createJobSample, fetchJob, fetchProjects, generateProof, updateJobStatus, updateRequirementCoverage } from "@/lib/api";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
+import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Loader2, RefreshCw } from "lucide-react";
 import { toast } from "sonner";
@@ -29,6 +32,20 @@ const SAMPLE_TYPE_LABELS: Record<string, string> = {
   commit: "Commit sample",
 };
 
+type JobSampleDraft = {
+  projectId: string;
+  type: CodeSampleType;
+  summary: string;
+  code: string;
+  language: string;
+  filePath: string;
+  lineStart: string;
+  lineEnd: string;
+  url: string;
+  tags: string;
+  saveToProject: boolean;
+};
+
 export function JobDetailPage() {
   const { id } = useParams();
   const jobId = id ?? "";
@@ -39,9 +56,23 @@ export function JobDetailPage() {
   const [selectedProjects, setSelectedProjects] = useState<Set<string>>(new Set());
   const [bulletDrafts, setBulletDrafts] = useState<string[]>([]);
   const [outreachDraft, setOutreachDraft] = useState("");
-  const [requirementNotes, setRequirementNotes] = useState<Record<string, string>>({});
   const [selectedSamples, setSelectedSamples] = useState<Set<string>>(new Set());
-  const [requirementSampleMap, setRequirementSampleMap] = useState<Record<string, string | null>>({});
+  const [selectedRequirementId, setSelectedRequirementId] = useState<string | null>(null);
+  const [coverageMap, setCoverageMap] = useState<Record<string, RequirementCoverage>>({});
+  const [coverageDraft, setCoverageDraft] = useState<RequirementCoverage | null>(null);
+  const [sampleDraft, setSampleDraft] = useState<JobSampleDraft>({
+    projectId: "",
+    type: "code",
+    summary: "",
+    code: "",
+    language: "",
+    filePath: "",
+    lineStart: "",
+    lineEnd: "",
+    url: "",
+    tags: "",
+    saveToProject: false,
+  });
 
   useEffect(() => {
     if (projectsQuery.data) {
@@ -97,20 +128,18 @@ export function JobDetailPage() {
     if (!proof) {
       setBulletDrafts([]);
       setOutreachDraft("");
-      setRequirementNotes({});
       setSelectedSamples(new Set());
-      setRequirementSampleMap({});
+      setCoverageMap({});
+      setCoverageDraft(null);
+      setSelectedRequirementId(null);
       return;
     }
     setBulletDrafts(proof.bullets);
     setOutreachDraft(proof.outreachNote);
-    const mappedNotes: Record<string, string> = {};
-    proof.requirements.forEach((requirement) => {
-      mappedNotes[requirement.id] = requirement.notes || "";
-    });
-    setRequirementNotes(mappedNotes);
+    setCoverageMap(proof.requirementCoverageMap || {});
+    setSelectedRequirementId((prev) => prev ?? proof.requirements[0]?.id ?? null);
+    setCoverageDraft(null);
     setSelectedSamples(new Set(proof.codeSamples?.map((sample) => sample.id) ?? []));
-    setRequirementSampleMap(proof.requirementSampleMap || {});
   }, [proof]);
 
   useEffect(() => {
@@ -154,15 +183,35 @@ export function JobDetailPage() {
     onError: (error: Error) => toast("Could not regenerate", { description: error.message }),
   });
 
-  const requirementSampleMutation = useMutation({
-    mutationFn: (payload: { requirementId: string; sampleId: string | null }) =>
-      updateRequirementSample(jobId, payload),
+  const requirementCoverageMutation = useMutation({
+    mutationFn: (payload: { requirementId: string; projectIds: string[]; sampleId: string | null; rationale: string }) =>
+      updateRequirementCoverage(jobId, payload),
     onSuccess: async (data) => {
-      setRequirementSampleMap(data.requirementSampleMap || {});
+      setCoverageMap(data.requirementCoverageMap || {});
       await queryClient.invalidateQueries({ queryKey: ["job", jobId] });
-      toast("Requirement sample updated");
+      toast("Requirement coverage saved");
     },
-    onError: (error: Error) => toast("Could not update sample", { description: error.message }),
+    onError: (error: Error) => toast("Could not save coverage", { description: error.message }),
+  });
+  const createSampleMutation = useMutation({
+    mutationFn: (payload: Parameters<typeof createJobSample>[1]) => createJobSample(jobId, payload),
+    onSuccess: async (data) => {
+      await queryClient.invalidateQueries({ queryKey: ["job", jobId] });
+      if (sampleDraft.saveToProject) {
+        await queryClient.invalidateQueries({ queryKey: ["projects"] });
+      }
+      setCoverageField("sampleId", data.sample.id);
+      setSampleDraft((prev) => ({
+        ...prev,
+        summary: "",
+        code: "",
+        tags: "",
+        lineStart: "",
+        lineEnd: "",
+      }));
+      toast("Sample added", { description: "Attached to this job requirement." });
+    },
+    onError: (error: Error) => toast("Could not add sample", { description: error.message }),
   });
 
   const handleSampleToggle = (sampleId: string, checked: boolean) => {
@@ -181,9 +230,68 @@ export function JobDetailPage() {
     });
   };
 
-  const handleRequirementSampleChange = (requirementId: string, sampleId: string | null) => {
-    requirementSampleMutation.mutate({ requirementId, sampleId });
+  const proofRequirements = (proof?.requirements ?? []).slice(0, 5);
+  const selectedRequirement = proofRequirements.find((requirement) => requirement.id === selectedRequirementId) ?? proofRequirements[0] ?? null;
+  const activeCoverage = selectedRequirement ? coverageMap[selectedRequirement.id] : undefined;
+  const editableCoverage = coverageDraft ?? (selectedRequirement
+    ? {
+        requirementId: selectedRequirement.id,
+        projectIds: [...(activeCoverage?.projectIds || [])],
+        sampleId: activeCoverage?.sampleId ?? null,
+        rationale: activeCoverage?.rationale ?? "",
+      }
+    : null);
+  const projectOptions = useMemo(() => {
+    if (!projectsQuery.data) return [];
+    const selectedIds = new Set(selectedProjects);
+    return projectsQuery.data.filter((project) => selectedIds.has(project.id));
+  }, [projectsQuery.data, selectedProjects]);
+  const sampleOptionsForRequirement = useMemo(() => {
+    const allowedProjectIds = new Set(editableCoverage?.projectIds || []);
+    return proofSamples.filter((sample) => allowedProjectIds.size === 0 || allowedProjectIds.has(sample.projectId));
+  }, [editableCoverage?.projectIds, proofSamples]);
+
+  const backedCount = proofRequirements.reduce((count, requirement) => {
+    const entry = coverageMap[requirement.id];
+    if (!entry) return count;
+    if ((entry.projectIds?.length || 0) > 0 || entry.sampleId || (entry.rationale || "").trim().length > 0) {
+      return count + 1;
+    }
+    return count;
+  }, 0);
+  const strongPacket = backedCount >= 3 && selectedSamples.size >= 1;
+
+  const setCoverageField = <K extends keyof RequirementCoverage>(field: K, value: RequirementCoverage[K]) => {
+    if (!selectedRequirement) return;
+    setCoverageDraft((prev) => {
+      const base: RequirementCoverage = prev ?? {
+        requirementId: selectedRequirement.id,
+        projectIds: [...(coverageMap[selectedRequirement.id]?.projectIds || [])],
+        sampleId: coverageMap[selectedRequirement.id]?.sampleId ?? null,
+        rationale: coverageMap[selectedRequirement.id]?.rationale ?? "",
+      };
+      return { ...base, [field]: value };
+    });
   };
+
+  const saveCoverage = () => {
+    if (!selectedRequirement || !editableCoverage) return;
+    requirementCoverageMutation.mutate({
+      requirementId: selectedRequirement.id,
+      projectIds: (editableCoverage.projectIds || []).slice(0, 2),
+      sampleId: editableCoverage.sampleId ?? null,
+      rationale: (editableCoverage.rationale || "").trim().slice(0, 240),
+    });
+    setCoverageDraft(null);
+  };
+
+  useEffect(() => {
+    if (!editableCoverage?.projectIds?.length) return;
+    setSampleDraft((prev) => {
+      if (prev.projectId) return prev;
+      return { ...prev, projectId: editableCoverage.projectIds[0] };
+    });
+  }, [editableCoverage?.projectIds]);
 
   if (jobQuery.isLoading) {
     return <div className="h-32 animate-pulse rounded-xl bg-slate-900/60" />;
@@ -203,12 +311,6 @@ export function JobDetailPage() {
 
   return (
     <div className="grid gap-6">
-      <div className="rounded-2xl border border-slate-800/80 bg-slate-950/40 p-4 text-sm text-muted-foreground">
-        <p className="text-xs uppercase tracking-[0.35em] text-muted-foreground">How to send this</p>
-        <p className="mt-2 text-slate-200">
-          Attach this Proof Packet alongside your normal chronological resume. It organizes your repositories and artifacts by the requirements of this specific role.
-        </p>
-      </div>
       <Card className="border-slate-800/80 bg-slate-950/40">
         <CardHeader className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
           <div>
@@ -275,44 +377,108 @@ export function JobDetailPage() {
           {proof ? (
             <div className="grid gap-6">
               <section className="space-y-2">
-                <div className="flex flex-col gap-1 md:flex-row md:items-center md:justify-between">
+                <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
                   <h3 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">Key requirements</h3>
-                  <p className="text-xs text-muted-foreground">Requirement text stays locked; jot your own talking points below.</p>
+                  <div className="text-xs text-muted-foreground">
+                    <span>{backedCount}/{proofRequirements.length} backed</span>
+                    <span className="mx-2">•</span>
+                    <span className={strongPacket ? "text-emerald-300" : "text-slate-400"}>
+                      {strongPacket ? "Strong packet" : "Lighter packet"}
+                    </span>
+                  </div>
                 </div>
-                <div className="mt-3 grid gap-3 md:grid-cols-2">
-                  {proof.requirements.slice(0, 5).map((requirement) => {
-                    const mappings = proof.mappings.filter((mapping) => {
-                      if (mapping.requirementId !== requirement.id) return false;
-                      const projectId = mapping.evidence.projectId;
-                      if (!projectId) return true;
-                      return selectedProjects.has(projectId);
-                    });
-                    return (
-                      <RequirementCard
-                        key={requirement.id}
-                        requirement={requirement}
-                        note={requirementNotes[requirement.id] ?? ""}
-                        onNoteChange={(value) =>
-                          setRequirementNotes((prev) => ({
-                            ...prev,
-                            [requirement.id]: value,
-                          }))
-                        }
-                        mappings={mappings.slice(0, 2)}
-                        sampleOptions={proofSamples}
-                        selectedSampleId={requirementSampleMap[requirement.id] ?? null}
-                        onSampleChange={(sampleId) => handleRequirementSampleChange(requirement.id, sampleId)}
-                        sampleSaving={requirementSampleMutation.isPending}
+                <div className="mt-3 grid gap-4 lg:grid-cols-[minmax(0,0.9fr)_minmax(0,1.1fr)]">
+                  <div className="space-y-2">
+                    {proofRequirements.map((requirement) => {
+                      const coverage = coverageMap[requirement.id];
+                      const isActive = requirement.id === selectedRequirement?.id;
+                      const isCovered =
+                        (coverage?.projectIds?.length || 0) > 0 || Boolean(coverage?.sampleId) || Boolean((coverage?.rationale || "").trim());
+                      return (
+                        <button
+                          key={requirement.id}
+                          type="button"
+                          onClick={() => {
+                            setSelectedRequirementId(requirement.id);
+                            setCoverageDraft(null);
+                          }}
+                          className={`w-full rounded-xl border p-3 text-left transition ${
+                            isActive ? "border-accent/60 bg-slate-900/70" : "border-slate-800/80 bg-slate-950/60 hover:border-slate-700"
+                          }`}
+                        >
+                          <div className="flex items-start justify-between gap-2">
+                            <p className="text-sm font-semibold text-white">{requirement.text}</p>
+                            <Badge variant={isCovered ? "success" : "outline"} className="text-[10px] uppercase tracking-wide">
+                              {isCovered ? "Backed" : "Unbacked"}
+                            </Badge>
+                          </div>
+                          <p className="mt-2 text-[11px] text-muted-foreground">Priority {requirement.priority}</p>
+                        </button>
+                      );
+                    })}
+                  </div>
+                  <div className="rounded-2xl border border-slate-800/80 bg-slate-950/60 p-4">
+                    {selectedRequirement && editableCoverage ? (
+                      <RequirementEvidenceEditor
+                        requirement={selectedRequirement}
+                        projects={projectOptions}
+                        selectedProjects={editableCoverage.projectIds || []}
+                        onToggleProject={(projectId, checked) => {
+                          const next = new Set(editableCoverage.projectIds || []);
+                          if (checked) {
+                            if (next.size >= 2) return;
+                            next.add(projectId);
+                          } else {
+                            next.delete(projectId);
+                          }
+                          setCoverageField("projectIds", Array.from(next));
+                        }}
+                        sampleOptions={sampleOptionsForRequirement}
+                        selectedSampleId={(editableCoverage.sampleId as string | null | undefined) ?? null}
+                        onSampleChange={(sampleId) => setCoverageField("sampleId", sampleId)}
+                        rationale={editableCoverage.rationale || ""}
+                        onRationaleChange={(value) => setCoverageField("rationale", value)}
+                        onSave={saveCoverage}
+                        saving={requirementCoverageMutation.isPending}
+                        sampleDraft={sampleDraft}
+                        onSampleDraftChange={setSampleDraft}
+                        onCreateSample={() => {
+                          const summary = sampleDraft.summary.trim();
+                          const code = sampleDraft.code.trim();
+                          if (!summary || !code || !sampleDraft.projectId) {
+                            toast("Missing fields", { description: "Pick a project and add summary + excerpt." });
+                            return;
+                          }
+                          createSampleMutation.mutate({
+                            projectId: sampleDraft.projectId,
+                            type: sampleDraft.type,
+                            summary,
+                            code,
+                            language: sampleDraft.language || undefined,
+                            filePath: sampleDraft.filePath || undefined,
+                            lineStart: sampleDraft.lineStart ? Number.parseInt(sampleDraft.lineStart, 10) : undefined,
+                            lineEnd: sampleDraft.lineEnd ? Number.parseInt(sampleDraft.lineEnd, 10) : undefined,
+                            url: sampleDraft.url || undefined,
+                            tags: sampleDraft.tags
+                              .split(",")
+                              .map((tag) => tag.trim())
+                              .filter(Boolean)
+                              .slice(0, 5),
+                            saveToProject: sampleDraft.saveToProject,
+                          });
+                        }}
+                        creatingSample={createSampleMutation.isPending}
                       />
-                    );
-                  })}
+                    ) : (
+                      <p className="text-sm text-muted-foreground">Select a requirement to map evidence.</p>
+                    )}
+                  </div>
                 </div>
               </section>
               {proof.codeSamples && proof.codeSamples.length > 0 && <ProofCodeSamplesSection samples={proof.codeSamples} />}
               <section>
                 <div className="flex items-center justify-between">
                   <h3 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">Resume bullets</h3>
-                  <p className="text-xs text-muted-foreground">Edit locally, copy fast. Reset to regenerate text.</p>
                 </div>
                 <div className="mt-3 space-y-3">
                   {bulletDrafts.map((bullet, index) => (
@@ -334,7 +500,6 @@ export function JobDetailPage() {
               </section>
               <section>
                 <h3 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">Outreach note</h3>
-                <p className="text-xs text-muted-foreground">Tweak the copy inline for email/DM but keep citations untouched.</p>
                 <EditableCopyRow text={outreachDraft} original={proof.outreachNote} label="Outreach" onChange={setOutreachDraft} multiline />
               </section>
               <section>
@@ -643,198 +808,189 @@ function truncateText(value: string, max = 80) {
   return value.length <= max ? value : `${value.slice(0, max - 1)}…`;
 }
 
-const AI_ROLE_LABELS: Record<string, string> = {
-  none: "No AI",
-  assist: "Assist",
-  "co-design": "Co-design",
-  "agent-orchestration": "Agent orchestration",
-};
-
-function formatAiUsage(evidence: { aiRole?: string; aiTools?: string[]; aiSupervisionNotes?: string }): string | null {
-  const parts: string[] = [];
-  if (evidence.aiRole && AI_ROLE_LABELS[evidence.aiRole]) {
-    parts.push(`AI role: ${AI_ROLE_LABELS[evidence.aiRole]}`);
-  }
-  if (evidence.aiTools && evidence.aiTools.length > 0) {
-    parts.push(`Tools: ${evidence.aiTools.join(", ")}`);
-  }
-  if (evidence.aiSupervisionNotes) {
-    parts.push(`Supervision: ${evidence.aiSupervisionNotes}`);
-  }
-  if (!parts.length) return null;
-  return parts.join(" · ");
-}
-
 function getSampleTypeLabel(sample?: { type?: string }) {
   return SAMPLE_TYPE_LABELS[sample?.type || "code"] || "Code sample";
 }
 
-function RequirementCard({
+function RequirementEvidenceEditor({
   requirement,
-  mappings,
-  note,
-  onNoteChange,
+  projects,
+  selectedProjects,
+  onToggleProject,
   sampleOptions,
   selectedSampleId,
   onSampleChange,
-  sampleSaving,
+  rationale,
+  onRationaleChange,
+  onSave,
+  saving,
+  sampleDraft,
+  onSampleDraftChange,
+  onCreateSample,
+  creatingSample,
 }: {
   requirement: Requirement;
-  mappings: EvidenceMappingWithEvidence[];
-  note: string;
-  onNoteChange: (value: string) => void;
+  projects: Project[];
+  selectedProjects: string[];
+  onToggleProject: (projectId: string, checked: boolean) => void;
   sampleOptions: ProofPacketCodeSample[];
   selectedSampleId: string | null;
   onSampleChange: (sampleId: string | null) => void;
-  sampleSaving?: boolean;
+  rationale: string;
+  onRationaleChange: (value: string) => void;
+  onSave: () => void;
+  saving?: boolean;
+  sampleDraft: JobSampleDraft;
+  onSampleDraftChange: (value: JobSampleDraft | ((prev: JobSampleDraft) => JobSampleDraft)) => void;
+  onCreateSample: () => void;
+  creatingSample?: boolean;
 }) {
-  const selectedSample = sampleOptions.find((sample) => sample.id === selectedSampleId);
-  const hasEvidence = mappings.length > 0;
-  const [showSample, setShowSample] = useState(false);
-
-  useEffect(() => {
-    if (!selectedSample) {
-      setShowSample(false);
-    }
-  }, [selectedSample]);
-
   return (
-    <div className="rounded-2xl border border-slate-800/80 bg-slate-950/60 p-4 space-y-3">
-      <div className="space-y-2">
-        <div className="rounded-xl border border-slate-800/80 bg-slate-950/70 p-3">
-          <div className="flex flex-wrap items-center gap-3">
-            <div className="flex-1">
-              <p className="text-[11px] uppercase tracking-[0.35em] text-muted-foreground">JD requirement</p>
-              <p className="mt-1 text-sm font-semibold text-white">{requirement.text}</p>
-            </div>
-            {selectedSample ? (
-              <Badge variant="outline" className="text-[10px] uppercase tracking-wide text-emerald-300/80">
-                {getSampleTypeLabel(selectedSample)} attached
-              </Badge>
-            ) : null}
-          </div>
-        </div>
-        <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
-          <Badge variant="outline" className="text-[10px] uppercase tracking-wide">
-            Priority {requirement.priority}
-          </Badge>
-          <span>Evidence: {hasEvidence ? mappings.length : "0"} project{mappings.length === 1 ? "" : "s"}</span>
-        </div>
+    <div className="space-y-4">
+      <div>
+        <p className="text-[11px] uppercase tracking-[0.35em] text-muted-foreground">Selected requirement</p>
+        <p className="mt-1 text-sm font-semibold text-white">{requirement.text}</p>
+        <p className="mt-1 text-[11px] text-muted-foreground">Priority {requirement.priority}</p>
       </div>
+
       <div className="space-y-2">
-        {hasEvidence ? (
-          mappings.map((mapping) => (
-            <div key={mapping.id} className="rounded-lg border border-slate-800/80 bg-slate-950/70 p-3 text-xs text-muted-foreground">
-            <div className="flex flex-col gap-1">
-              <div className="flex flex-wrap items-center gap-2">
-                <p className="font-semibold text-white">{mapping.evidence.projectFullName}</p>
-                {mapping.evidence.isPrivate ? <PrivateRepoBadge /> : null}
-              </div>
-              {mapping.evidence.description && <p className="text-slate-300">{mapping.evidence.description}</p>}
-              <div className="flex flex-wrap items-center gap-2 text-[11px]">
-                {mapping.evidence.fileUrl && (
-                  <a href={mapping.evidence.fileUrl} target="_blank" rel="noreferrer" className="text-accent underline">
-                    Repo / doc link
-                  </a>
-                )}
-                {mapping.evidence.demoUrl && (
-                  <a href={mapping.evidence.demoUrl} target="_blank" rel="noreferrer" className="text-accent underline">
-                    Demo
-                  </a>
-                )}
-              </div>
-              {formatAiUsage(mapping.evidence) && (
-                <p className="text-[11px] text-muted-foreground">{formatAiUsage(mapping.evidence)}</p>
-              )}
-            </div>
-          </div>
-        ))
-      ) : (
-          <p className="text-xs text-muted-foreground">No mapped evidence yet.</p>
-        )}
-      </div>
-      <div className="space-y-2 rounded-xl border border-slate-800/70 bg-slate-950/60 p-3 text-xs text-muted-foreground">
-                <div className="flex flex-wrap items-center justify-between gap-2">
-                  <p className="text-[11px] uppercase tracking-wide">Attach sample</p>
-                  {sampleSaving ? <Loader2 className="h-3.5 w-3.5 animate-spin text-muted-foreground" /> : null}
+        <p className="text-xs font-semibold text-white">Choose 1-2 projects</p>
+        <div className="grid gap-2">
+          {projects.map((project) => (
+            <label key={project.id} className="flex cursor-pointer items-start gap-2 rounded-lg border border-slate-800/70 px-3 py-2">
+              <Checkbox
+                checked={selectedProjects.includes(project.id)}
+                onCheckedChange={(value) => onToggleProject(project.id, Boolean(value))}
+              />
+              <div className="space-y-1">
+                <div className="flex flex-wrap items-center gap-2">
+                  <p className="text-sm text-white">{project.fullName}</p>
+                  {project.isPrivate ? <PrivateRepoBadge /> : null}
                 </div>
-        {sampleOptions.length === 0 ? (
-          <p>No snippets yet. Add one from the Projects page, then regenerate.</p>
-        ) : (
+                {project.description ? <p className="text-xs text-muted-foreground">{project.description}</p> : null}
+              </div>
+            </label>
+          ))}
+        </div>
+      </div>
+
+      <div className="space-y-2">
+        <p className="text-xs font-semibold text-white">Optional sample</p>
+        <select
+          className="w-full rounded-lg border border-slate-800/80 bg-slate-950/80 px-3 py-2 text-sm text-white"
+          value={selectedSampleId ?? ""}
+          onChange={(event) => onSampleChange(event.target.value ? event.target.value : null)}
+        >
+          <option value="">No sample</option>
+          {sampleOptions.map((sample) => (
+            <option key={sample.id} value={sample.id}>
+              {getSampleTypeLabel(sample)} · {sample.projectFullName} · {sample.summary.slice(0, 56)}
+            </option>
+          ))}
+        </select>
+      </div>
+
+      <div className="space-y-2">
+        <p className="text-xs font-semibold text-white">Why this proves the requirement</p>
+        <Textarea
+          value={rationale}
+          onChange={(event) => onRationaleChange(event.target.value.slice(0, 240))}
+          rows={3}
+          placeholder="1-2 sentences, concrete and technical."
+          className="bg-slate-950/80 text-sm"
+        />
+        <p className="text-[11px] text-muted-foreground">{rationale.length}/240</p>
+      </div>
+
+      <Button type="button" size="sm" onClick={onSave} disabled={saving}>
+        {saving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+        Save requirement evidence
+      </Button>
+
+      <div className="space-y-2 rounded-xl border border-slate-800/70 bg-slate-950/70 p-3">
+        <p className="text-xs font-semibold text-white">Add sample in this job flow</p>
+        <p className="text-[11px] text-muted-foreground">Optional. Keep it short and specific.</p>
+        <div className="grid gap-2 sm:grid-cols-2">
           <select
-            className="w-full rounded-lg border border-slate-800/80 bg-slate-950/80 px-3 py-2 text-sm text-white"
-            value={selectedSampleId ?? ""}
-            onChange={(event) => onSampleChange(event.target.value ? event.target.value : null)}
+            className="rounded-lg border border-slate-800/80 bg-slate-950/80 px-3 py-2 text-sm text-white"
+            value={sampleDraft.projectId}
+            onChange={(event) => onSampleDraftChange((prev) => ({ ...prev, projectId: event.target.value }))}
           >
-            <option value="">No sample</option>
-            {sampleOptions.map((sample) => (
-              <option key={sample.id} value={sample.id}>
-                {getSampleTypeLabel(sample)} · {sample.projectFullName} — {sample.summary.slice(0, 60)}
+            <option value="">Project</option>
+            {projects.map((project) => (
+              <option key={project.id} value={project.id}>
+                {project.fullName}
               </option>
             ))}
           </select>
-        )}
-        {selectedSample && (
-          <div className="space-y-2 rounded-lg border border-slate-800/70 bg-slate-950/70 p-3 text-[11px] text-muted-foreground">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-xs font-semibold text-white">{selectedSample.summary}</p>
-                  <p className="text-muted-foreground">
-                    {formatLineLabel(selectedSample.filePath, selectedSample.lineStart, selectedSample.lineEnd) || "Custom link"}
-                  </p>
-                  {selectedSample.isPrivate ? <PrivateRepoBadge /> : null}
-                  <SampleHighlightMeta sample={selectedSample} />
-                {selectedSample.tags && selectedSample.tags.length > 0 ? (
-                  <div className="mt-1 flex flex-wrap gap-1">
-                    {selectedSample.tags.map((tag) => (
-                      <Badge key={tag} variant="outline" className="text-[10px]">
-                        {tag}
-                      </Badge>
-                    ))}
-                  </div>
-                ) : null}
-              </div>
-              <Button type="button" variant="secondary" size="sm" onClick={() => setShowSample((prev) => !prev)}>
-                {showSample ? "Hide sample" : `View ${getSampleTypeLabel(selectedSample).toLowerCase()}`}
-              </Button>
-            </div>
-            {showSample ? (
-              selectedSample.type && selectedSample.type !== "code" ? (
-                <>
-                  <div className="rounded-lg border border-slate-800/70 bg-slate-900/50 p-3 text-sm text-slate-200 whitespace-pre-wrap">
-                    {selectedSample.code}
-                  </div>
-                  {selectedSample.url && (
-                    <a href={selectedSample.url} target="_blank" rel="noopener noreferrer nofollow" className="text-[11px] text-primary underline">
-                      View on GitHub
-                    </a>
-                  )}
-                </>
-              ) : (
-                <>
-                  <CodeSnippet code={selectedSample.code} language={selectedSample.language || inferLanguage(selectedSample.filePath) || "tsx"} />
-                  {selectedSample.url && (
-                    <a href={selectedSample.url} target="_blank" rel="noopener noreferrer nofollow" className="text-[11px] text-primary underline">
-                      View on GitHub
-                    </a>
-                  )}
-                </>
-              )
-            ) : (
-              <p className="text-[11px] text-muted-foreground">Keeps packets skimmable until someone clicks.</p>
-            )}
-          </div>
-        )}
-      </div>
-      <div className="space-y-1">
-        <p className="text-[11px] uppercase tracking-wide text-muted-foreground">Your emphasis (visible only to you)</p>
+          <select
+            className="rounded-lg border border-slate-800/80 bg-slate-950/80 px-3 py-2 text-sm text-white"
+            value={sampleDraft.type}
+            onChange={(event) => onSampleDraftChange((prev) => ({ ...prev, type: event.target.value as CodeSampleType }))}
+          >
+            <option value="code">Code</option>
+            <option value="readme">README</option>
+            <option value="commit">Commit trail</option>
+          </select>
+        </div>
+        <Input
+          value={sampleDraft.summary}
+          onChange={(event) => onSampleDraftChange((prev) => ({ ...prev, summary: event.target.value }))}
+          placeholder="What this sample proves"
+          className="bg-slate-950/80"
+        />
         <Textarea
-          value={note}
-          onChange={(event) => onNoteChange(event.target.value)}
-          rows={3}
-          placeholder="Clarify how your repo covers this requirement or what to emphasize live."
+          value={sampleDraft.code}
+          onChange={(event) => onSampleDraftChange((prev) => ({ ...prev, code: event.target.value }))}
+          rows={4}
+          placeholder="Paste code, README excerpt, or commit list notes."
           className="bg-slate-950/80 text-sm"
         />
+        <div className="grid gap-2 sm:grid-cols-2">
+          <Input
+            value={sampleDraft.filePath}
+            onChange={(event) => onSampleDraftChange((prev) => ({ ...prev, filePath: event.target.value }))}
+            placeholder="file path (optional)"
+            className="bg-slate-950/80"
+          />
+          <Input
+            value={sampleDraft.url}
+            onChange={(event) => onSampleDraftChange((prev) => ({ ...prev, url: event.target.value }))}
+            placeholder="source URL (optional)"
+            className="bg-slate-950/80"
+          />
+        </div>
+        <div className="grid gap-2 sm:grid-cols-3">
+          <Input
+            value={sampleDraft.lineStart}
+            onChange={(event) => onSampleDraftChange((prev) => ({ ...prev, lineStart: event.target.value }))}
+            placeholder="start line"
+            className="bg-slate-950/80"
+          />
+          <Input
+            value={sampleDraft.lineEnd}
+            onChange={(event) => onSampleDraftChange((prev) => ({ ...prev, lineEnd: event.target.value }))}
+            placeholder="end line"
+            className="bg-slate-950/80"
+          />
+          <Input
+            value={sampleDraft.tags}
+            onChange={(event) => onSampleDraftChange((prev) => ({ ...prev, tags: event.target.value }))}
+            placeholder="tags: ml,eval"
+            className="bg-slate-950/80"
+          />
+        </div>
+        <label className="flex items-center gap-2 text-xs text-muted-foreground">
+          <Checkbox
+            checked={sampleDraft.saveToProject}
+            onCheckedChange={(value) => onSampleDraftChange((prev) => ({ ...prev, saveToProject: Boolean(value) }))}
+          />
+          Save to reuse later
+        </label>
+        <Button type="button" variant="secondary" size="sm" onClick={onCreateSample} disabled={creatingSample}>
+          {creatingSample ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+          Add sample
+        </Button>
       </div>
     </div>
   );

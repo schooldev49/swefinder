@@ -154,6 +154,13 @@ export interface ProofPacketCodeSample extends EvidenceSnippet {
   isPrivate?: boolean;
 }
 
+export interface RequirementCoverage {
+  requirementId: string;
+  projectIds: string[];
+  sampleId?: string | null;
+  rationale?: string;
+}
+
 export interface ProofPacket {
   id: string;
   jobId: string;
@@ -168,6 +175,7 @@ export interface ProofPacket {
   readmeHighlight?: ProofPacketCodeSample;
   commitTrail?: ProofPacketCodeSample;
   requirementSampleMap?: Record<string, string | null>;
+  requirementCoverageMap?: Record<string, RequirementCoverage>;
 }
 
 export interface ApiResponse<T> {

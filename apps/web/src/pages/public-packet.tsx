@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { Link, useParams } from "react-router-dom";
+import { useParams } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { CheckCircle2, ChevronRight } from "lucide-react";
 import type { CommitEntry, Evidence, EvidenceMappingWithEvidence, ProofPacketCodeSample } from "@evidensify/types";
@@ -11,14 +11,6 @@ import { Badge } from "@/components/ui/badge";
 import { CodeSnippet } from "@/components/ui/code-snippet";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
-
-
-const trustPoints = [
-  "Requirements mapped to specific repo paths or demos.",
-  "User-provided metrics stay labeled and auditable.",
-  "Links open directly to GitHub or docs the candidate already shared—no hoops.",
-  "Every packet is manually curated before sending.",
-];
 
 const SAMPLE_TYPE_LABELS: Record<string, string> = {
   code: "Code sample",
@@ -36,12 +28,6 @@ export function PublicPacketPage() {
 
   return (
     <PublicShareLayout>
-      <div className="mb-6 rounded-2xl border border-slate-900/80 bg-slate-950/60 p-4 text-sm text-slate-200">
-        <p className="text-xs uppercase tracking-[0.35em] text-muted-foreground">Attach with resume</p>
-        <p className="mt-2">
-          This Proof Packet is an add-on to the candidate's chronological resume. It aligns their repositories and artifacts to this specific job so you can verify work quickly.
-        </p>
-      </div>
       {packetQuery.isLoading ? (
         <div className="h-40 animate-pulse rounded-2xl bg-slate-900/60" />
       ) : packetQuery.isError ? (
@@ -67,7 +53,7 @@ function PacketView({
     <div className="space-y-6">
       
       <Card className="border-slate-900/80 bg-slate-950/80">
-        <CardHeader className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+          <CardHeader className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
           <div className="flex items-center gap-4">
             <Avatar className="h-14 w-14 border border-slate-800">
               <AvatarImage src={data.user.githubAvatarUrl} alt={data.user.githubLogin} />
@@ -89,16 +75,19 @@ function PacketView({
           <div className="rounded-xl border border-slate-800/80 bg-slate-950/50 px-4 py-3 text-xs text-muted-foreground">
             Every bullet and requirement links to verifiable repos or docs supplied by the candidate.
           </div>
-        </CardHeader>
+          </CardHeader>
+          {proof?.summary ? (
+            <CardContent className="pt-0">
+              <p className="rounded-xl border border-slate-900/80 bg-slate-950/60 px-3 py-2 text-sm text-slate-200">{proof.summary}</p>
+            </CardContent>
+          ) : null}
       </Card>
 
       {proof ? (
         <Card className="border-slate-900/80 bg-slate-950/80">
           <CardHeader>
             <CardTitle className="text-white">Proof Packet contents</CardTitle>
-            <CardDescription>
-              Curated by the candidate for this specific role—every line links to code or docs you can spot-check in under a minute.
-            </CardDescription>
+            <CardDescription>Skim requirements first, then open links for verification.</CardDescription>
           </CardHeader>
           <CardContent className="space-y-8">
             <section>
@@ -168,37 +157,6 @@ function PacketView({
           </CardContent>
         </Card>
       )}
-
-      <div className="rounded-2xl border border-slate-900/80 bg-slate-950/60 p-4 text-sm text-slate-200">
-        <h3 className="text-xs uppercase tracking-[0.35em] text-muted-foreground">How to read this</h3>
-        <ul className="mt-3 space-y-2 text-sm text-slate-300">
-          <li>• Use this alongside the candidate's chronological resume—it's just an evidence sheet.</li>
-          <li>• Links open GitHub or other hosts you already trust. Code is collapsed unless you open it.</li>
-          <li>• Nothing is auto-scored; every claim is tied to a concrete repo, doc, or demo.</li>
-        </ul>
-        <Link to="/security" className="mt-3 inline-block text-xs text-primary underline">
-          Security & access practices
-        </Link>
-      </div>
-
-            <section className="border-t border-slate-800 bg-slate-900/40">
-              <div className="mx-auto grid max-w-6xl gap-8 px-4 py-14 sm:px-6 md:grid-cols-2">
-                <div>
-                  <p className="text-xs font-semibold uppercase tracking-[0.35em] text-slate-400">Hard safety rules</p>
-                  <h2 className="mt-4 text-3xl font-semibold text-white">Honesty-first by design</h2>
-                  <p className="mt-3 text-sm text-slate-300">
-                    No hallucinated metrics. No inflated claims. Every bullet links back to the README, PR, or artifact that proves it, and Proof Packets stay separate from your résumé.
-                  </p>
-                </div>
-                <ul className="space-y-4">
-                  {trustPoints.map((point) => (
-                    <li key={point} className="flex items-start gap-3 text-sm text-slate-300">
-                      <CheckCircle2 className="mt-0.5 h-4 w-4 text-accent" /> {point}
-                    </li>
-                  ))}
-                </ul>
-              </div>
-            </section>
     </div>
   );
 }

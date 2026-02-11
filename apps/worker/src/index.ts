@@ -6,13 +6,13 @@ import type {
   ProofPacketCodeSample,
   Project,
   ProjectCodeSample,
+  RequirementCoverage,
   Requirement,
   User,
 } from "@evidensify/types";
 import { callLLM } from "./llm/callLLM";
 import {
   buildBulletsAndOutreachPrompt,
-  buildEvidenceMappingPrompt,
   buildRequirementsPrompt,
   buildSnippetSummaryPrompt,
   buildSnippetTagsPrompt,
@@ -75,6 +75,7 @@ interface CreateJobPayload {
 interface GeneratePayload {
   selectedProjectIds: string[];
   selectedSampleIds?: string[];
+  requirementCoverage?: RequirementCoverage[];
   userMetrics?: Record<string, { label: string; value: string }>;
 }
 
@@ -90,6 +91,29 @@ interface SnippetSuggestionPayload {
 interface RequirementSamplePayload {
   requirementId: string;
   sampleId: string | null;
+}
+
+interface RequirementCoveragePayload {
+  requirementId: string;
+  projectIds: string[];
+  sampleId: string | null;
+  rationale?: string;
+}
+
+interface CreateJobSamplePayload {
+  projectId: string;
+  type?: ProjectCodeSample["type"];
+  summary: string;
+  code: string;
+  language?: string;
+  filePath?: string;
+  lineStart?: number;
+  lineEnd?: number;
+  url?: string;
+  tags?: string[];
+  readmeHeading?: string;
+  commitEntries?: ProjectCodeSample["commitEntries"];
+  saveToProject?: boolean;
 }
 
 class HttpError extends Error {
@@ -206,6 +230,12 @@ export default {
         }
         if (url.pathname.endsWith(`/api/jobs/${jobId}/requirement-samples`) && request.method === "POST") {
           return withCors(await handleUpdateRequirementSample(request, env, jobId), origin);
+        }
+        if (url.pathname.endsWith(`/api/jobs/${jobId}/requirement-coverage`) && request.method === "POST") {
+          return withCors(await handleUpdateRequirementCoverage(request, env, jobId), origin);
+        }
+        if (url.pathname.endsWith(`/api/jobs/${jobId}/samples`) && request.method === "POST") {
+          return withCors(await handleCreateJobSample(request, env, jobId), origin);
         }
       }
 
@@ -629,6 +659,116 @@ async function handleUpdateRequirementSample(request: Request, env: Env, jobId: 
   return jsonResponse({ requirementSampleMap: nextMap });
 }
 
+async function handleUpdateRequirementCoverage(request: Request, env: Env, jobId: string): Promise<Response> {
+  const { user } = await requireUser(request, env);
+  const payload = await parseJsonBody<RequirementCoveragePayload>(request);
+  if (!payload.requirementId) {
+    throw new HttpError("requirementId is required", 400);
+  }
+  const job = await getJob(env, jobId);
+  if (!job || job.userId !== user.id) {
+    throw new HttpError("Job not found", 404);
+  }
+  const proof = await getProofPacket(env, jobId);
+  if (!proof) {
+    throw new HttpError("Generate a Proof Packet first", 400);
+  }
+  const requirement = proof.requirements.find((req) => req.id === payload.requirementId);
+  if (!requirement) {
+    throw new HttpError("Requirement not found", 404);
+  }
+
+  const projects = await listProjects(env, user.id);
+  const availableProjects = new Set(projects.map((project) => project.id));
+  const projectIds = (payload.projectIds || []).filter((id) => availableProjects.has(id)).slice(0, 2);
+  const availableSamples = new Set((proof.codeSamples || []).map((sample) => sample.id));
+  const sampleId = payload.sampleId && availableSamples.has(payload.sampleId) ? payload.sampleId : null;
+  const rationale = (payload.rationale || "").trim().slice(0, 240);
+
+  const nextCoverageMap: Record<string, RequirementCoverage> = { ...(proof.requirementCoverageMap || {}) };
+  if (projectIds.length === 0 && !sampleId && !rationale) {
+    delete nextCoverageMap[payload.requirementId];
+  } else {
+    nextCoverageMap[payload.requirementId] = {
+      requirementId: payload.requirementId,
+      projectIds,
+      sampleId,
+      rationale: rationale || undefined,
+    };
+  }
+
+  const coverageList = Object.values(nextCoverageMap);
+  const nextMappings = buildMappingsFromCoverage(proof.requirements, projects, coverageList, proof.codeSamples || []);
+  const nextSampleMap = toRequirementSampleMap(coverageList);
+
+  proof.requirementCoverageMap = nextCoverageMap;
+  proof.requirementSampleMap = nextSampleMap;
+  proof.mappings = nextMappings;
+  await saveProofPacket(env, proof);
+
+  return jsonResponse({
+    requirementCoverageMap: nextCoverageMap,
+    requirementSampleMap: nextSampleMap,
+    mappings: nextMappings,
+  });
+}
+
+async function handleCreateJobSample(request: Request, env: Env, jobId: string): Promise<Response> {
+  const { user } = await requireUser(request, env);
+  const payload = await parseJsonBody<CreateJobSamplePayload>(request);
+  if (!payload.projectId) throw new HttpError("projectId is required", 400);
+  if (!payload.summary?.trim() || !payload.code?.trim()) {
+    throw new HttpError("summary and code are required", 400);
+  }
+
+  const job = await getJob(env, jobId);
+  if (!job || job.userId !== user.id) throw new HttpError("Job not found", 404);
+  const proof = await getProofPacket(env, jobId);
+  if (!proof) throw new HttpError("Generate a Proof Packet first", 400);
+
+  const projects = await listProjects(env, user.id);
+  const project = projects.find((entry) => entry.id === payload.projectId);
+  if (!project) throw new HttpError("Project not found", 404);
+
+  const normalizedProjectSamples = normalizeCodeSamples([
+    {
+      id: crypto.randomUUID(),
+      type: payload.type || "code",
+      summary: payload.summary,
+      code: payload.code,
+      language: payload.language,
+      filePath: payload.filePath,
+      lineStart: payload.lineStart,
+      lineEnd: payload.lineEnd,
+      url: payload.url,
+      tags: payload.tags,
+      readmeHeading: payload.readmeHeading,
+      commitEntries: payload.commitEntries,
+      sourceLocked: true,
+      isPrivate: project.isPrivate,
+    },
+  ]);
+  const projectSample = normalizedProjectSamples[0];
+  if (!projectSample) throw new HttpError("Invalid sample payload", 400);
+  const proofSample = mapProjectSample(project, projectSample);
+
+  const existingProofSamples = proof.codeSamples || [];
+  const nextProofSamples = [proofSample, ...existingProofSamples.filter((sample) => sample.id !== proofSample.id)];
+  proof.codeSamples = nextProofSamples.slice(0, 20);
+  await saveProofPacket(env, proof);
+
+  if (payload.saveToProject) {
+    const updatedProjects = projects.map((entry) => {
+      if (entry.id !== project.id) return entry;
+      const nextSamples = [projectSample, ...(entry.codeSamples || []).filter((sample) => sample.id !== projectSample.id)];
+      return { ...entry, codeSamples: normalizeCodeSamples(nextSamples), updatedAt: new Date().toISOString() };
+    });
+    await saveProjects(env, user.id, updatedProjects);
+  }
+
+  return jsonResponse({ sample: proofSample, codeSamples: proof.codeSamples || [] });
+}
+
 async function handleGetJob(request: Request, env: Env, jobId: string): Promise<Response> {
   const { user } = await requireUser(request, env);
   const job = await getJob(env, jobId);
@@ -684,14 +824,24 @@ async function handleGenerateProofPacket(request: Request, env: Env, jobId: stri
   }
   const selectedSampleIds = Array.isArray(payload.selectedSampleIds) ? payload.selectedSampleIds : [];
   const sampleSelection = buildProofCodeSamples(selectedSampleIds, selectedProjects);
+  const requirementCoverage = normalizeRequirementCoverage(payload.requirementCoverage, selectedProjects, sampleSelection.codeSamples);
+  const requirementCoverageMap = toRequirementCoverageMap(requirementCoverage);
+  const requirementSampleMap = toRequirementSampleMap(requirementCoverage);
 
   let requirements: Requirement[] = [];
   let mappings: EvidenceMappingWithEvidence[] = [];
   let bulletsResult: { bullets: string[]; outreachNote: string; summary: string };
   try {
     requirements = await runLLMForRequirements(env, job.rawDescription);
-    mappings = await runLLMForMappings(env, job.rawDescription, requirements, selectedProjects);
-    bulletsResult = await runLLMForBullets(env, requirements, mappings);
+    mappings = buildMappingsFromCoverage(requirements, selectedProjects, requirementCoverage, sampleSelection.codeSamples);
+    bulletsResult =
+      mappings.length > 0
+        ? await runLLMForBullets(env, requirements, mappings)
+        : {
+            bullets: [],
+            outreachNote: "",
+            summary: "Requirement-first packet. Add project evidence for each requirement.",
+          };
   } catch (error) {
     throw new HttpError(error instanceof Error ? error.message : "LLM generation failed", 502);
   }
@@ -709,6 +859,8 @@ async function handleGenerateProofPacket(request: Request, env: Env, jobId: stri
     codeSamples: sampleSelection.codeSamples,
     readmeHighlight: sampleSelection.readmeSample,
     commitTrail: sampleSelection.commitSample,
+    requirementCoverageMap,
+    requirementSampleMap,
   };
 
   await saveProofPacket(env, proofPacket);
@@ -726,52 +878,6 @@ async function runLLMForRequirements(env: Env, jobDescription: string): Promise<
     responseFormat: "json",
   });
   return JSON.parse(response.raw) as Requirement[];
-}
-
-async function runLLMForMappings(
-  env: Env,
-  jobDescription: string,
-  requirements: Requirement[],
-  projects: Project[]
-): Promise<EvidenceMappingWithEvidence[]> {
-  const response = await callLLM(env, {
-    systemPrompt: "You match requirements to project evidence.",
-    userPrompt: buildEvidenceMappingPrompt({ jobDescription, requirements, projects }),
-    responseFormat: "json",
-  });
-  const parsed = JSON.parse(response.raw) as Array<{ requirementId: string; mappings: any[] }>;
-  const flattened: EvidenceMappingWithEvidence[] = parsed.flatMap((entry) =>
-    entry.mappings.map((mapping) => ({
-      id: crypto.randomUUID(),
-      requirementId: entry.requirementId,
-      evidence: buildEvidenceFromMapping(mapping, projects),
-      evidenceId: crypto.randomUUID(),
-      relevanceScore: mapping.relevanceScore ?? 0.5,
-      rationale: mapping.rationale,
-    }))
-  );
-  return flattened;
-}
-
-function buildEvidenceFromMapping(mapping: any, projects: Project[]): EvidenceMappingWithEvidence["evidence"] {
-  const project = projects.find((p) => p.fullName === mapping.projectFullName) || projects[0];
-  return {
-    id: crypto.randomUUID(),
-    projectId: project?.id || crypto.randomUUID(),
-    projectFullName: mapping.projectFullName || project?.fullName || "",
-    sourceType: project?.sourceType,
-    isPrivate: project?.isPrivate,
-    title: mapping.title || project?.fullName || "Evidence",
-    description: mapping.description || project?.description,
-    repoPath: mapping.repoPath,
-    fileUrl: mapping.links?.[0],
-    demoUrl: mapping.links?.[1],
-    context: mapping.context || project?.context,
-    year: mapping.year || project?.year,
-    aiRole: project?.aiRole,
-    aiTools: project?.aiTools ?? [],
-    aiSupervisionNotes: project?.aiSupervisionNotes,
-  };
 }
 
 async function runLLMForBullets(env: Env, requirements: Requirement[], mappings: EvidenceMappingWithEvidence[]) {
@@ -939,6 +1045,7 @@ function normalizeCodeSamples(samples?: ProjectCodeSample[]): ProjectCodeSample[
     const url = sample.url ? validateOptionalUrl(sample.url) : undefined;
     sanitized.push({
       id: sample.id || crypto.randomUUID(),
+      type: sample.type || "code",
       summary: truncatedSummary,
       code: truncatedCode,
       language: sample.language || undefined,
@@ -947,6 +1054,13 @@ function normalizeCodeSamples(samples?: ProjectCodeSample[]): ProjectCodeSample[
       lineEnd,
       url,
       tags: (sample.tags || []).map((tag) => tag.trim()).filter(Boolean).slice(0, 5),
+      readmeHeading: sample.readmeHeading?.trim() || undefined,
+      commitEntries: (sample.commitEntries || []).slice(0, 20).map((entry) => ({
+        sha: entry.sha,
+        message: entry.message,
+        date: entry.date,
+        htmlUrl: entry.htmlUrl,
+      })),
       createdAt: sample.createdAt || now,
       updatedAt: now,
       sourceLocked: Boolean(sample.sourceLocked),
@@ -1084,6 +1198,105 @@ interface ProofSampleSelection {
   codeSamples: ProofPacketCodeSample[];
   readmeSample?: ProofPacketCodeSample;
   commitSample?: ProofPacketCodeSample;
+}
+
+function normalizeRequirementCoverage(
+  input: RequirementCoverage[] | undefined,
+  selectedProjects: Project[],
+  codeSamples: ProofPacketCodeSample[]
+): RequirementCoverage[] {
+  if (!input || input.length === 0) return [];
+  const projectSet = new Set(selectedProjects.map((project) => project.id));
+  const sampleSet = new Set(codeSamples.map((sample) => sample.id));
+  return input
+    .filter((entry) => entry && entry.requirementId)
+    .map((entry) => {
+      const projectIds = (entry.projectIds || []).filter((id) => projectSet.has(id)).slice(0, 2);
+      const sampleId = entry.sampleId && sampleSet.has(entry.sampleId) ? entry.sampleId : null;
+      const rationale = (entry.rationale || "").trim().slice(0, 240);
+      return {
+        requirementId: entry.requirementId,
+        projectIds,
+        sampleId,
+        rationale: rationale || undefined,
+      };
+    });
+}
+
+function toRequirementCoverageMap(input: RequirementCoverage[]): Record<string, RequirementCoverage> {
+  return input.reduce<Record<string, RequirementCoverage>>((acc, entry) => {
+    if (!entry.requirementId) return acc;
+    acc[entry.requirementId] = entry;
+    return acc;
+  }, {});
+}
+
+function toRequirementSampleMap(input: RequirementCoverage[]): Record<string, string | null> {
+  return input.reduce<Record<string, string | null>>((acc, entry) => {
+    if (!entry.requirementId) return acc;
+    if (entry.sampleId) {
+      acc[entry.requirementId] = entry.sampleId;
+    }
+    return acc;
+  }, {});
+}
+
+function buildMappingsFromCoverage(
+  requirements: Requirement[],
+  projects: Project[],
+  coverage: RequirementCoverage[],
+  samples: ProofPacketCodeSample[]
+): EvidenceMappingWithEvidence[] {
+  const coverageMap = new Map(coverage.map((entry) => [entry.requirementId, entry]));
+  const sampleMap = new Map(samples.map((sample) => [sample.id, sample]));
+  const mappings: EvidenceMappingWithEvidence[] = [];
+
+  for (const requirement of requirements) {
+    const coverageEntry = coverageMap.get(requirement.id);
+    if (!coverageEntry) continue;
+    const projectIds = (coverageEntry.projectIds || []).slice(0, 2);
+    for (const projectId of projectIds) {
+      const project = projects.find((entry) => entry.id === projectId);
+      if (!project) continue;
+      const mappedSample = coverageEntry.sampleId ? sampleMap.get(coverageEntry.sampleId) : undefined;
+      mappings.push({
+        id: crypto.randomUUID(),
+        requirementId: requirement.id,
+        evidenceId: crypto.randomUUID(),
+        relevanceScore: 0.9,
+        rationale: coverageEntry.rationale,
+        evidence: {
+          id: crypto.randomUUID(),
+          projectId: project.id,
+          projectFullName: project.fullName,
+          sourceType: project.sourceType,
+          isPrivate: project.isPrivate,
+          title: project.fullName,
+          description: project.description,
+          fileUrl: project.htmlUrl,
+          demoUrl: project.demoUrl,
+          context: project.context,
+          year: project.year,
+          aiRole: project.aiRole,
+          aiTools: project.aiTools ?? [],
+          aiSupervisionNotes: project.aiSupervisionNotes,
+          codeSnippet: mappedSample
+            ? {
+                type: mappedSample.type,
+                summary: mappedSample.summary,
+                code: mappedSample.code,
+                language: mappedSample.language,
+                filePath: mappedSample.filePath,
+                lineStart: mappedSample.lineStart,
+                lineEnd: mappedSample.lineEnd,
+                url: mappedSample.url,
+              }
+            : undefined,
+        },
+      });
+    }
+  }
+  return mappings;
 }
 
 function buildProofCodeSamples(selectedSampleIds: string[], projects: Project[]): ProofSampleSelection {
