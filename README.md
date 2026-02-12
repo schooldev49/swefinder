@@ -2,6 +2,8 @@
 
 Evidensify is a vertical slice of a proof-based job application assistant. Candidates sign in with GitHub, stage the repos that actually prove their skills, paste a job description, and generate a JD-specific "Proof Packet" with plain-text resume bullets, requirement→evidence mappings, and an outreach note.
 
+Public-only evidence policy: Proof Packets accept only public repositories and public links so citations stay transparent for reviewers.
+
 ## Repo structure
 
 | Path | Description |

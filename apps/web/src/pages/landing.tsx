@@ -122,7 +122,7 @@ export function LandingPage() {
                     <p className="text-sm text-slate-300">Learn quickly</p>
                     <p className="text-lg font-medium text-white">Before you sign in</p>
                     <Button variant="outline" className="w-full" asChild>
-                      <Link to="/jobs/job-demo">See example packet</Link>
+                      <Link to="/example-packet">See example packet</Link>
                     </Button>
                     <Button variant="outline" className="w-full" asChild>
                       <Link to="/security">How verification works</Link>

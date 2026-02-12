@@ -10,6 +10,7 @@ import { ProtectedRoute } from "@/components/auth/protected-route";
 import { PublicProfilePage } from "@/pages/public-profile";
 import { PublicPacketPage } from "@/pages/public-packet";
 import { SecurityPage } from "@/pages/security";
+import { ExamplePacketPage } from "@/pages/example-packet";
 
 const router = createBrowserRouter([
   {
@@ -58,6 +59,10 @@ const router = createBrowserRouter([
         ),
       },
     ],
+  },
+  {
+    path: "/example-packet",
+    element: <ExamplePacketPage />,
   },
   {
     path: "/u/:handle",

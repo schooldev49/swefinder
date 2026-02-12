@@ -21,6 +21,8 @@ export function NewJobPage() {
   const [selectedSamples, setSelectedSamples] = useState<Set<string>>(new Set());
   const [requirementsText, setRequirementsText] = useState("");
   const navigate = useNavigate();
+  const publicProjects = useMemo(() => (projects || []).filter((project) => !project.isPrivate), [projects]);
+  const privateProjectCount = (projects || []).filter((project) => project.isPrivate).length;
 
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -45,6 +47,11 @@ export function NewJobPage() {
       toast("Select projects", { description: "Choose at least one repo to ground the packet." });
       return;
     }
+    const selectedPublic = publicProjects.filter((project) => selectedProjects.has(project.id));
+    if (selectedPublic.length === 0) {
+      toast("Public evidence required", { description: "Only public links are allowed in Proof Packets." });
+      return;
+    }
     setIsSubmitting(true);
     try {
       const job = await createJob({
@@ -54,7 +61,7 @@ export function NewJobPage() {
         rawDescription,
       });
       await generateProof(job.id, {
-        selectedProjectIds: Array.from(selectedProjects),
+        selectedProjectIds: selectedPublic.map((project) => project.id),
         selectedSampleIds: Array.from(selectedSamples),
         requirements,
       });
@@ -167,9 +174,9 @@ export function NewJobPage() {
             </div>
             {isLoading ? (
               <div className="mt-3 h-24 animate-pulse rounded-xl bg-slate-900/60" />
-            ) : projects && projects.length > 0 ? (
+            ) : publicProjects.length > 0 ? (
               <div className="mt-3 grid gap-3">
-                {projects.map((project) => (
+                {publicProjects.map((project) => (
                   <ProjectRow
                     key={project.id}
                     project={project}
@@ -179,8 +186,14 @@ export function NewJobPage() {
                 ))}
               </div>
             ) : (
-              <p className="mt-3 text-sm text-muted-foreground">Save at least one project first.</p>
+              <p className="mt-3 text-sm text-muted-foreground">Save at least one public project first.</p>
             )}
+            <p className="mt-2 text-xs text-muted-foreground">Only public links are allowed in Proof Packets.</p>
+            {privateProjectCount > 0 ? (
+              <p className="mt-1 text-xs text-amber-400">
+                {privateProjectCount} private project(s) are blocked. Remove them in Projects before packet generation.
+              </p>
+            ) : null}
           </div>
           {availableSamples.length > 0 && (
             <SampleSelector

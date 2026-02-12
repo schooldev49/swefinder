@@ -4,7 +4,6 @@ import { Link } from "react-router-dom";
 
 const scopes = [
   { scope: "read:user", usage: "Verify your GitHub identity and avatar" },
-  { scope: "user:email", usage: "Populate your contact email for outreach drafts" },
   { scope: "public_repo", usage: "Import repo metadata, READMEs, and commit history for public repos" },
 ];
 
@@ -29,10 +28,7 @@ export function SecurityPage() {
               <p className="text-slate-400">{item.usage}</p>
             </div>
           ))}
-          <p className="text-xs text-muted-foreground">
-            Need private repos? From the Projects page, toggle “Include private repos” when connecting to GitHub to grant the
-            <code className="mx-1">repo</code> scope. You can revoke it anytime from GitHub settings.
-          </p>
+          <p className="text-xs text-muted-foreground">Only public repositories and public links are supported in Proof Packets.</p>
         </CardContent>
       </Card>
       <Card className="border-slate-800/80 bg-slate-950/60">

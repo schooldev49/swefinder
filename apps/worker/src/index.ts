@@ -318,10 +318,9 @@ async function handleGitHubLogin(request: Request, env: Env): Promise<Response> 
   const redirectTo = url.searchParams.get("redirect") || null;
   await storeOAuthState(env, state, redirectTo);
   const githubAuthUrl = new URL("https://github.com/login/oauth/authorize");
-  const wantsPrivate = url.searchParams.get("private") === "1";
   githubAuthUrl.searchParams.set("client_id", env.GITHUB_CLIENT_ID);
   githubAuthUrl.searchParams.set("redirect_uri", redirectUri);
-  githubAuthUrl.searchParams.set("scope", wantsPrivate ? "read:user repo" : "read:user public_repo");
+  githubAuthUrl.searchParams.set("scope", "read:user public_repo");
   githubAuthUrl.searchParams.set("state", state);
   return new Response(null, {
     status: 302,
@@ -431,11 +430,13 @@ async function handleGitHubRepos(request: Request, env: Env): Promise<Response> 
   }
   const repos = await fetchUserRepos(token);
   return jsonResponse(
-    repos.map((repo) => ({
+    repos
+      .filter((repo) => !repo.private)
+      .map((repo) => ({
       id: `${repo.id}`,
       name: repo.name,
       fullName: repo.full_name,
-      isPrivate: repo.private,
+      isPrivate: false,
       defaultBranch: repo.default_branch,
       description: repo.description,
       htmlUrl: repo.html_url,
@@ -908,6 +909,9 @@ async function handleGenerateProofPacket(request: Request, env: Env, jobId: stri
   if (selectedProjects.length === 0) {
     throw new HttpError("Select at least one project", 400);
   }
+  if (selectedProjects.some((project) => project.isPrivate)) {
+    throw new HttpError("Only public links are allowed in Proof Packets", 400);
+  }
   const selectedSampleIds = Array.isArray(payload.selectedSampleIds) ? payload.selectedSampleIds : [];
   const sampleSelection = buildProofCodeSamples(selectedSampleIds, selectedProjects);
   const existingProof = await getProofPacket(env, jobId);
@@ -1039,6 +1043,9 @@ function normalizeProjectPayload(
       throw new HttpError("GitHub projects require a repository URL", 400);
     }
     htmlUrl = validateProjectUrl(htmlUrl);
+    if (project.isPrivate) {
+      throw new HttpError("Private repositories are not supported. Use public links only.", 400);
+    }
   }
 
   const aiRole = normalizeAiRole(project.aiRole);
@@ -1055,7 +1062,7 @@ function normalizeProjectPayload(
     description: project.description,
     primaryLanguage: project.primaryLanguage,
     defaultBranch: project.defaultBranch,
-    isPrivate: Boolean(project.isPrivate),
+    isPrivate: false,
     topics,
     lastUpdated: project.lastUpdated || now,
     demoUrl: project.demoUrl,

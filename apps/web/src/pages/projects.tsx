@@ -263,7 +263,7 @@ export function ProjectsPage() {
         fullName: repo.fullName,
         htmlUrl: repo.htmlUrl,
         defaultBranch: repo.defaultBranch,
-        isPrivate: Boolean(repo.isPrivate),
+        isPrivate: false,
         description: repo.description,
         primaryLanguage: repo.language,
         topics: repo.topics || [],
@@ -387,11 +387,14 @@ export function ProjectsPage() {
   };
 
   const emptyState = !isLoading && projects.length === 0;
+  const publicProjects = useMemo(() => projects.filter((project) => !project.isPrivate), [projects]);
+  const privateProjects = useMemo(() => projects.filter((project) => project.isPrivate), [projects]);
   const reposPerPage = 15;
   const filteredRepos = useMemo(() => {
-    if (!repoSearchTerm) return repos;
+    const publicRepos = repos.filter((repo) => !repo.isPrivate);
+    if (!repoSearchTerm) return publicRepos;
     const term = repoSearchTerm.toLowerCase();
-    return repos.filter((repo) => {
+    return publicRepos.filter((repo) => {
       return (
         repo.fullName.toLowerCase().includes(term) ||
         (repo.description || "").toLowerCase().includes(term) ||
@@ -552,8 +555,26 @@ export function ProjectsPage() {
               </form>
             </div>
           )}
+          <p className="text-xs text-muted-foreground">Only public links are allowed in Proof Packets.</p>
+          {privateProjects.length > 0 ? (
+            <div className="space-y-2 rounded-xl border border-amber-700/60 bg-amber-950/20 p-3">
+              <p className="text-xs text-amber-300">
+                {privateProjects.length} private project(s) are blocked. Remove them to continue using public-only mode.
+              </p>
+              <div className="grid gap-2">
+                {privateProjects.map((project) => (
+                  <div key={project.id} className="flex items-center justify-between rounded-lg border border-amber-800/60 bg-amber-950/30 px-3 py-2 text-xs">
+                    <span className="text-amber-200">{project.fullName}</span>
+                    <Button variant="ghost" size="sm" onClick={() => removeProject(project.id)}>
+                      Remove
+                    </Button>
+                  </div>
+                ))}
+              </div>
+            </div>
+          ) : null}
           <div className="grid gap-4">
-            {projects.map((project) => (
+            {publicProjects.map((project) => (
               <div key={project.id} className="rounded-2xl border border-slate-800/80 bg-slate-950/60 p-5">
                 <div className="flex flex-wrap items-center justify-between gap-3">
                   <div>
@@ -696,11 +717,11 @@ export function ProjectsPage() {
         </CardFooter>
       </Card>
 
-      {repos.length > 0 && (
+      {filteredRepos.length > 0 && (
         <Card className="border-slate-800/80 bg-slate-950/40">
           <CardHeader>
             <CardTitle className="text-white">Imported GitHub repos</CardTitle>
-            <CardDescription>Select repos then add them to your project list.</CardDescription>
+            <CardDescription>Select public repos then add them to your project list.</CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
