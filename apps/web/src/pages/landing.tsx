@@ -1,9 +1,11 @@
 import { Link, useLocation } from "react-router-dom";
+import { useQuery } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { useSession } from "@/hooks/use-session";
 import { buildGitHubLoginUrl } from "@/lib/auth";
+import { fetchJobs, fetchProjects } from "@/lib/api";
 
 const previewRequirements = [
   {
@@ -24,6 +26,16 @@ export function LandingPage() {
   const location = useLocation();
   const { data: user } = useSession();
   const isAuthenticated = Boolean(user);
+  const { data: projects = [] } = useQuery({
+    queryKey: ["projects", "landing"],
+    queryFn: fetchProjects,
+    enabled: isAuthenticated,
+  });
+  const { data: jobs = [] } = useQuery({
+    queryKey: ["jobs", "landing"],
+    queryFn: fetchJobs,
+    enabled: isAuthenticated,
+  });
   const nextParam = new URLSearchParams(location.search).get("next");
   const nextPath = nextParam && nextParam.startsWith("/") ? nextParam : undefined;
 
@@ -40,73 +52,80 @@ export function LandingPage() {
               <p className="text-xs uppercase tracking-[0.25em] text-slate-500">Evidensify</p>
               <h1 className="mt-2 text-3xl font-semibold text-white sm:text-4xl">Requirement-first Proof Packets</h1>
               <p className="mt-2 max-w-2xl text-sm text-slate-300">
-                Fast to scan for recruiters. Clear to build for candidates.
+                Build a role-specific packet that maps requirements to verifiable project evidence.
               </p>
             </div>
             <div className="flex items-center gap-2">
               <Badge variant="outline">Manual mapping</Badge>
               <Badge variant="outline">Verifiable links</Badge>
-              <Badge variant="outline">Shareable packet</Badge>
-            </div>
+                          </div>
           </div>
 
           <div className="mt-6 grid gap-3 md:grid-cols-3">
             {isAuthenticated ? (
               <>
-                <Card className="border-slate-800/80 bg-slate-900/40">
+                <Card className="border-slate-800/80 bg-slate-900/40 md:col-span-2">
                   <CardContent className="space-y-2 p-4">
                     <p className="text-sm text-slate-300">Hi {user?.githubLogin}</p>
                     <p className="text-lg font-medium text-white">Create your next packet</p>
-                    <Button className="w-full" asChild>
+                    <div className="grid gap-2 text-xs text-slate-300 sm:grid-cols-3">
+                      <div className="rounded-lg border border-slate-800/80 bg-slate-950/60 px-3 py-2">
+                        <p className="text-slate-500">Projects added</p>
+                        <p className="text-base font-semibold text-white">{projects.length}</p>
+                      </div>
+                      <div className="rounded-lg border border-slate-800/80 bg-slate-950/60 px-3 py-2">
+                        <p className="text-slate-500">Jobs tracked</p>
+                        <p className="text-base font-semibold text-white">{jobs.length}</p>
+                      </div>
+                      <div className="rounded-lg border border-slate-800/80 bg-slate-950/60 px-3 py-2">
+                        <p className="text-slate-500">Proof ready</p>
+                        <p className="text-base font-semibold text-white">
+                          {jobs.filter((job) => job.status === "PROOF_GENERATED" || job.status === "APPLIED" || job.status === "INTERVIEW" || job.status === "OFFER").length}
+                        </p>
+                      </div>
+                    </div>
+                    <Button className="w-full sm:w-auto" asChild>
                       <Link to="/jobs/new">New packet</Link>
                     </Button>
                   </CardContent>
                 </Card>
                 <Card className="border-slate-800/80 bg-slate-900/40">
                   <CardContent className="space-y-2 p-4">
-                    <p className="text-sm text-slate-300">Update your evidence pool</p>
-                    <p className="text-lg font-medium text-white">Projects</p>
+                    <p className="text-sm text-slate-300">Quick actions</p>
+                    <p className="text-lg font-medium text-white">Keep moving</p>
                     <Button variant="outline" className="w-full" asChild>
-                      <Link to="/projects">Manage projects</Link>
+                      <Link to="/projects">Add evidence from projects</Link>
                     </Button>
-                  </CardContent>
-                </Card>
-                <Card className="border-slate-800/80 bg-slate-900/40">
-                  <CardContent className="space-y-2 p-4">
-                    <p className="text-sm text-slate-300">Track your applications</p>
-                    <p className="text-lg font-medium text-white">Jobs</p>
                     <Button variant="outline" className="w-full" asChild>
-                      <Link to="/jobs">Open tracker</Link>
+                      <Link to="/jobs">Import job description</Link>
                     </Button>
                   </CardContent>
                 </Card>
               </>
             ) : (
               <>
-                <Card className="border-slate-800/80 bg-slate-900/40">
+                <Card className="border-slate-800/80 bg-slate-900/40 md:col-span-2">
                   <CardContent className="space-y-2 p-4">
                     <p className="text-sm text-slate-300">Candidate</p>
-                    <p className="text-lg font-medium text-white">Build your packet</p>
-                    <Button className="w-full" onClick={handleGitHubLogin}>
-                      Sign in with GitHub
+                    <p className="text-lg font-medium text-white">Build your proof packet</p>
+                    <div className="space-y-1 text-sm text-slate-300">
+                      <p>Prove requirements with project evidence.</p>
+                      <p>Used to support claims like experiment design, production UI, and evaluation tooling.</p>
+                    </div>
+                    <Button className="w-full sm:w-auto" onClick={handleGitHubLogin}>
+                      Build your proof packet
                     </Button>
                   </CardContent>
                 </Card>
                 <Card className="border-slate-800/80 bg-slate-900/40">
                   <CardContent className="space-y-2 p-4">
-                    <p className="text-sm text-slate-300">Start with projects</p>
-                    <p className="text-lg font-medium text-white">Connect evidence</p>
-                    <Button variant="outline" className="w-full" onClick={handleGitHubLogin}>
-                      Open projects
-                    </Button>
-                  </CardContent>
-                </Card>
-                <Card className="border-slate-800/80 bg-slate-900/40">
-                  <CardContent className="space-y-2 p-4">
-                    <p className="text-sm text-slate-300">Recruiter</p>
-                    <p className="text-lg font-medium text-white">Skim packet format</p>
+                    <p className="text-sm text-slate-300">Learn quickly</p>
+                    <p className="text-lg font-medium text-white">Before you sign in</p>
                     <Button variant="outline" className="w-full" asChild>
-                      <Link to="/security">Review trust model</Link>
+                      <Link to="/jobs/job-demo">See example packet</Link>
+                    </Button>
+                    <Button variant="outline" className="w-full" asChild>
+                      <Link to="/security">How verification works</Link>
                     </Button>
                   </CardContent>
                 </Card>
@@ -119,12 +138,12 @@ export function LandingPage() {
       <section className="mx-auto mt-6 grid w-full max-w-6xl gap-6 px-4 sm:px-6 md:grid-cols-[minmax(0,0.95fr)_minmax(0,1.05fr)]">
         <Card className="border-slate-800/80 bg-slate-950/70">
           <CardContent className="space-y-3 p-4">
-            <p className="text-xs uppercase tracking-[0.2em] text-slate-500">Action checklist</p>
+            <p className="text-xs uppercase tracking-[0.2em] text-slate-500">How mapping works</p>
             <div className="space-y-2 text-sm text-slate-200">
-              <p>1. Add projects with context.</p>
-              <p>2. Add job requirements you want to prove.</p>
-              <p>3. Map each requirement to links and samples.</p>
-              <p>4. Share one packet link with your resume.</p>
+              <p className="rounded-lg border border-slate-800/80 bg-slate-950/60 px-3 py-2">Project</p>
+              <p className="rounded-lg border border-slate-800/80 bg-slate-950/60 px-3 py-2">Requirement</p>
+              <p className="rounded-lg border border-slate-800/80 bg-slate-950/60 px-3 py-2">Linked evidence</p>
+              <p className="pt-1 text-xs text-slate-400">Attach one packet link with your resume.</p>
             </div>
           </CardContent>
         </Card>
