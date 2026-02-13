@@ -1554,20 +1554,19 @@ function parseSuggestedRequirements(raw: string): Array<{ id?: string; text: str
       ? (parsed as { requirements: unknown[] }).requirements
       : [];
 
-  return candidateList
-    .map((entry, index) => {
-      if (!entry || typeof entry !== "object") return null;
-      const obj = entry as { id?: unknown; text?: unknown; priority?: unknown; notes?: unknown };
-      const text = typeof obj.text === "string" ? obj.text.trim() : "";
-      if (!text) return null;
-      return {
-        id: typeof obj.id === "string" && obj.id.trim() ? obj.id.trim() : `req-${index + 1}`,
-        text,
-        priority: typeof obj.priority === "number" ? obj.priority : undefined,
-        notes: typeof obj.notes === "string" ? obj.notes.trim() : undefined,
-      };
-    })
-    .filter((entry): entry is { id: string; text: string; priority: number; notes: string } => Boolean(entry));
+  return candidateList.reduce<Array<{ id?: string; text: string; priority?: number; notes?: string }>>((acc, entry, index) => {
+    if (!entry || typeof entry !== "object") return acc;
+    const obj = entry as { id?: unknown; text?: unknown; priority?: unknown; notes?: unknown };
+    const text = sanitizeRequirementText(typeof obj.text === "string" ? obj.text : "");
+    if (!text || !isTechnicalRequirement(text)) return acc;
+    acc.push({
+      id: typeof obj.id === "string" && obj.id.trim() ? obj.id.trim() : `req-${index + 1}`,
+      text,
+      priority: typeof obj.priority === "number" ? obj.priority : undefined,
+      notes: typeof obj.notes === "string" ? sanitizeRequirementText(obj.notes, 140) : undefined,
+    });
+    return acc;
+  }, []);
 }
 
 function fallbackRequirementsFromDescription(jobDescription: string): Array<{ id?: string; text: string; priority?: number; notes?: string }> {
@@ -1577,14 +1576,10 @@ function fallbackRequirementsFromDescription(jobDescription: string): Array<{ id
     .filter((line) => line.length > 12);
   const unique: string[] = [];
   for (const line of lines) {
+    if (!isTechnicalRequirement(line)) continue;
     const lower = line.toLowerCase();
-    const looksTechnical =
-      /\b(api|backend|frontend|python|typescript|react|node|ml|machine learning|data|sql|testing|deploy|infrastructure|system|experiment)\b/.test(
-        lower
-      );
-    if (!looksTechnical) continue;
     if (unique.some((existing) => existing.toLowerCase() === lower)) continue;
-    unique.push(line);
+    unique.push(sanitizeRequirementText(line));
     if (unique.length >= 5) break;
   }
   return unique.map((text, index) => ({
@@ -1592,4 +1587,30 @@ function fallbackRequirementsFromDescription(jobDescription: string): Array<{ id
     text: text.slice(0, 240),
     priority: 10 - index,
   }));
+}
+
+function sanitizeRequirementText(text: string, maxLength = 160): string {
+  let cleaned = text.replace(/\s+/g, " ").trim();
+  if (!cleaned) return "";
+  const splitCandidate = cleaned.split(/[.;]/).map((part) => part.trim()).find(Boolean);
+  if (splitCandidate) cleaned = splitCandidate;
+  if (cleaned.length > maxLength) {
+    const firstClause = cleaned.split(",").slice(0, 2).join(",").trim();
+    cleaned = firstClause.length <= maxLength ? firstClause : `${firstClause.slice(0, maxLength - 1).trim()}…`;
+  }
+  return cleaned;
+}
+
+function isTechnicalRequirement(text: string): boolean {
+  const lower = text.toLowerCase();
+  const technicalSignal =
+    /\b(api|backend|frontend|python|typescript|react|node|ml|machine learning|model|experiment|evaluation|eval|data|sql|pipeline|testing|test|deploy|infrastructure|system design|algorithm|simulation|metrics|optimization|computer vision|nlp)\b/.test(
+      lower
+    );
+  if (!technicalSignal) return false;
+  const nonTechnicalSignal =
+    /\b(compensation|salary|benefits|equal opportunity|accommodation|location|start date|workday|monday|friday|40 hours|internship season|applying|enrolled|master'?s|phd|degree required|age|eligible|visa|culture|team values|customer experience)\b/.test(
+      lower
+    );
+  return !nonTechnicalSignal;
 }

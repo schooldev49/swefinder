@@ -3,7 +3,7 @@ import type { EvidenceMappingWithEvidence, Project, Requirement } from "@evidens
 const HONESTY_PLEDGE = `You are helping a student apply for a specific SWE/CS/ML job in an unbiased way as you will not be penalized for giving negative outcomes. You must NOT invent metrics, numbers, achievements, or artifacts that are not clearly supported by the provided repository metadata or explicit user-provided inputs. If no evidence exists, say so.`;
 
 export function buildRequirementsPrompt(jobDescription: string): string {
-  return `SYSTEM:\n${HONESTY_PLEDGE}\n\nTASK:\nRead the job description below and extract up to 5 concrete, technical requirements. Focus on engineering responsibilities, algorithms, tools, data/infra expectations, and measurable outcomes. Ignore perks, logistics, compensation, and generic culture text. Sort by importance. Respond with JSON: [{"id":"string","text":"","priority":number,"notes":"optional"}].\n\nJOB DESCRIPTION:\n${jobDescription}`;
+  return `SYSTEM:\n${HONESTY_PLEDGE}\n\nTASK:\nRead the job description below and extract up to 5 concrete, technical requirements.\n\nRules:\n- Focus only on coding, data, ML, infra, experimentation, testing, or system-design work.\n- Ignore culture, company description, internship logistics, eligibility, compensation, and benefits.\n- Each requirement text must be short (6-16 words), specific, and action-oriented.\n- Do not copy full sentences from the JD.\n- Do not include non-technical requirements.\n\nRespond only with valid JSON in this exact shape:\n{\"requirements\":[{\"id\":\"req-1\",\"text\":\"short technical requirement\",\"priority\":10,\"notes\":\"optional short note\"}]}\n\nJOB DESCRIPTION:\n${jobDescription}`;
 }
 
 export function buildEvidenceMappingPrompt(params: {
