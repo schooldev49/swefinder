@@ -510,7 +510,7 @@ export function ProjectsPage() {
                     onChange={handleExternalInput("description")}
                     rows={3}
                     className="mt-2"
-                    placeholder="Explain what you built and why it matters."
+                    placeholder="Describe design choices, tools, what you learned, and any limitations. Use your own words; AI can help polish, but only include facts you can defend."
                   />
                 </div>
                 <div>

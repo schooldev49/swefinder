@@ -1728,7 +1728,7 @@ function parseSuggestedRequirements(raw: string): Array<{ id?: string; text: str
     if (!entry || typeof entry !== "object") return acc;
     const obj = entry as { id?: unknown; text?: unknown; priority?: unknown; notes?: unknown };
     const text = sanitizeRequirementText(typeof obj.text === "string" ? obj.text : "");
-    if (!text || !isTechnicalRequirement(text)) return acc;
+    if (!text || !isTechnicalRequirement(text) || isInvalidRequirementText(text)) return acc;
     acc.push({
       id: typeof obj.id === "string" && obj.id.trim() ? obj.id.trim() : `req-${index + 1}`,
       text,
@@ -1746,10 +1746,12 @@ function fallbackRequirementsFromDescription(jobDescription: string): Array<{ id
     .filter((line) => line.length > 12);
   const unique: string[] = [];
   for (const line of lines) {
-    if (!isTechnicalRequirement(line)) continue;
+    if (!isTechnicalRequirement(line) || isInvalidRequirementText(line)) continue;
     const lower = line.toLowerCase();
     if (unique.some((existing) => existing.toLowerCase() === lower)) continue;
-    unique.push(sanitizeRequirementText(line));
+    const cleaned = sanitizeRequirementText(line);
+    if (!cleaned || isInvalidRequirementText(cleaned)) continue;
+    unique.push(cleaned);
     if (unique.length >= 5) break;
   }
   return unique.map((text, index) => ({
@@ -1760,10 +1762,17 @@ function fallbackRequirementsFromDescription(jobDescription: string): Array<{ id
 }
 
 function sanitizeRequirementText(text: string, maxLength = 160): string {
-  let cleaned = text.replace(/\s+/g, " ").trim();
+  let cleaned = text
+    .replace(/\[[^\]]+\]\((https?:\/\/[^\s)]+)\)/gi, " ")
+    .replace(/https?:\/\/[^\s]+/gi, " ")
+    .replace(/\bwww\.[^\s]+/gi, " ")
+    .replace(/\s+/g, " ")
+    .trim();
   if (!cleaned) return "";
   const splitCandidate = cleaned.split(/[.;]/).map((part) => part.trim()).find(Boolean);
   if (splitCandidate) cleaned = splitCandidate;
+  cleaned = cleaned.replace(/^[^a-zA-Z0-9]+/, "").trim();
+  if (!cleaned) return "";
   if (cleaned.length > maxLength) {
     const firstClause = cleaned.split(",").slice(0, 2).join(",").trim();
     cleaned = firstClause.length <= maxLength ? firstClause : `${firstClause.slice(0, maxLength - 1).trim()}…`;
@@ -1779,8 +1788,23 @@ function isTechnicalRequirement(text: string): boolean {
     );
   if (!technicalSignal) return false;
   const nonTechnicalSignal =
-    /\b(compensation|salary|benefits|equal opportunity|accommodation|location|start date|workday|monday|friday|40 hours|internship season|applying|enrolled|master'?s|phd|degree required|age|eligible|visa|culture|team values|customer experience)\b/.test(
+    /\b(compensation|salary|benefits|equal opportunity|accommodation|location|start date|workday|monday|friday|40 hours|internship season|applying|enrolled|master'?s|phd|degree required|age|eligible|visa|culture|team values|customer experience|basic qualifications|preferred qualifications|communication skills|non-technical)\b/.test(
       lower
     );
   return !nonTechnicalSignal;
+}
+
+function isInvalidRequirementText(text: string): boolean {
+  const cleaned = text.trim();
+  if (!cleaned) return true;
+  if (cleaned.length < 18) return true;
+  if (/^https?:\/\//i.test(cleaned) || /^www\./i.test(cleaned)) return true;
+  if (!/[a-zA-Z]/.test(cleaned)) return true;
+  const lower = cleaned.toLowerCase();
+  if (/\bat least\s+\d+\+?\s+year/.test(lower)) return true;
+  if (/^currently enrolled\b/.test(lower)) return true;
+  if (/^must be\b/.test(lower)) return true;
+  if (/^are\s+\d+\s+years? of age\b/.test(lower)) return true;
+  if (/^(basic|preferred)\s+qualifications\b/.test(lower)) return true;
+  return false;
 }
