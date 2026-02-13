@@ -48,6 +48,7 @@ function PacketView({
   const citations = useMemo(() => buildCitationList(proof?.mappings ?? []), [proof?.mappings]);
   const requirementSampleMap = proof?.requirementSampleMap || {};
   const proofSamples = proof?.codeSamples ?? [];
+  const snapshotDate = proof?.evidenceSnapshotAt || proof?.createdAt;
 
   return (
     <div className="space-y-6">
@@ -74,6 +75,7 @@ function PacketView({
           </div>
           <div className="rounded-xl border border-slate-800/80 bg-slate-950/50 px-4 py-3 text-xs text-muted-foreground">
             Every bullet and requirement links to verifiable repos or docs supplied by the candidate.
+            {snapshotDate ? <p className="mt-1 text-slate-400">Evidence snapshot: {formatPublicDate(snapshotDate)}</p> : null}
           </div>
           </CardHeader>
           {proof?.summary ? (
@@ -155,6 +157,7 @@ function PacketView({
                     <div key={evidence.id} className="rounded-2xl border border-slate-900/80 bg-slate-950/60 p-4 text-xs text-muted-foreground">
                       <p className="text-[11px] uppercase tracking-[0.2em] text-slate-500">{evidence.projectFullName}</p>
                       {evidence.description && <p className="text-sm text-white">{evidence.description}</p>}
+                      {evidence.lastCommitDate ? <p className="text-[11px] text-slate-400">Updated {formatPublicDate(evidence.lastCommitDate)}</p> : null}
                       {evidence.fileUrl && (
                         <a href={evidence.fileUrl} target="_blank" rel="noopener noreferrer nofollow" className="text-primary underline">
                           View source
@@ -221,6 +224,12 @@ function RequirementPublicCard({
               <p className="font-semibold text-white">{mapping.evidence.projectFullName}</p>
               {mapping.evidence.isPrivate ? <PrivateRepoBadgePublic /> : null}
               {mapping.rationale && <p>{mapping.rationale}</p>}
+              {mapping.evidence.lastCommitDate ? (
+                <p className="text-[11px] text-slate-400">Updated {formatPublicDate(mapping.evidence.lastCommitDate)}</p>
+              ) : null}
+              {mapping.evidence.sourceCommitSha ? (
+                <p className="font-mono text-[10px] text-slate-500">Snapshot #{mapping.evidence.sourceCommitSha.slice(0, 7)}</p>
+              ) : null}
               {mapping.evidence.fileUrl && (
                 <a
                   href={mapping.evidence.fileUrl}
@@ -306,7 +315,7 @@ function PublicCodeSamples({ samples }: { samples: ProofPacketCodeSample[] }) {
 
   return (
     <section>
-      <SectionHeading title="Evidence samples" subtitle="Optional deep dives for engineers—code, docs, or commits." />
+      <SectionHeading title="Evidence samples" subtitle="Optional deep dives for engineers, code docs or commits." />
       <div className="mt-4 space-y-3">
         {samples.map((sample) => {
           const open = expanded.has(sample.id);
@@ -372,13 +381,21 @@ function formatPublicLineLabel(filePath?: string, start?: number, end?: number) 
   return path;
 }
 
-function SampleHighlightMetaPublic({ sample }: { sample?: { type?: string; readmeHeading?: string; commitEntries?: CommitEntry[] } }) {
+function SampleHighlightMetaPublic({
+  sample,
+}: {
+  sample?: { type?: string; readmeHeading?: string; commitEntries?: CommitEntry[]; sourceCommitSha?: string; lastCommitDate?: string | null };
+}) {
   if (!sample) return null;
   const showHeading = sample.type === "readme" && sample.readmeHeading;
   const entries = sample.type === "commit" ? sample.commitEntries ?? [] : [];
-  if (!showHeading && entries.length === 0) return null;
+  const dateLabel = sample.lastCommitDate ? formatPublicDate(sample.lastCommitDate) : null;
+  const commitSha = sample.sourceCommitSha ? String(sample.sourceCommitSha).slice(0, 7) : null;
+  if (!showHeading && entries.length === 0 && !dateLabel && !commitSha) return null;
   return (
     <div className="mt-1 space-y-2">
+      {dateLabel ? <p className="text-[11px] text-slate-400">Updated {dateLabel}</p> : null}
+      {commitSha ? <p className="text-[11px] text-slate-500 font-mono">Snapshot #{commitSha}</p> : null}
       {showHeading ? <p className="text-[11px] text-slate-400">README section: {sample.readmeHeading}</p> : null}
       {entries.length > 0 ? <PublicCommitTrail entries={entries} /> : null}
     </div>
@@ -387,16 +404,18 @@ function SampleHighlightMetaPublic({ sample }: { sample?: { type?: string; readm
 
 function PublicCommitTrail({ entries }: { entries: CommitEntry[] }) {
   if (!entries.length) return null;
+  const trimmed = entries.slice(0, 5);
   return (
     <div className="mt-2 rounded-lg border border-slate-900/70 bg-slate-900/40 p-2 text-[11px] text-slate-300">
-      <p className="text-[10px] uppercase tracking-[0.3em] text-slate-500">Commit trail · {entries.length} entr{entries.length === 1 ? "y" : "ies"}</p>
+      <p className="text-[10px] uppercase tracking-[0.3em] text-slate-500">Commit trail · {trimmed.length} entr{trimmed.length === 1 ? "y" : "ies"}</p>
       <ul className="mt-1 space-y-1">
-        {entries.map((entry) => {
+        {trimmed.map((entry) => {
           const label = truncateTextPublic(entry.message?.split("\n")[0] || entry.sha, 90);
           const shortSha = entry.sha ? entry.sha.slice(0, 7) : "commit";
           return (
             <li key={entry.sha} className="flex items-center gap-2">
               <span className="flex-1 truncate">{label}</span>
+              {entry.date ? <span className="text-[10px] text-slate-500">{formatPublicDate(entry.date)}</span> : null}
               {entry.htmlUrl ? (
                 <a href={entry.htmlUrl} target="_blank" rel="noopener noreferrer nofollow" className="font-mono text-[10px] text-primary underline">
                   #{shortSha}
@@ -482,6 +501,13 @@ function formatAiUsagePublic(evidence: { aiRole?: string; aiTools?: string[]; ai
   }
   if (!parts.length) return null;
   return parts.join(" · ");
+}
+
+function formatPublicDate(value?: string | null): string {
+  if (!value) return "";
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "";
+  return date.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
 }
 
 function EvidenceSnippetBlock({

@@ -2,6 +2,7 @@ import type {
   AIRole,
   EvidenceMappingWithEvidence,
   Job,
+  ProjectSnapshot,
   ProofPacket,
   ProofPacketCodeSample,
   Project,
@@ -245,6 +246,9 @@ export default {
         }
         if (url.pathname.endsWith(`/api/jobs/${jobId}/generate`) && request.method === "POST") {
           return withCors(await handleGenerateProofPacket(request, env, jobId), origin);
+        }
+        if (url.pathname.endsWith(`/api/jobs/${jobId}/refresh-snapshot`) && request.method === "POST") {
+          return withCors(await handleRefreshProofSnapshot(request, env, jobId), origin);
         }
         if (url.pathname.endsWith(`/api/jobs/${jobId}/requirement-samples`) && request.method === "POST") {
           return withCors(await handleUpdateRequirementSample(request, env, jobId), origin);
@@ -777,7 +781,14 @@ async function handleUpdateRequirementCoverage(request: Request, env: Env, jobId
   }
 
   const coverageList = Object.values(nextCoverageMap);
-  const nextMappings = buildMappingsFromCoverage(proof.requirements, projects, coverageList, proof.codeSamples || []);
+  const snapshotLookup = createSnapshotLookup(proof.snapshotCommits);
+  const nextMappings = buildMappingsFromCoverage(
+    proof.requirements,
+    projects,
+    coverageList,
+    proof.codeSamples || [],
+    snapshotLookup
+  );
   const nextSampleMap = toRequirementSampleMap(coverageList);
 
   proof.requirementCoverageMap = nextCoverageMap;
@@ -829,7 +840,8 @@ async function handleCreateJobSample(request: Request, env: Env, jobId: string):
   ]);
   const projectSample = normalizedProjectSamples[0];
   if (!projectSample) throw new HttpError("Invalid sample payload", 400);
-  const proofSample = mapProjectSample(project, projectSample);
+  const snapshotLookup = createSnapshotLookup(proof.snapshotCommits);
+  const proofSample = applySnapshotToSample(mapProjectSample(project, projectSample), snapshotLookup.get(project.id));
 
   const existingProofSamples = proof.codeSamples || [];
   const nextProofSamples = [proofSample, ...existingProofSamples.filter((sample) => sample.id !== proofSample.id)];
@@ -865,7 +877,14 @@ async function handleUpdateRequirements(request: Request, env: Env, jobId: strin
     Object.entries(proof.requirementSampleMap || {}).filter(([requirementId]) => nextRequirementIds.has(requirementId))
   );
   const projects = await listProjects(env, user.id);
-  const mappings = buildMappingsFromCoverage(requirements, projects, Object.values(nextCoverageMap), proof.codeSamples || []);
+  const snapshotLookup = createSnapshotLookup(proof.snapshotCommits);
+  const mappings = buildMappingsFromCoverage(
+    requirements,
+    projects,
+    Object.values(nextCoverageMap),
+    proof.codeSamples || [],
+    snapshotLookup
+  );
 
   proof.requirements = requirements;
   proof.requirementCoverageMap = nextCoverageMap;
@@ -979,10 +998,26 @@ async function handleGenerateProofPacket(request: Request, env: Env, jobId: stri
   const sampleSelection = buildProofCodeSamples(selectedSampleIds, selectedProjects);
   const existingProof = await getProofPacket(env, jobId);
   const requirements = normalizeRequirementsInput(payload.requirements, job.id, existingProof?.requirements);
-  const requirementCoverage = normalizeRequirementCoverage(payload.requirementCoverage, selectedProjects, sampleSelection.codeSamples);
+  const evidenceSnapshotAt = new Date().toISOString();
+  const snapshotCommits = await resolveProjectSnapshots(env, user.id, selectedProjects);
+  const snapshotLookup = createSnapshotLookup(snapshotCommits);
+  const enrichedCodeSamples = applySnapshotToSamples(sampleSelection.codeSamples, snapshotLookup);
+  const enrichedReadmeSample = sampleSelection.readmeSample
+    ? applySnapshotToSample(sampleSelection.readmeSample, snapshotLookup.get(sampleSelection.readmeSample.projectId))
+    : undefined;
+  const enrichedCommitSample = sampleSelection.commitSample
+    ? applySnapshotToSample(sampleSelection.commitSample, snapshotLookup.get(sampleSelection.commitSample.projectId))
+    : undefined;
+  const requirementCoverage = normalizeRequirementCoverage(payload.requirementCoverage, selectedProjects, enrichedCodeSamples);
   const requirementCoverageMap = toRequirementCoverageMap(requirementCoverage);
   const requirementSampleMap = toRequirementSampleMap(requirementCoverage);
-  const mappings = buildMappingsFromCoverage(requirements, selectedProjects, requirementCoverage, sampleSelection.codeSamples);
+  const mappings = buildMappingsFromCoverage(
+    requirements,
+    selectedProjects,
+    requirementCoverage,
+    enrichedCodeSamples,
+    snapshotLookup
+  );
   const defaultSummary = "Requirement-first packet. Candidate-curated links and rationale only.";
 
   const proofPacket: ProofPacket = {
@@ -994,10 +1029,12 @@ async function handleGenerateProofPacket(request: Request, env: Env, jobId: stri
     mappings,
     bullets: existingProof?.bullets || [],
     outreachNote: existingProof?.outreachNote || "",
-    createdAt: new Date().toISOString(),
-    codeSamples: sampleSelection.codeSamples,
-    readmeHighlight: sampleSelection.readmeSample,
-    commitTrail: sampleSelection.commitSample,
+    createdAt: evidenceSnapshotAt,
+    evidenceSnapshotAt,
+    snapshotCommits,
+    codeSamples: enrichedCodeSamples,
+    readmeHighlight: enrichedReadmeSample,
+    commitTrail: enrichedCommitSample,
     requirementCoverageMap,
     requirementSampleMap,
   };
@@ -1008,6 +1045,60 @@ async function handleGenerateProofPacket(request: Request, env: Env, jobId: stri
   await updateJob(env, job);
 
   return jsonResponse(proofPacket);
+}
+
+async function handleRefreshProofSnapshot(request: Request, env: Env, jobId: string): Promise<Response> {
+  const { user } = await requireUser(request, env);
+  const job = await getJob(env, jobId);
+  if (!job || job.userId !== user.id) {
+    throw new HttpError("Job not found", 404);
+  }
+  const proof = await getProofPacket(env, jobId);
+  if (!proof) {
+    throw new HttpError("Generate a Proof Packet first", 400);
+  }
+
+  const projects = await listProjects(env, user.id);
+  const projectIds = new Set<string>();
+  Object.values(proof.requirementCoverageMap || {}).forEach((entry) => {
+    (entry.projectIds || []).forEach((projectId) => projectIds.add(projectId));
+  });
+  (proof.codeSamples || []).forEach((sample) => projectIds.add(sample.projectId));
+  (proof.mappings || []).forEach((mapping) => {
+    if (mapping.evidence.projectId) {
+      projectIds.add(mapping.evidence.projectId);
+    }
+  });
+
+  const selectedProjects = projects.filter((project) => projectIds.has(project.id));
+  const evidenceSnapshotAt = new Date().toISOString();
+  const snapshotCommits = await resolveProjectSnapshots(env, user.id, selectedProjects);
+  const snapshotLookup = createSnapshotLookup(snapshotCommits);
+
+  const nextCodeSamples = applySnapshotToSamples(proof.codeSamples || [], snapshotLookup);
+  const nextReadme = proof.readmeHighlight
+    ? applySnapshotToSample(proof.readmeHighlight, snapshotLookup.get(proof.readmeHighlight.projectId))
+    : undefined;
+  const nextCommitTrail = proof.commitTrail
+    ? applySnapshotToSample(proof.commitTrail, snapshotLookup.get(proof.commitTrail.projectId))
+    : undefined;
+  const nextMappings = buildMappingsFromCoverage(
+    proof.requirements,
+    projects,
+    Object.values(proof.requirementCoverageMap || {}),
+    nextCodeSamples,
+    snapshotLookup
+  );
+
+  proof.evidenceSnapshotAt = evidenceSnapshotAt;
+  proof.snapshotCommits = snapshotCommits;
+  proof.codeSamples = nextCodeSamples;
+  proof.readmeHighlight = nextReadme;
+  proof.commitTrail = nextCommitTrail;
+  proof.mappings = nextMappings;
+  await saveProofPacket(env, proof);
+
+  return jsonResponse(proof);
 }
 
 async function runLLMForSnippetSummary(env: Env, summary: string, code: string): Promise<string> {
@@ -1185,6 +1276,8 @@ function normalizeCodeSamples(samples?: ProjectCodeSample[]): ProjectCodeSample[
         date: entry.date,
         htmlUrl: entry.htmlUrl,
       })),
+      sourceCommitSha: sample.sourceCommitSha,
+      lastCommitDate: sample.lastCommitDate || null,
       createdAt: sample.createdAt || now,
       updatedAt: now,
       sourceLocked: Boolean(sample.sourceLocked),
@@ -1324,6 +1417,12 @@ interface ProofSampleSelection {
   commitSample?: ProofPacketCodeSample;
 }
 
+interface ProjectSnapshotLookupEntry {
+  commitSha?: string;
+  committedAt?: string | null;
+  commitUrl?: string;
+}
+
 function normalizeRequirementCoverage(
   input: RequirementCoverage[] | undefined,
   selectedProjects: Project[],
@@ -1398,7 +1497,8 @@ function buildMappingsFromCoverage(
   requirements: Requirement[],
   projects: Project[],
   coverage: RequirementCoverage[],
-  samples: ProofPacketCodeSample[]
+  samples: ProofPacketCodeSample[],
+  snapshotLookup?: Map<string, ProjectSnapshotLookupEntry>
 ): EvidenceMappingWithEvidence[] {
   const coverageMap = new Map(coverage.map((entry) => [entry.requirementId, entry]));
   const sampleMap = new Map(samples.map((sample) => [sample.id, sample]));
@@ -1430,6 +1530,8 @@ function buildMappingsFromCoverage(
           demoUrl: project.demoUrl,
           context: project.context,
           year: project.year,
+          sourceCommitSha: snapshotLookup?.get(project.id)?.commitSha,
+          lastCommitDate: snapshotLookup?.get(project.id)?.committedAt || project.lastUpdated,
           aiRole: project.aiRole,
           aiTools: project.aiTools ?? [],
           aiSupervisionNotes: project.aiSupervisionNotes,
@@ -1443,6 +1545,8 @@ function buildMappingsFromCoverage(
                 lineStart: mappedSample.lineStart,
                 lineEnd: mappedSample.lineEnd,
                 url: mappedSample.url,
+                sourceCommitSha: mappedSample.sourceCommitSha,
+                lastCommitDate: mappedSample.lastCommitDate,
               }
             : undefined,
         },
@@ -1488,6 +1592,70 @@ function buildProofCodeSamples(selectedSampleIds: string[], projects: Project[])
   return result;
 }
 
+function createSnapshotLookup(snapshotCommits?: ProjectSnapshot[]): Map<string, ProjectSnapshotLookupEntry> {
+  return new Map(
+    (snapshotCommits || []).map((entry) => [
+      entry.projectId,
+      {
+        commitSha: entry.commitSha,
+        committedAt: entry.committedAt || null,
+        commitUrl: entry.commitUrl,
+      },
+    ])
+  );
+}
+
+function applySnapshotToSample(
+  sample: ProofPacketCodeSample,
+  snapshot: ProjectSnapshotLookupEntry | undefined
+): ProofPacketCodeSample {
+  return {
+    ...sample,
+    sourceCommitSha: snapshot?.commitSha || sample.sourceCommitSha,
+    lastCommitDate: snapshot?.committedAt || sample.lastCommitDate || null,
+  };
+}
+
+function applySnapshotToSamples(
+  samples: ProofPacketCodeSample[],
+  snapshotLookup: Map<string, ProjectSnapshotLookupEntry>
+): ProofPacketCodeSample[] {
+  return samples.map((sample) => {
+    const snapshot = snapshotLookup.get(sample.projectId);
+    return {
+      ...sample,
+      sourceCommitSha: snapshot?.commitSha || sample.sourceCommitSha,
+      lastCommitDate: snapshot?.committedAt || sample.lastCommitDate || null,
+    };
+  });
+}
+
+async function resolveProjectSnapshots(env: Env, userId: string, selectedProjects: Project[]): Promise<ProjectSnapshot[]> {
+  const githubProjects = selectedProjects.filter((project) => project.sourceType === "github" && !project.isPrivate);
+  if (!githubProjects.length) return [];
+  const encryptedToken = await getEncryptedToken(env, userId);
+  const token = await decryptToken(env, encryptedToken);
+  if (!token) return [];
+
+  const settled = await Promise.allSettled(
+    githubProjects.map(async (project): Promise<ProjectSnapshot> => {
+      const commits = await fetchRepoCommits(token, project.fullName, 1);
+      const latest = commits[0];
+      return {
+        projectId: project.id,
+        projectFullName: project.fullName,
+        commitSha: latest?.sha,
+        committedAt: latest?.commit?.author?.date || project.lastUpdated,
+        commitUrl: latest?.html_url,
+      };
+    })
+  );
+
+  return settled
+    .filter((entry): entry is PromiseFulfilledResult<ProjectSnapshot> => entry.status === "fulfilled")
+    .map((entry) => entry.value);
+}
+
 function findProjectSample(projects: Project[], sampleId: string) {
   for (const project of projects) {
     const sample = project.codeSamples?.find((entry) => entry.id === sampleId);
@@ -1514,6 +1682,8 @@ function mapProjectSample(project: Project, sample: ProjectCodeSample): ProofPac
     tags: sample.tags,
     readmeHeading: sample.readmeHeading,
     commitEntries: sample.commitEntries,
+    sourceCommitSha: sample.sourceCommitSha,
+    lastCommitDate: sample.lastCommitDate,
     sourceLocked: sample.sourceLocked,
     isPrivate: project.isPrivate,
   };

@@ -174,6 +174,12 @@ export function generateProof(jobId: string, payload: GeneratePayload) {
   });
 }
 
+export function refreshJobSnapshot(jobId: string) {
+  return apiFetch<ProofPacket>(`/jobs/${jobId}/refresh-snapshot`, {
+    method: "POST",
+  });
+}
+
 export function updateJobStatus(jobId: string, status: Job["status"]) {
   return apiFetch<Job>(`/jobs/${jobId}/status`, {
     method: "PATCH",

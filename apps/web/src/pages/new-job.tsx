@@ -444,10 +444,24 @@ function RequirementEvidenceMapper({
       <div className="flex flex-col gap-1 md:flex-row md:items-center md:justify-between">
         <div>
           <label className="text-sm font-semibold text-white">Code suggestions and mapping</label>
-          <p className="text-xs text-muted-foreground">Pick explicit evidence per requirement. LLM suggests, you decide.</p>
+          <p className="text-xs text-muted-foreground">Pick explicit evidence per requirement. Suggestions help you scan faster.</p>
         </div>
         <p className="text-xs text-muted-foreground">
           {backedCount}/{requirements.length || 0} backed • {attachedSampleCount} sample{attachedSampleCount === 1 ? "" : "s"} attached
+        </p>
+      </div>
+      <div className="mt-3 rounded-xl border border-slate-800/80 bg-slate-950/70 px-3 py-2 text-xs">
+        {backedCount >= 3 && attachedSampleCount >= 1 ? (
+          <p className="text-emerald-300">
+            Strong packet. You backed 3+ requirements and attached at least one sample.
+          </p>
+        ) : (
+          <p className="text-amber-300">
+            Why this may be weak: map at least 3 requirements and attach 1 sample (code, README, or commit).
+          </p>
+        )}
+        <p className="mt-1 text-slate-400">
+          You do not need to map every requirement. Map only what you can verify clearly.
         </p>
       </div>
       <div className="mt-3 space-y-4">
@@ -521,13 +535,13 @@ function RequirementEvidenceMapper({
                   )}
                 </div>
                 <div className="mt-3">
-                  <label className="text-[11px] uppercase tracking-[0.2em] text-slate-500">In one sentence, how does this evidence meet the requirement?</label>
+                  <label className="text-[11px] uppercase tracking-[0.2em] text-slate-500">In one sentence, explain the design choice or code behavior that proves this requirement.</label>
                   <Textarea
                     value={coverage.rationale}
                     onChange={(event) => updateRationale(requirement.id, event.target.value)}
                     rows={2}
                     className="mt-1"
-                    placeholder="Example: This API handler and tests show production route design and error handling."
+                    placeholder="Example: This API handler uses typed validation and explicit error paths, and the test file proves edge-case coverage."
                   />
                 </div>
                 {(coverage.projectIds.length > 0 || coverage.sampleId) && coverage.rationale.trim().length < 12 ? (

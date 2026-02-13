@@ -18,6 +18,7 @@ import {
   fetchJob,
   fetchProjects,
   generateProof,
+  refreshJobSnapshot,
   suggestPacketWording,
   updateJobRequirements,
   updateJobStatus,
@@ -199,6 +200,14 @@ export function JobDetailPage() {
       await queryClient.invalidateQueries({ queryKey: ["job", jobId] });
     },
     onError: (error: Error) => toast("Could not regenerate", { description: error.message }),
+  });
+  const refreshSnapshotMutation = useMutation({
+    mutationFn: () => refreshJobSnapshot(jobId),
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: ["job", jobId] });
+      toast("Snapshot refreshed", { description: "Updated commit SHAs and evidence dates." });
+    },
+    onError: (error: Error) => toast("Could not refresh snapshot", { description: error.message }),
   });
   const saveRequirementsMutation = useMutation({
     mutationFn: () =>
@@ -389,6 +398,15 @@ export function JobDetailPage() {
             </CardDescription>
           </div>
           <div className="flex items-center gap-3">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => refreshSnapshotMutation.mutate()}
+              disabled={refreshSnapshotMutation.isPending || !proof}
+            >
+              {refreshSnapshotMutation.isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+              Refresh snapshot
+            </Button>
             <Button
               variant="ghost"
               onClick={() => regenerateMutation.mutate()}

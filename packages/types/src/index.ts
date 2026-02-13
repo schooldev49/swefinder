@@ -27,6 +27,14 @@ export interface CommitEntry {
   htmlUrl?: string;
 }
 
+export interface ProjectSnapshot {
+  projectId: string;
+  projectFullName: string;
+  commitSha?: string;
+  committedAt?: string | null;
+  commitUrl?: string;
+}
+
 export interface ProjectCodeSample {
   id: string;
   type?: CodeSampleType;
@@ -40,6 +48,8 @@ export interface ProjectCodeSample {
   tags?: string[];
   readmeHeading?: string;
   commitEntries?: CommitEntry[];
+  sourceCommitSha?: string;
+  lastCommitDate?: string | null;
   createdAt?: string;
   updatedAt?: string;
   sourceLocked?: boolean;
@@ -114,6 +124,8 @@ export interface Evidence {
   context?: string;
   metrics?: Record<string, EvidenceMetric>;
   codeSnippet?: EvidenceSnippet;
+  sourceCommitSha?: string;
+  lastCommitDate?: string | null;
   aiRole?: AIRole;
   aiTools?: string[];
   aiSupervisionNotes?: string;
@@ -140,6 +152,8 @@ export interface EvidenceSnippet {
   lineStart?: number;
   lineEnd?: number;
   url?: string;
+  sourceCommitSha?: string;
+  lastCommitDate?: string | null;
 }
 
 export interface ProofPacketCodeSample extends EvidenceSnippet {
@@ -150,6 +164,8 @@ export interface ProofPacketCodeSample extends EvidenceSnippet {
   tags?: string[];
   readmeHeading?: string;
   commitEntries?: CommitEntry[];
+  sourceCommitSha?: string;
+  lastCommitDate?: string | null;
   sourceLocked?: boolean;
   isPrivate?: boolean;
 }
@@ -171,6 +187,8 @@ export interface ProofPacket {
   bullets: string[];
   outreachNote: string;
   createdAt: string;
+  evidenceSnapshotAt?: string;
+  snapshotCommits?: ProjectSnapshot[];
   codeSamples?: ProofPacketCodeSample[];
   readmeHighlight?: ProofPacketCodeSample;
   commitTrail?: ProofPacketCodeSample;
