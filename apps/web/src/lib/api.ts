@@ -35,6 +35,13 @@ export interface SnippetSuggestionPayload {
   code: string;
 }
 
+export interface RequirementDraftPayload {
+  id?: string;
+  text: string;
+  priority?: number;
+  notes?: string;
+}
+
 const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL as string | undefined) || "/api";
 
 async function apiFetch<T>(path: string, init?: RequestInit): Promise<T> {
@@ -195,6 +202,13 @@ export function suggestSnippetTags(payload: SnippetSuggestionPayload) {
   return apiFetch<{ tags: string[] }>("/snippets/suggest-tags", {
     method: "POST",
     body: JSON.stringify(payload),
+  });
+}
+
+export function suggestRequirements(jobDescription: string) {
+  return apiFetch<{ requirements: RequirementDraftPayload[] }>("/requirements/suggest", {
+    method: "POST",
+    body: JSON.stringify({ jobDescription }),
   });
 }
 

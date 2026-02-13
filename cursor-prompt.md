@@ -180,7 +180,6 @@ export interface Job {
   id: string;
   title: string;
   company?: string;
-  jobUrl?: string;
   rawDescription: string;
   createdAt: string;
   status: JobStatus;

@@ -12,6 +12,7 @@ import type {
 } from "@evidensify/types";
 import { callLLM } from "./llm/callLLM";
 import {
+  buildRequirementsPrompt,
   buildGrammarPolishPrompt,
   buildSnippetSummaryPrompt,
   buildSnippetTagsPrompt,
@@ -86,6 +87,10 @@ interface UpdateStatusPayload {
 interface SnippetSuggestionPayload {
   summary: string;
   code: string;
+}
+
+interface SuggestRequirementsPayload {
+  jobDescription: string;
 }
 
 interface RequirementSamplePayload {
@@ -220,6 +225,10 @@ export default {
 
       if (url.pathname === "/api/snippets/suggest-tags" && request.method === "POST") {
         return withCors(await handleSuggestSnippetTags(request, env), origin);
+      }
+
+      if (url.pathname === "/api/requirements/suggest" && request.method === "POST") {
+        return withCors(await handleSuggestRequirements(request, env), origin);
       }
 
       const jobIdMatch = url.pathname.match(/^\/api\/jobs\/(?<jobId>[^\/]+)/);
@@ -638,6 +647,60 @@ async function handleSuggestSnippetTags(request: Request, env: Env): Promise<Res
   const { summary, code } = validateSnippetPayload(payload);
   const tags = await runLLMForSnippetTags(env, summary, code);
   return jsonResponse({ tags });
+}
+
+async function handleSuggestRequirements(request: Request, env: Env): Promise<Response> {
+  await requireUser(request, env);
+  const payload = await parseJsonBody<SuggestRequirementsPayload>(request);
+  const jobDescription = (payload.jobDescription || "").trim();
+  if (!jobDescription) {
+    throw new HttpError("Job description is required", 400);
+  }
+
+  let suggestions: Array<{ id?: string; text: string; priority?: number; notes?: string }> = [];
+  try {
+    const response = await callLLM(env, {
+      systemPrompt: `
+You extract only coding-related, code-verifiable technical requirements from job descriptions.
+
+Include:
+- Programming languages
+- Frameworks and libraries
+- System design responsibilities
+- API, database, ML, infra tasks
+- Engineering actions that can be demonstrated via code
+
+Exclude:
+- Soft skills
+- Years of experience
+- Generic phrases (e.g., "fast-paced environment")
+- Non-technical culture statements
+
+Do not invent requirements.
+Only extract what is explicitly stated or clearly implied.
+Output concise, specific requirements suitable for mapping to code evidence.
+`,
+      userPrompt: buildRequirementsPrompt(jobDescription),
+      responseFormat: "json",
+      maxTokens: 500,
+    });
+    suggestions = parseSuggestedRequirements(response.raw);
+  } catch {
+    suggestions = [];
+  }
+
+  if (!suggestions.length) {
+    suggestions = fallbackRequirementsFromDescription(jobDescription);
+  }
+  const normalized = normalizeRequirementsInput(suggestions, "draft");
+  return jsonResponse({
+    requirements: normalized.map((entry) => ({
+      id: entry.id,
+      text: entry.text,
+      priority: entry.priority,
+      notes: entry.notes,
+    })),
+  });
 }
 
 async function handleUpdateRequirementSample(request: Request, env: Env, jobId: string): Promise<Response> {
@@ -1475,4 +1538,58 @@ function validateSnippetPayload(payload: SnippetSuggestionPayload): { summary: s
     throw new HttpError("Code snippet is too long for suggestions", 400);
   }
   return { summary, code };
+}
+
+function parseSuggestedRequirements(raw: string): Array<{ id?: string; text: string; priority?: number; notes?: string }> {
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(raw);
+  } catch {
+    return [];
+  }
+
+  const candidateList = Array.isArray(parsed)
+    ? parsed
+    : typeof parsed === "object" && parsed !== null && Array.isArray((parsed as { requirements?: unknown[] }).requirements)
+      ? (parsed as { requirements: unknown[] }).requirements
+      : [];
+
+  return candidateList
+    .map((entry, index) => {
+      if (!entry || typeof entry !== "object") return null;
+      const obj = entry as { id?: unknown; text?: unknown; priority?: unknown; notes?: unknown };
+      const text = typeof obj.text === "string" ? obj.text.trim() : "";
+      if (!text) return null;
+      return {
+        id: typeof obj.id === "string" && obj.id.trim() ? obj.id.trim() : `req-${index + 1}`,
+        text,
+        priority: typeof obj.priority === "number" ? obj.priority : undefined,
+        notes: typeof obj.notes === "string" ? obj.notes.trim() : undefined,
+      };
+    })
+    .filter((entry): entry is { id: string; text: string; priority: number; notes: string } => Boolean(entry));
+}
+
+function fallbackRequirementsFromDescription(jobDescription: string): Array<{ id?: string; text: string; priority?: number; notes?: string }> {
+  const lines = jobDescription
+    .split(/\r?\n/)
+    .map((line) => line.replace(/^[•*\-\d.)\s]+/, "").trim())
+    .filter((line) => line.length > 12);
+  const unique: string[] = [];
+  for (const line of lines) {
+    const lower = line.toLowerCase();
+    const looksTechnical =
+      /\b(api|backend|frontend|python|typescript|react|node|ml|machine learning|data|sql|testing|deploy|infrastructure|system|experiment)\b/.test(
+        lower
+      );
+    if (!looksTechnical) continue;
+    if (unique.some((existing) => existing.toLowerCase() === lower)) continue;
+    unique.push(line);
+    if (unique.length >= 5) break;
+  }
+  return unique.map((text, index) => ({
+    id: `req-${index + 1}`,
+    text: text.slice(0, 240),
+    priority: 10 - index,
+  }));
 }
