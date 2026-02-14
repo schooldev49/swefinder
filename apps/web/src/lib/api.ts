@@ -318,3 +318,7 @@ export function fetchSharedPacket(handle: string, packetSlug: string) {
     `/share/u/${handle}/packets/${packetSlug}`
   );
 }
+
+export function fetchSharedPacketByToken(token: string) {
+  return shareFetch<{ user: User; job: Job; proofPacket: ProofPacket | null }>(`/share/packet/${token}`);
+}

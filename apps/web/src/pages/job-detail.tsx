@@ -95,8 +95,8 @@ export function JobDetailPage() {
   const proof = jobQuery.data?.proofPacket;
   const proofSamples = proof?.codeSamples ?? [];
   const origin = typeof window !== "undefined" ? window.location.origin : "";
-  const shareLink =
-    session?.profileSlug && job?.shareSlug ? `${origin}/u/${session.profileSlug}/${job.shareSlug}` : "";
+  const profileLink = session?.profileSlug ? `${origin}/u/${session.profileSlug}` : "";
+  const packetShortLink = job?.shareToken ? `${origin}/p/${job.shareToken}` : "";
 
   const citations = useMemo(() => {
     if (!proof) return [];
@@ -427,8 +427,12 @@ export function JobDetailPage() {
           {availableSamples.length > 0 && (
             <CodeSamplesSelector samples={availableSamples} selected={selectedSamples} onToggle={handleSampleToggle} />
           )}
-          {job.shareSlug && (
-            <ShareLinkCallout shareLink={shareLink} profileSlug={session?.profileSlug} jobSlug={job.shareSlug} />
+          {job.shareToken && (
+            <ShareLinkCallout
+              profileLink={profileLink}
+              packetShortLink={packetShortLink}
+              profileSlug={session?.profileSlug}
+            />
           )}
           {proof && (
             <div className="rounded-2xl border border-slate-800/80 bg-slate-950/60 p-3 text-[11px] text-muted-foreground">
@@ -1136,30 +1140,35 @@ function EditableCopyRow({
 }
 
 function ShareLinkCallout({
-  shareLink,
+  profileLink,
+  packetShortLink,
   profileSlug,
-  jobSlug,
 }: {
-  shareLink: string;
+  profileLink: string;
+  packetShortLink: string;
   profileSlug?: string;
-  jobSlug?: string;
 }) {
-  const handleCopy = async () => {
-    if (!shareLink) return;
-    await navigator.clipboard.writeText(shareLink);
-    toast("Share link copied", { description: shareLink });
+  const handleCopy = async (value: string, label: string) => {
+    if (!value) return;
+    await navigator.clipboard.writeText(value);
+    toast(`${label} copied`, { description: value });
   };
   return (
     <div className="rounded-2xl border border-slate-800/80 bg-slate-950/60 p-4">
       <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
         <div>
-          <p className="text-xs uppercase tracking-wide text-muted-foreground">Shareable Proof Packet URL</p>
-          <p className="font-mono text-sm text-white">
-            {profileSlug && jobSlug ? `/u/${profileSlug}/${jobSlug}` : "Set your proof profile handle first"}
-          </p>
+          <p className="text-xs uppercase tracking-wide text-muted-foreground">Share links</p>
+          <p className="font-mono text-sm text-white">{profileSlug ? `/u/${profileSlug}` : "Set your proof profile handle first"}</p>
+          {packetShortLink ? (
+            <p className="font-mono text-sm text-white">{packetShortLink.replace(/^https?:\/\/[^/]+/, "")}</p>
+          ) : null}
           <p className="text-xs text-muted-foreground">
             This link always reflects the projects you selected, so reviewers know you curated it for their team.
           </p>
+          <div className="mt-2">
+            <p className="text-[11px] uppercase tracking-[0.2em] text-slate-500">Where to paste this</p>
+            <p className="mt-1 text-xs text-slate-400">Resume: use your profile link. Application or email: use the packet link.</p>
+          </div>
           {!profileSlug && (
             <p className="text-xs text-amber-400">
               Configure your handle on the{" "}
@@ -1170,12 +1179,15 @@ function ShareLinkCallout({
             </p>
           )}
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           <Button variant="ghost" size="sm" asChild>
             <Link to="/profile">Profile</Link>
           </Button>
-          <Button variant="outline" size="sm" onClick={handleCopy} disabled={!shareLink}>
-            Copy link
+          <Button variant="outline" size="sm" onClick={() => handleCopy(profileLink, "Profile link")} disabled={!profileLink}>
+            Copy profile
+          </Button>
+          <Button variant="outline" size="sm" onClick={() => handleCopy(packetShortLink, "Packet link")} disabled={!packetShortLink}>
+            Copy packet
           </Button>
         </div>
       </div>

@@ -55,7 +55,7 @@ export function ProfilePage() {
   const slugTooShort = trimmedSlug.length > 0 && trimmedSlug.length < 3;
 
   const shareableJobs = useMemo(
-    () => (jobsQuery.data || []).filter((job) => Boolean(job.shareSlug && job.proofPacketId)),
+    () => (jobsQuery.data || []).filter((job) => Boolean(job.shareToken && job.proofPacketId)),
     [jobsQuery.data]
   );
 
@@ -135,7 +135,7 @@ export function ProfilePage() {
         <CardHeader>
           <CardTitle className="text-white">Shareable links</CardTitle>
           <CardDescription>
-            Give recruiters a single profile URL, or share job-specific Proof Packets that highlight the work you selected for that team.
+            Use your profile URL on your resume. Use a job-specific packet link in applications or recruiter email.
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-8">
@@ -144,7 +144,7 @@ export function ProfilePage() {
               <div>
                 <p className="text-sm font-medium text-white">Proof profile</p>
                 <p className="text-xs text-muted-foreground">
-                  This is the reusable link for /u/{trimmedSlug || "handle"}.
+                  Resume link. Reusable across all roles: /u/{trimmedSlug || "handle"}
                 </p>
                 {!isPublic && (
                   <p className="text-xs text-amber-400">Enable “Make profile discoverable” to share this publicly.</p>
@@ -180,7 +180,7 @@ export function ProfilePage() {
                   Job-specific Proof Packets
                 </p>
                 <p className="text-xs text-muted-foreground">
-                  Each link is scoped to one job: /u/{trimmedSlug || "handle"}/&lt;job-slug&gt;
+                  Application or email link. Scoped to one job.
                 </p>
               </div>
               <Button variant="ghost" size="sm" asChild>
@@ -197,13 +197,13 @@ export function ProfilePage() {
                   <TableRow>
                     <TableHead>Job</TableHead>
                     <TableHead>Status</TableHead>
-                    <TableHead>Share link</TableHead>
+                    <TableHead>Short packet</TableHead>
                     <TableHead className="text-right">Actions</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {shareableJobs.map((job) => {
-                    const link = profileUrl && job.shareSlug ? `${profileUrl}/${job.shareSlug}` : "";
+                    const shortLink = job.shareToken ? `${origin}/p/${job.shareToken}` : "";
                     return (
                       <TableRow key={job.id}>
                         <TableCell>
@@ -216,18 +216,18 @@ export function ProfilePage() {
                           <Badge variant={STATUS_DISPLAY[job.status].variant}>{STATUS_DISPLAY[job.status].label}</Badge>
                         </TableCell>
                         <TableCell>
-                          {link ? (
-                            <code className="text-xs text-primary">{`/u/${trimmedSlug}/${job.shareSlug}`}</code>
+                          {shortLink ? (
+                            <code className="text-xs text-primary">{`/p/${job.shareToken}`}</code>
                           ) : (
-                            <span className="text-xs text-muted-foreground">Set your profile handle first</span>
+                            <span className="text-xs text-muted-foreground">Not ready</span>
                           )}
                         </TableCell>
                         <TableCell className="flex items-center justify-end gap-2">
                           <Button
                             variant="outline"
                             size="sm"
-                            onClick={() => copyLink(link, `${job.title} packet`)}
-                            disabled={!link}
+                            onClick={() => copyLink(shortLink, `${job.title} packet`)}
+                            disabled={!shortLink}
                           >
                             <Copy className="mr-2 h-4 w-4" /> Copy
                           </Button>

@@ -73,6 +73,10 @@ const router = createBrowserRouter([
     element: <PublicPacketPage />,
   },
   {
+    path: "/p/:token",
+    element: <PublicPacketPage />,
+  },
+  {
     path: "/onboarding",
     element: <Navigate to="/projects" replace />,
   },

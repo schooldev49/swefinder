@@ -42,7 +42,7 @@ export function PublicProfilePage() {
               </div>
               <div className="rounded-xl border border-slate-800/80 bg-slate-950/60 px-4 py-3 text-xs text-muted-foreground">
                 Looking for a job-specific Proof Packet? Ask the candidate for{" "}
-                <span className="text-white">/u/{profileQuery.data.user.profileSlug}/&lt;job&gt;</span> — each packet is assembled just for that opening.
+                <span className="text-white">/p/&lt;token&gt;</span> so the packet stays unlisted and role-specific.
               </div>
             </div>
           </header>
@@ -71,6 +71,8 @@ export function PublicProfilePage() {
 }
 
 function ProjectCard({ project }: { project: Project }) {
+  const highlights = (project.codeSamples || []).slice(0, 2);
+  const aiUsage = formatAiUsage(project);
   return (
     <div className="rounded-2xl border border-slate-900/80 bg-slate-950/80 p-5 space-y-2">
       <div className="flex items-start justify-between gap-3">
@@ -87,6 +89,19 @@ function ProjectCard({ project }: { project: Project }) {
         {project.year && <span>{project.year}</span>}
         {project.primaryLanguage && <span>{project.primaryLanguage}</span>}
       </div>
+      {aiUsage ? <p className="text-[11px] text-slate-400">{aiUsage}</p> : null}
+      {highlights.length > 0 ? (
+        <div className="rounded-xl border border-slate-800/70 bg-slate-950/60 p-3">
+          <p className="text-[11px] uppercase tracking-[0.2em] text-slate-500">Proof highlights</p>
+          <ul className="mt-2 space-y-1">
+            {highlights.map((sample) => (
+              <li key={sample.id} className="text-xs text-slate-300">
+                {sample.summary}
+              </li>
+            ))}
+          </ul>
+        </div>
+      ) : null}
       {project.htmlUrl && (
         <a
           href={project.htmlUrl}
@@ -109,6 +124,26 @@ function ProjectCard({ project }: { project: Project }) {
       )}
     </div>
   );
+}
+
+function formatAiUsage(project: Pick<Project, "aiRole" | "aiTools" | "aiSupervisionNotes">): string | null {
+  const roleLabels: Record<string, string> = {
+    none: "No AI",
+    assist: "Assist",
+    "co-design": "Co-design",
+    "agent-orchestration": "Agent orchestration",
+  };
+  const parts: string[] = [];
+  if (project.aiRole && roleLabels[project.aiRole]) {
+    parts.push(`AI usage: ${roleLabels[project.aiRole]}`);
+  }
+  if (project.aiTools && project.aiTools.length > 0) {
+    parts.push(`Tools: ${project.aiTools.join(", ")}`);
+  }
+  if (project.aiSupervisionNotes) {
+    parts.push(`Supervision: ${project.aiSupervisionNotes}`);
+  }
+  return parts.length ? parts.join(" · ") : null;
 }
 
 function ErrorState() {

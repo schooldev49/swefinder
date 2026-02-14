@@ -3,7 +3,7 @@ import { useParams } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { CheckCircle2, ChevronRight } from "lucide-react";
 import type { CommitEntry, Evidence, EvidenceMappingWithEvidence, ProofPacketCodeSample } from "@evidensify/types";
-import { fetchSharedPacket } from "@/lib/api";
+import { fetchSharedPacket, fetchSharedPacketByToken } from "@/lib/api";
 import { PublicShareLayout } from "@/components/layout/public-share-layout";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -19,11 +19,14 @@ const SAMPLE_TYPE_LABELS: Record<string, string> = {
 };
 
 export function PublicPacketPage() {
-  const { handle, packetSlug } = useParams();
+  const { handle, packetSlug, token } = useParams();
   const packetQuery = useQuery({
-    queryKey: ["public-packet", handle, packetSlug],
-    queryFn: () => fetchSharedPacket(handle ?? "", packetSlug ?? ""),
-    enabled: Boolean(handle && packetSlug),
+    queryKey: ["public-packet", handle, packetSlug, token],
+    queryFn: () => {
+      if (token) return fetchSharedPacketByToken(token);
+      return fetchSharedPacket(handle ?? "", packetSlug ?? "");
+    },
+    enabled: Boolean(token || (handle && packetSlug)),
   });
 
   return (
