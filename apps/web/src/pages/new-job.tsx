@@ -40,6 +40,20 @@ export function NewJobPage() {
         .map((project) => project.id),
     [publicProjects]
   );
+  const featuredSamples = useMemo(
+    () =>
+      publicProjects
+        .flatMap((project) =>
+          (project.codeSamples || [])
+            .filter((sample) => sample.isFeaturedProfile)
+            .map((sample) => ({
+              ...sample,
+              projectId: project.id,
+              projectFullName: project.fullName,
+            }))
+        ),
+    [publicProjects]
+  );
   const privateProjectCount = (projects || []).filter((project) => project.isPrivate).length;
 
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
@@ -268,7 +282,7 @@ export function NewJobPage() {
       return;
     }
     setSelectedProjects(new Set(featuredProjectIds));
-    setRequirementCoverageMap((prev) => prefillCoverageFromSuggestions(requirements, prev, availableSamples));
+    setRequirementCoverageMap((prev) => prefillCoverageFromSuggestions(requirements, prev, featuredSamples));
     toast("Using featured proof", { description: "Featured projects are selected. Edit only if needed." });
   };
 
@@ -354,6 +368,9 @@ export function NewJobPage() {
                 ) : null}
               </div>
             </div>
+            <p className="mt-1 text-xs text-muted-foreground">
+              Featured proof in Projects auto-fills this step. You can still customize mapping below.
+            </p>
             {isLoading ? (
               <div className="mt-3 h-24 animate-pulse rounded-xl bg-slate-900/60" />
             ) : publicProjects.length > 0 ? (

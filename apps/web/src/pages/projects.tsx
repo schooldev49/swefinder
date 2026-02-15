@@ -55,7 +55,7 @@ const PROJECTS_CHECKLIST = [
   },
   {
     title: "Generate packets",
-    detail: "Head to Jobs → New job to map requirements and add optional samples there.",
+    detail: "Head to Jobs → New job to map requirements. It auto-fills from your featured proof.",
   },
 ];
 
@@ -761,13 +761,19 @@ export function ProjectsPage() {
                     />
                   </label>
                 </div>
+                <div className="mt-4">
+                  <ProjectCodeSamplesEditor
+                    project={project}
+                    onChange={(samples: ProjectCodeSample[]) => updateProject(project.id, { codeSamples: samples })}
+                  />
+                </div>
                 <div className="mt-4 rounded-2xl border border-slate-800/70 bg-slate-950/50 p-4 text-xs text-muted-foreground">
                   <p className="text-[11px] uppercase tracking-[0.3em] text-slate-500">Featured proof for public profile</p>
                   <p className="mt-2">
                     Feature only your best proof. Public profile caps: code {featuredSampleCounts.code}/{MAX_FEATURED_CODE}, commit {featuredSampleCounts.commit}/{MAX_FEATURED_COMMIT}, readme {featuredSampleCounts.readme}/{MAX_FEATURED_README}.
                   </p>
                   {(project.codeSamples || []).length === 0 ? (
-                    <p className="mt-2 text-[11px] text-muted-foreground">No saved samples yet. Add samples in a job flow, then feature the strongest ones here.</p>
+                    <p className="mt-2 text-[11px] text-muted-foreground">No saved samples yet. Add samples above, then feature the strongest ones here.</p>
                   ) : (
                     <div className="mt-3 space-y-2">
                       {(project.codeSamples || []).map((sample) => (
