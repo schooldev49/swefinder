@@ -573,6 +573,19 @@ async function handleSaveProjects(request: Request, env: Env): Promise<Response>
   if (showcasedCount > 4) {
     throw new HttpError("You can showcase at most 4 projects", 400);
   }
+  const featured = normalized.flatMap((project) => project.codeSamples || []).filter((sample) => sample.isFeaturedProfile);
+  const featuredCode = featured.filter((sample) => (sample.type || "code") === "code").length;
+  const featuredReadme = featured.filter((sample) => sample.type === "readme").length;
+  const featuredCommit = featured.filter((sample) => sample.type === "commit").length;
+  if (featuredCode > 3) {
+    throw new HttpError("Feature up to 3 code samples on your public profile", 400);
+  }
+  if (featuredCommit > 3) {
+    throw new HttpError("Feature up to 3 commit samples on your public profile", 400);
+  }
+  if (featuredReadme > 1) {
+    throw new HttpError("Feature only 1 README sample on your public profile", 400);
+  }
   await saveProjects(env, user.id, normalized);
   return jsonResponse(normalized);
 }
@@ -1276,6 +1289,7 @@ function normalizeCodeSamples(samples?: ProjectCodeSample[]): ProjectCodeSample[
         date: entry.date,
         htmlUrl: entry.htmlUrl,
       })),
+      isFeaturedProfile: Boolean(sample.isFeaturedProfile),
       sourceCommitSha: sample.sourceCommitSha,
       lastCommitDate: sample.lastCommitDate || null,
       createdAt: sample.createdAt || now,

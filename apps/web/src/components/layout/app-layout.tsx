@@ -8,7 +8,8 @@ import { useSession } from "@/hooks/use-session";
 import { buildGitHubLoginUrl } from "@/lib/auth";
 import { logout } from "@/lib/api";
 import { cn } from "@/lib/utils";
-const baseLinks = [
+const navLinks = [
+  { to: "/profile", label: "Profile" },
   { to: "/projects", label: "Projects" },
   { to: "/jobs", label: "Jobs" },
 ];
@@ -18,7 +19,6 @@ export function AppLayout() {
   const queryClient = useQueryClient();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const isAuthenticated = Boolean(user);
-  const navLinks = isAuthenticated ? [...baseLinks, { to: "/profile", label: "Profile" }] : baseLinks;
 
   const handleLogin = () => {
     window.location.href = buildGitHubLoginUrl("/projects");

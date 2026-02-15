@@ -5,6 +5,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { CodeSnippet } from "@/components/ui/code-snippet";
+import { useSEO } from "@/lib/seo";
 
 const exampleRequirements = [
   {
@@ -95,6 +96,12 @@ save_failure_cases(results.hard_negatives, "artifacts/failures.csv")`,
 ];
 
 export function ExamplePacketPage() {
+  useSEO({
+    title: "Example job-specific packet",
+    description: "Preview an example packet with mapped requirements, code samples, README evidence, and commit trail.",
+    path: "/example-packet",
+    type: "article",
+  });
   const [showSample, setShowSample] = useState(false);
   const [openCommit, setOpenCommit] = useState<string | null>(null);
 

@@ -29,6 +29,7 @@ import { cn } from "@/lib/utils";
 import { Loader2, RefreshCw, Search, Trash2, X, Pencil } from "lucide-react";
 import { toast } from "sonner";
 import type { AIRole, CodeSampleType, CommitEntry, Project, ProjectCodeSample } from "@evidensify/types";
+import { useSEO } from "@/lib/seo";
 
 const CONTEXT_OPTIONS = ["Personal", "Course", "Open Source", "Startup", "Research"];
 const AI_ROLE_OPTIONS = [
@@ -38,6 +39,9 @@ const AI_ROLE_OPTIONS = [
   { value: "agent-orchestration", label: "Agent orchestration (built eval/guardrails)" },
 ];
 const MAX_SHOWCASED = 4;
+const MAX_FEATURED_CODE = 3;
+const MAX_FEATURED_COMMIT = 3;
+const MAX_FEATURED_README = 1;
 const MAX_SAMPLE_LINES = 40;
 const MAX_SAMPLE_CODE_CHARS = 2000;
 const PROJECTS_CHECKLIST = [
@@ -177,6 +181,12 @@ const toProjectPayload = (project: EditableProject): ProjectPayload => {
 };
 
 export function ProjectsPage() {
+  useSEO({
+    title: "Projects workspace",
+    description: "Manage public project evidence, metadata, and featured proof for your public profile.",
+    path: "/projects",
+    robots: "noindex,nofollow",
+  });
   const queryClient = useQueryClient();
   const { data: savedProjects, isLoading } = useQuery({ queryKey: ["projects"], queryFn: fetchProjects });
   const [projects, setProjects] = useState<EditableProject[]>([]);
@@ -188,6 +198,19 @@ export function ProjectsPage() {
   const [showExternalForm, setShowExternalForm] = useState(false);
   const [externalForm, setExternalForm] = useState<ExternalFormState>(() => createEmptyExternalForm());
   const showcasedCount = useMemo(() => projects.filter((project) => project.isShowcased).length, [projects]);
+  const featuredSampleCounts = useMemo(() => {
+    const counts = { code: 0, readme: 0, commit: 0 };
+    projects.forEach((project) => {
+      (project.codeSamples || []).forEach((sample) => {
+        if (!sample.isFeaturedProfile) return;
+        const type = sample.type || "code";
+        if (type === "code" || type === "readme" || type === "commit") {
+          counts[type] += 1;
+        }
+      });
+    });
+    return counts;
+  }, [projects]);
 
   useEffect(() => {
     if (savedProjects) {
@@ -375,6 +398,42 @@ export function ProjectsPage() {
       {
         toastTitle: "Project removed",
         toastDescription: "It won't appear unless you re-import it.",
+      }
+    );
+  };
+
+  const toggleFeaturedSample = (projectId: string, sampleId: string, nextState: boolean) => {
+    const project = projects.find((entry) => entry.id === projectId);
+    const sample = project?.codeSamples?.find((entry) => entry.id === sampleId);
+    if (!project || !sample) return;
+    const type = sample.type || "code";
+    const limit = type === "readme" ? MAX_FEATURED_README : type === "commit" ? MAX_FEATURED_COMMIT : MAX_FEATURED_CODE;
+    const currentCount =
+      type === "readme" ? featuredSampleCounts.readme : type === "commit" ? featuredSampleCounts.commit : featuredSampleCounts.code;
+    if (nextState && !sample.isFeaturedProfile && currentCount >= limit) {
+      toast("Feature limit reached", {
+        description:
+          type === "readme"
+            ? "Feature one README sample max."
+            : type === "commit"
+              ? "Feature up to 3 commit samples."
+              : "Feature up to 3 code samples.",
+      });
+      return;
+    }
+
+    applyAndPersist(
+      (current) =>
+        current.map((entry) => {
+          if (entry.id !== projectId) return entry;
+          const nextSamples = (entry.codeSamples || []).map((sampleEntry) =>
+            sampleEntry.id === sampleId ? { ...sampleEntry, isFeaturedProfile: nextState } : sampleEntry
+          );
+          return { ...entry, codeSamples: nextSamples };
+        }),
+      {
+        toastTitle: nextState ? "Added to public profile" : "Removed from public profile",
+        toastDescription: nextState ? "Keep only your strongest and most defensible proof." : "It stays saved for packet use.",
       }
     );
   };
@@ -703,8 +762,40 @@ export function ProjectsPage() {
                   </label>
                 </div>
                 <div className="mt-4 rounded-2xl border border-slate-800/70 bg-slate-950/50 p-4 text-xs text-muted-foreground">
-                  <p className="text-[11px] uppercase tracking-[0.3em] text-slate-500">Samples</p>
-                  <p className="mt-2">Add code, README, or commit samples while mapping requirements inside each job packet.</p>
+                  <p className="text-[11px] uppercase tracking-[0.3em] text-slate-500">Featured proof for public profile</p>
+                  <p className="mt-2">
+                    Feature only your best proof. Public profile caps: code {featuredSampleCounts.code}/{MAX_FEATURED_CODE}, commit {featuredSampleCounts.commit}/{MAX_FEATURED_COMMIT}, readme {featuredSampleCounts.readme}/{MAX_FEATURED_README}.
+                  </p>
+                  {(project.codeSamples || []).length === 0 ? (
+                    <p className="mt-2 text-[11px] text-muted-foreground">No saved samples yet. Add samples in a job flow, then feature the strongest ones here.</p>
+                  ) : (
+                    <div className="mt-3 space-y-2">
+                      {(project.codeSamples || []).map((sample) => (
+                        <div key={sample.id} className="flex flex-col gap-2 rounded-lg border border-slate-800/70 bg-slate-950/60 p-3 sm:flex-row sm:items-center sm:justify-between">
+                          <div>
+                            <div className="flex items-center gap-2">
+                              <p className="text-sm text-white">{sample.summary}</p>
+                              <Badge variant="outline" className="text-[10px] uppercase tracking-wide">
+                                {SAMPLE_TYPE_LABELS[sample.type || "code"]}
+                              </Badge>
+                            </div>
+                            <p className="text-[11px] text-slate-400">
+                              {(sample.filePath || "snippet") +
+                                (sample.lineStart && sample.lineEnd ? ` #L${sample.lineStart}-${sample.lineEnd}` : "")}
+                            </p>
+                          </div>
+                          <Button
+                            type="button"
+                            variant={sample.isFeaturedProfile ? "secondary" : "outline"}
+                            size="sm"
+                            onClick={() => toggleFeaturedSample(project.id, sample.id, !sample.isFeaturedProfile)}
+                          >
+                            {sample.isFeaturedProfile ? "Featured" : "Feature"}
+                          </Button>
+                        </div>
+                      ))}
+                    </div>
+                  )}
                 </div>
               </div>
             ))}

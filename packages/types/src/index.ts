@@ -48,6 +48,7 @@ export interface ProjectCodeSample {
   tags?: string[];
   readmeHeading?: string;
   commitEntries?: CommitEntry[];
+  isFeaturedProfile?: boolean;
   sourceCommitSha?: string;
   lastCommitDate?: string | null;
   createdAt?: string;

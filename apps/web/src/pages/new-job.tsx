@@ -13,17 +13,33 @@ import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
 import { Loader2 } from "lucide-react";
 import { CodeSnippet } from "@/components/ui/code-snippet";
+import { useSEO } from "@/lib/seo";
 
 export function NewJobPage() {
+  useSEO({
+    title: "Create optional job packet",
+    description: "Create an optional job-specific packet from your public profile evidence.",
+    path: "/jobs/new",
+    robots: "noindex,nofollow",
+  });
   const { data: projects, isLoading } = useQuery({ queryKey: ["projects"], queryFn: fetchProjects });
   const [selectedProjects, setSelectedProjects] = useState<Set<string>>(new Set());
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isSuggestingRequirements, setIsSuggestingRequirements] = useState(false);
+  const [showAdvancedMapping, setShowAdvancedMapping] = useState(false);
+  const [hasAutoSelectedProjects, setHasAutoSelectedProjects] = useState(false);
   const [jobDescription, setJobDescription] = useState("");
   const [requirements, setRequirements] = useState<Array<{ id: string; text: string; priority: number; notes?: string }>>([]);
   const [requirementCoverageMap, setRequirementCoverageMap] = useState<Record<string, RequirementCoverageDraft>>({});
   const navigate = useNavigate();
   const publicProjects = useMemo(() => (projects || []).filter((project) => !project.isPrivate), [projects]);
+  const featuredProjectIds = useMemo(
+    () =>
+      publicProjects
+        .filter((project) => (project.codeSamples || []).some((sample) => sample.isFeaturedProfile))
+        .map((project) => project.id),
+    [publicProjects]
+  );
   const privateProjectCount = (projects || []).filter((project) => project.isPrivate).length;
 
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
@@ -84,11 +100,11 @@ export function NewJobPage() {
         .filter((entry) => entry.projectIds.length > 0 || entry.sampleId || entry.rationale);
 
       const shallowMappings = coveragePayload.filter(
-        (entry) => (entry.projectIds.length > 0 || entry.sampleId) && entry.rationale.length < 12
+        (entry) => (entry.projectIds.length > 0 || entry.sampleId) && entry.rationale.length < 8
       );
       if (shallowMappings.length > 0) {
         toast("Add one-sentence proof", {
-          description: "For mapped requirements, explain in one sentence how the evidence proves the requirement.",
+          description: "Add one short sentence for each mapped requirement.",
         });
         setIsSubmitting(false);
         return;
@@ -134,6 +150,16 @@ export function NewJobPage() {
   }, [projects, selectedProjects]);
 
   useEffect(() => {
+    if (hasAutoSelectedProjects || publicProjects.length === 0 || selectedProjects.size > 0) return;
+    const fallbackIds = publicProjects.filter((project) => project.isShowcased).map((project) => project.id);
+    const nextIds = featuredProjectIds.length > 0 ? featuredProjectIds : fallbackIds;
+    if (nextIds.length > 0) {
+      setSelectedProjects(new Set(nextIds));
+    }
+    setHasAutoSelectedProjects(true);
+  }, [featuredProjectIds, hasAutoSelectedProjects, publicProjects, selectedProjects]);
+
+  useEffect(() => {
     setRequirementCoverageMap((prev) => {
       const validReqIds = new Set(requirements.map((entry) => entry.id));
       const validProjectIds = new Set(Array.from(selectedProjects));
@@ -167,6 +193,14 @@ export function NewJobPage() {
     });
   }, [availableSamples, requirements, selectedProjects]);
 
+  useEffect(() => {
+    if (requirements.length === 0 || selectedProjects.size === 0) return;
+    setRequirementCoverageMap((prev) => {
+      const next = prefillCoverageFromSuggestions(requirements, prev, availableSamples);
+      return isCoverageMapEqual(prev, next) ? prev : next;
+    });
+  }, [requirements, selectedProjects, availableSamples]);
+
   const backedCount = useMemo(
     () =>
       requirements.filter((entry) => {
@@ -183,6 +217,7 @@ export function NewJobPage() {
     );
     return ids.size;
   }, [requirementCoverageMap]);
+  const quickReady = backedCount >= 2 && attachedSampleCount >= 1;
 
   const handleRequirementChange = (id: string, nextText: string) => {
     setRequirements((prev) => prev.map((entry) => (entry.id === id ? { ...entry, text: nextText } : entry)));
@@ -227,11 +262,24 @@ export function NewJobPage() {
     }
   };
 
+  const handleUseFeaturedProof = () => {
+    if (featuredProjectIds.length === 0) {
+      toast("No featured proof yet", { description: "Feature sample evidence in Projects first." });
+      return;
+    }
+    setSelectedProjects(new Set(featuredProjectIds));
+    setRequirementCoverageMap((prev) => prefillCoverageFromSuggestions(requirements, prev, availableSamples));
+    toast("Using featured proof", { description: "Featured projects are selected. Edit only if needed." });
+  };
+
   return (
     <Card className="border-slate-800/80 bg-slate-950/40">
       <CardHeader>
-        <CardTitle className="text-white">New job</CardTitle>
-        <CardDescription>Paste the JD, pick repos, and generate a tailored Proof Packet.</CardDescription>
+        <div className="flex flex-wrap items-center gap-2">
+          <CardTitle className="text-white">Create optional job packet</CardTitle>
+          <Badge variant="outline">Optional step</Badge>
+        </div>
+        <CardDescription>Use this when you want a role-specific packet. Your public profile remains your default share link.</CardDescription>
       </CardHeader>
       <CardContent>
         <form className="space-y-6" onSubmit={handleSubmit}>
@@ -266,7 +314,7 @@ export function NewJobPage() {
                 Suggest requirements
               </Button>
             </div>
-            <p className="mt-1 text-xs text-muted-foreground">We suggest up to 5. You must confirm or edit before generate.</p>
+            <p className="mt-1 text-xs text-muted-foreground">We suggest up to 5. Edit only if needed.</p>
             <div className="mt-3 space-y-2">
               {requirements.length === 0 ? (
                 <p className="rounded-xl border border-slate-800/80 bg-slate-950/60 px-3 py-3 text-xs text-muted-foreground">
@@ -295,9 +343,16 @@ export function NewJobPage() {
             </Button>
           </div>
           <div>
-            <div className="flex items-center justify-between">
+            <div className="flex flex-wrap items-center justify-between gap-2">
               <label className="text-sm font-semibold text-white">Projects to use</label>
-              <p className="text-xs text-muted-foreground">{selectedProjects.size} selected</p>
+              <div className="flex items-center gap-2">
+                <p className="text-xs text-muted-foreground">{selectedProjects.size} selected</p>
+                {featuredProjectIds.length > 0 ? (
+                  <Button type="button" variant="outline" size="sm" onClick={handleUseFeaturedProof}>
+                    Start from profile proof
+                  </Button>
+                ) : null}
+              </div>
             </div>
             {isLoading ? (
               <div className="mt-3 h-24 animate-pulse rounded-xl bg-slate-900/60" />
@@ -322,18 +377,43 @@ export function NewJobPage() {
               </p>
             ) : null}
           </div>
-          <RequirementEvidenceMapper
-            requirements={requirements}
-            projects={publicProjects.filter((project) => selectedProjects.has(project.id))}
-            samples={availableSamples}
-            coverageMap={requirementCoverageMap}
-            onCoverageChange={setRequirementCoverageMap}
-            backedCount={backedCount}
-            attachedSampleCount={attachedSampleCount}
-          />
+          <div className="rounded-2xl border border-slate-800/80 bg-slate-950/40 p-4">
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <div>
+                <p className="text-sm font-semibold text-white">Evidence mapping</p>
+                <p className="text-xs text-muted-foreground">Back what you can verify. You do not need to map everything.</p>
+              </div>
+              <Button type="button" variant="outline" size="sm" onClick={() => setShowAdvancedMapping((prev) => !prev)}>
+                {showAdvancedMapping ? "Hide customize mapping" : "Customize mapping"}
+              </Button>
+            </div>
+            <div className="mt-3 rounded-xl border border-slate-800/80 bg-slate-950/70 px-3 py-2 text-xs">
+              <p className={quickReady ? "text-emerald-300" : "text-amber-300"}>
+                {quickReady
+                  ? "Good enough to generate now: 2+ mapped requirements and 1+ sample attached."
+                  : "For a stronger first draft, map at least 2 requirements and attach 1 sample."}
+              </p>
+              <p className="mt-1 text-slate-400">
+                You can generate now and improve mappings later on the job detail page.
+              </p>
+            </div>
+            {showAdvancedMapping ? (
+              <div className="mt-3">
+                <RequirementEvidenceMapper
+                  requirements={requirements}
+                  projects={publicProjects.filter((project) => selectedProjects.has(project.id))}
+                  samples={availableSamples}
+                  coverageMap={requirementCoverageMap}
+                  onCoverageChange={setRequirementCoverageMap}
+                  backedCount={backedCount}
+                  attachedSampleCount={attachedSampleCount}
+                />
+              </div>
+            ) : null}
+          </div>
           <Button type="submit" disabled={isSubmitting} className="w-full">
             {isSubmitting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
-            Generate Proof Packet
+            {quickReady ? "Generate job-specific packet" : "Generate draft job packet"}
           </Button>
         </form>
       </CardContent>
@@ -544,8 +624,8 @@ function RequirementEvidenceMapper({
                     placeholder="Example: This API handler uses typed validation and explicit error paths, and the test file proves edge-case coverage."
                   />
                 </div>
-                {(coverage.projectIds.length > 0 || coverage.sampleId) && coverage.rationale.trim().length < 12 ? (
-                  <p className="mt-2 text-[11px] text-amber-400">Add a clearer one-sentence explanation before generating.</p>
+                {(coverage.projectIds.length > 0 || coverage.sampleId) && coverage.rationale.trim().length < 8 ? (
+                  <p className="mt-2 text-[11px] text-amber-400">Add a short explanation before generating.</p>
                 ) : null}
               </div>
             );
@@ -554,6 +634,48 @@ function RequirementEvidenceMapper({
       </div>
     </div>
   );
+}
+
+function prefillCoverageFromSuggestions(
+  requirements: Array<{ id: string; text: string }>,
+  currentMap: Record<string, RequirementCoverageDraft>,
+  samples: SampleOption[]
+) {
+  const nextMap: Record<string, RequirementCoverageDraft> = { ...currentMap };
+  requirements.forEach((requirement) => {
+    const current = currentMap[requirement.id];
+    if (current && (current.projectIds.length > 0 || current.sampleId || current.rationale.trim().length > 0)) return;
+    const suggestions = buildSampleSuggestions(requirement.text, samples);
+    const preferred = suggestions.find((sample) => sample.isFeaturedProfile) || suggestions[0];
+    if (!preferred) return;
+    nextMap[requirement.id] = {
+      projectIds: [preferred.projectId],
+      sampleId: preferred.id,
+      rationale: current?.rationale || "",
+    };
+  });
+  return nextMap;
+}
+
+function isCoverageMapEqual(
+  left: Record<string, RequirementCoverageDraft>,
+  right: Record<string, RequirementCoverageDraft>
+) {
+  const leftKeys = Object.keys(left);
+  const rightKeys = Object.keys(right);
+  if (leftKeys.length !== rightKeys.length) return false;
+  for (const key of leftKeys) {
+    const a = left[key];
+    const b = right[key];
+    if (!b) return false;
+    if (a.sampleId !== b.sampleId) return false;
+    if ((a.rationale || "") !== (b.rationale || "")) return false;
+    if (a.projectIds.length !== b.projectIds.length) return false;
+    for (let index = 0; index < a.projectIds.length; index += 1) {
+      if (a.projectIds[index] !== b.projectIds[index]) return false;
+    }
+  }
+  return true;
 }
 
 function buildSampleSuggestions(requirementText: string, samples: SampleOption[]): Array<SampleOption & { score: number; reasons: string[] }> {

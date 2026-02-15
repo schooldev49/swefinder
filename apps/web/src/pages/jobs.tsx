@@ -10,6 +10,7 @@ import { useSession } from "@/hooks/use-session";
 import { buildGitHubLoginUrl } from "@/lib/auth";
 import { toast } from "sonner";
 import { useState } from "react";
+import { useSEO } from "@/lib/seo";
 
 const STATUS_LABELS: Record<Job["status"], string> = {
   DRAFT: "Draft",
@@ -22,6 +23,12 @@ const STATUS_LABELS: Record<Job["status"], string> = {
 const STATUS_OPTIONS: Array<Job["status"]> = ["DRAFT", "PROOF_GENERATED", "APPLIED", "INTERVIEW", "REJECTED", "OFFER"];
 
 export function JobsPage() {
+  useSEO({
+    title: "Job tracker",
+    description: "Track roles, statuses, and job-specific packets in one place.",
+    path: "/jobs",
+    robots: "noindex,nofollow",
+  });
   const queryClient = useQueryClient();
   const [statusTarget, setStatusTarget] = useState<string | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<string | null>(null);
@@ -95,7 +102,7 @@ export function JobsPage() {
         </div>
         <Button asChild>
           <Link to="/jobs/new">
-            <Plus className="mr-2 h-4 w-4" /> New job
+            <Plus className="mr-2 h-4 w-4" /> Create optional job packet
           </Link>
         </Button>
       </CardHeader>
@@ -105,7 +112,7 @@ export function JobsPage() {
             <Link to="/projects">Update projects</Link>
           </Button>
           <Button asChild variant="outline" className="justify-between">
-            <Link to="/jobs/new">Add new role</Link>
+            <Link to="/jobs/new">Create optional job packet</Link>
           </Button>
           <Button asChild variant="outline" className="justify-between">
             <Link to="/profile">Public profile</Link>

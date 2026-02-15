@@ -1,0 +1,16 @@
+{
+  "name": "Evidensify",
+  "short_name": "Evidensify",
+  "description": "Public proof profiles and optional job-specific packets with verifiable code evidence.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#020617",
+  "theme_color": "#020617",
+  "icons": [
+    {
+      "src": "/Evidensify.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
+}

@@ -13,6 +13,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Badge } from "@/components/ui/badge";
 import { Copy, ExternalLink } from "lucide-react";
 import { toast } from "sonner";
+import { useSEO } from "@/lib/seo";
 
 const STATUS_DISPLAY: Record<Job["status"], { label: string; variant: "default" | "outline" | "success" | "warning" }> = {
   DRAFT: { label: "Draft", variant: "outline" },
@@ -24,6 +25,12 @@ const STATUS_DISPLAY: Record<Job["status"], { label: string; variant: "default" 
 };
 
 export function ProfilePage() {
+  useSEO({
+    title: "Public profile settings",
+    description: "Configure your public profile handle and copy resume and application share links.",
+    path: "/profile",
+    robots: "noindex,nofollow",
+  });
   const queryClient = useQueryClient();
   const profileQuery = useQuery({ queryKey: ["profile"], queryFn: fetchProfile });
   const jobsQuery = useQuery({ queryKey: ["jobs"], queryFn: fetchJobs });
@@ -135,7 +142,7 @@ export function ProfilePage() {
         <CardHeader>
           <CardTitle className="text-white">Shareable links</CardTitle>
           <CardDescription>
-            Use your profile URL on your resume. Use a job-specific packet link in applications or recruiter email.
+            Use `/u/:handle` on your resume. Use `/p/:token` in applications and recruiter email.
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-8">

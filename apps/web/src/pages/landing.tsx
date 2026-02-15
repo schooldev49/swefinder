@@ -6,6 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { useSession } from "@/hooks/use-session";
 import { buildGitHubLoginUrl } from "@/lib/auth";
 import { fetchJobs, fetchProjects } from "@/lib/api";
+import { useSEO } from "@/lib/seo";
 
 const previewRequirements = [
   {
@@ -38,9 +39,27 @@ export function LandingPage() {
   });
   const nextParam = new URLSearchParams(location.search).get("next");
   const nextPath = nextParam && nextParam.startsWith("/") ? nextParam : undefined;
+  useSEO({
+    title: "Public proof profiles for hiring",
+    description:
+      "Build a public proof profile and optional job-specific packets with verifiable links to public repos, docs, and commits.",
+    path: "/",
+    jsonLd: {
+      "@context": "https://schema.org",
+      "@type": "WebSite",
+      name: "Evidensify",
+      url: typeof window !== "undefined" ? window.location.origin : "https://evidensify.com",
+      description:
+        "Public proof profiles and optional job-specific packets for fast technical verification.",
+    },
+  });
 
-  const handleGitHubLogin = () => {
-    window.location.href = buildGitHubLoginUrl(nextPath || "/projects");
+  const handleProfileLogin = () => {
+    window.location.href = buildGitHubLoginUrl(nextPath || "/profile");
+  };
+
+  const handleOptionalPacketLogin = () => {
+    window.location.href = buildGitHubLoginUrl("/jobs/new");
   };
 
   return (
@@ -51,8 +70,8 @@ export function LandingPage() {
             <Card className="border-slate-800/80 bg-slate-900/40 md:col-span-2">
               <CardContent className="space-y-3 p-5">
                 <p className="text-sm text-slate-300">Hi {user?.githubLogin}</p>
-                <h1 className="text-2xl font-semibold text-white sm:text-3xl">Create your next Proof Packet</h1>
-                <p className="text-sm text-slate-300">Map requirements to public evidence and share one link.</p>
+                <h1 className="text-2xl font-semibold text-white sm:text-3xl">Build your public proof profile</h1>
+                <p className="text-sm text-slate-300">Start with a reusable profile link. Add job-specific packets only when needed.</p>
                 <div className="grid gap-2 text-xs text-slate-300 sm:grid-cols-3">
                   <div className="rounded-lg border border-slate-800/80 bg-slate-950/60 px-3 py-2">
                     <p className="text-slate-500">Projects added</p>
@@ -69,9 +88,14 @@ export function LandingPage() {
                     </p>
                   </div>
                 </div>
-                <Button className="w-full sm:w-auto" asChild>
-                  <Link to="/jobs/new">New packet</Link>
-                </Button>
+                <div className="flex flex-wrap items-center gap-2">
+                  <Button className="w-full sm:w-auto" asChild>
+                    <Link to="/profile">Build public profile</Link>
+                  </Button>
+                  <Button variant="outline" className="w-full sm:w-auto" asChild>
+                    <Link to="/jobs/new">Create optional job packet</Link>
+                  </Button>
+                </div>
               </CardContent>
             </Card>
             <Card className="border-slate-800/80 bg-slate-900/40">
@@ -96,15 +120,20 @@ export function LandingPage() {
             <Card className="border-slate-800/80 bg-slate-950/70">
               <CardContent className="space-y-4 p-6">
                 <p className="text-xs uppercase tracking-[0.25em] text-slate-500">Evidensify</p>
-                <h1 className="text-3xl font-semibold text-white sm:text-4xl">Requirement-first Proof Packets</h1>
-                <p className="text-sm text-slate-300">Build a role-specific packet with verifiable public links.</p>
+                <h1 className="text-3xl font-semibold text-white sm:text-4xl">Build a public proof profile</h1>
+                <p className="text-sm text-slate-300">Start with your public proof profile. Add job-specific packets only when needed.</p>
                 <div className="flex flex-wrap items-center gap-2">
                   <Badge variant="outline">Manual mapping</Badge>
                   <Badge variant="outline">Public-only links</Badge>
                 </div>
-                <Button className="w-full sm:w-auto" onClick={handleGitHubLogin}>
-                  Build your proof packet
-                </Button>
+                <div className="flex flex-wrap items-center gap-2">
+                  <Button className="w-full sm:w-auto" onClick={handleProfileLogin}>
+                    Build public profile
+                  </Button>
+                  <Button variant="outline" className="w-full sm:w-auto" onClick={handleOptionalPacketLogin}>
+                    Create job packet (optional)
+                  </Button>
+                </div>
               </CardContent>
             </Card>
             <Card className="rounded-2xl border-slate-800/80 bg-slate-950/80 shadow-xl">

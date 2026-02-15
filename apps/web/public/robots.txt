@@ -1,0 +1,14 @@
+User-agent: *
+Allow: /
+
+# Private app surfaces
+Disallow: /api/
+Disallow: /projects
+Disallow: /jobs
+Disallow: /profile
+
+# Unlisted packet links
+Disallow: /p/
+Disallow: /u/*/
+
+Sitemap: https://evidensify.com/sitemap.xml

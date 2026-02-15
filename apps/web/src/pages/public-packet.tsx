@@ -11,6 +11,7 @@ import { Badge } from "@/components/ui/badge";
 import { CodeSnippet } from "@/components/ui/code-snippet";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
+import { useSEO } from "@/lib/seo";
 
 const SAMPLE_TYPE_LABELS: Record<string, string> = {
   code: "Code sample",
@@ -27,6 +28,17 @@ export function PublicPacketPage() {
       return fetchSharedPacket(handle ?? "", packetSlug ?? "");
     },
     enabled: Boolean(token || (handle && packetSlug)),
+  });
+  const pagePath = token ? `/p/${token}` : `/u/${handle || "profile"}/${packetSlug || "packet"}`;
+  const dynamicTitle = packetQuery.data?.job?.title
+    ? `${packetQuery.data.job.title} job-specific packet`
+    : "Job-specific packet";
+  useSEO({
+    title: dynamicTitle,
+    description: "Job-specific technical evidence packet with verifiable citations, snippets, and source links.",
+    path: pagePath,
+    robots: "noindex,nofollow",
+    type: "article",
   });
 
   return (
@@ -64,7 +76,7 @@ function PacketView({
               <AvatarFallback>{data.user.githubLogin.slice(0, 2).toUpperCase()}</AvatarFallback>
             </Avatar>
             <div>
-              <CardTitle className="text-white">{proof?.title ?? `Proof Packet – ${data.job.title}`}</CardTitle>
+              <CardTitle className="text-white">{proof?.title ?? `Job-specific packet: ${data.job.title}`}</CardTitle>
               <CardDescription>
                 @{data.user.profileSlug} → {data.job.title}
                 {data.job.company ? ` @ ${data.job.company}` : ""}
@@ -77,7 +89,7 @@ function PacketView({
             </div>
           </div>
           <div className="rounded-xl border border-slate-800/80 bg-slate-950/50 px-4 py-3 text-xs text-muted-foreground">
-            Every bullet and requirement links to verifiable repos or docs supplied by the candidate.
+            This job-specific packet links to verifiable repos or docs supplied by the candidate.
             {snapshotDate ? <p className="mt-1 text-slate-400">Evidence snapshot: {formatPublicDate(snapshotDate)}</p> : null}
           </div>
           </CardHeader>
@@ -110,7 +122,7 @@ function PacketView({
       {proof ? (
         <Card className="border-slate-900/80 bg-slate-950/80">
           <CardHeader>
-            <CardTitle className="text-white">Proof Packet contents</CardTitle>
+            <CardTitle className="text-white">Packet contents</CardTitle>
             <CardDescription>Skim requirements first, then open links for verification.</CardDescription>
           </CardHeader>
           <CardContent className="space-y-8">
@@ -160,7 +172,7 @@ function PacketView({
         <Card className="border-slate-900/80 bg-slate-950/80">
           <CardContent>
             <p className="text-sm text-muted-foreground">
-              Proof Packet not available yet. Ask the candidate to regenerate and resend the link.
+              Job-specific packet not available yet. Ask the candidate to regenerate and resend the link.
             </p>
           </CardContent>
         </Card>
@@ -525,7 +537,7 @@ function EvidenceSnippetBlock({
           <p className="text-slate-100">{snippet.summary}</p>
           <p className="font-mono text-[11px] text-slate-500">
             {snippet.filePath}
-            {snippet.lineStart && snippet.lineEnd ? ` · L${snippet.lineStart}–${snippet.lineEnd}` : ""}
+            {snippet.lineStart && snippet.lineEnd ? ` · L${snippet.lineStart}-${snippet.lineEnd}` : ""}
           </p>
           {isCodeSample ? (
             <CodeSnippet code={snippet.code} language={snippet.language} className="max-w-full text-sm" />
@@ -550,7 +562,7 @@ function EvidenceSnippetBlock({
 function PacketError() {
   return (
     <div className="rounded-2xl border border-slate-900/80 bg-slate-950/80 p-10 text-center text-sm text-muted-foreground">
-      Proof Packet not found. Double-check the link with the candidate.
+      Job-specific packet not found. Double-check the link with the candidate.
     </div>
   );
 }

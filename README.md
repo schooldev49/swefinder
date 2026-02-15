@@ -52,6 +52,7 @@ cp apps/web/.env.example apps/web/.env
 ```
 
 - `VITE_API_BASE_URL` should point to your deployed worker (`https://your-worker.workers.dev/api`).
+- `VITE_SITE_URL` should point to your canonical frontend domain (for SEO canonicals and social metadata), e.g. `https://evidensify.com`.
 - For local dev, leave it blank (defaults to `/api`) and Vite will proxy requests to the worker dev server. Override `VITE_DEV_WORKER_URL` if your worker runs on a non-default port.
 
 ## Running locally

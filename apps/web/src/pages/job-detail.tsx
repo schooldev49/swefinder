@@ -33,6 +33,7 @@ import { Loader2, RefreshCw } from "lucide-react";
 import { toast } from "sonner";
 import { useSession } from "@/hooks/use-session";
 import { CodeSnippet } from "@/components/ui/code-snippet";
+import { useSEO } from "@/lib/seo";
 
 const STATUS_ORDER: Job["status"][] = ["DRAFT", "PROOF_GENERATED", "APPLIED", "INTERVIEW", "REJECTED", "OFFER"];
 const SAMPLE_TYPE_LABELS: Record<string, string> = {
@@ -94,6 +95,13 @@ export function JobDetailPage() {
   const origin = typeof window !== "undefined" ? window.location.origin : "";
   const profileLink = session?.profileSlug ? `${origin}/u/${session.profileSlug}` : "";
   const packetShortLink = job?.shareToken ? `${origin}/p/${job.shareToken}` : "";
+  const pageTitle = job?.title ? `${job.title} packet` : "Job packet detail";
+  useSEO({
+    title: pageTitle,
+    description: "Review and refine job-specific packet mappings, evidence, and share links.",
+    path: jobId ? `/jobs/${jobId}` : "/jobs",
+    robots: "noindex,nofollow",
+  });
 
   const citations = useMemo(() => {
     if (!proof) return [];
@@ -189,10 +197,10 @@ export function JobDetailPage() {
         })),
       }),
     onSuccess: async (packet) => {
-      toast("Proof refreshed", { description: packet.title });
+      toast("Job-specific packet refreshed", { description: packet.title });
       await queryClient.invalidateQueries({ queryKey: ["job", jobId] });
     },
-    onError: (error: Error) => toast("Could not regenerate", { description: error.message }),
+    onError: (error: Error) => toast("Could not regenerate packet", { description: error.message }),
   });
   const refreshSnapshotMutation = useMutation({
     mutationFn: () => refreshJobSnapshot(jobId),
@@ -376,9 +384,9 @@ export function JobDetailPage() {
       <Card className="border-slate-800/80 bg-slate-950/40">
         <CardHeader className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
           <div>
-            <CardTitle className="text-white">Proof Packet</CardTitle>
+            <CardTitle className="text-white">Job-specific packet</CardTitle>
             <CardDescription>
-              Evidence-first summary you curate before sharing—so startups know you reviewed every proof point yourself.
+              Evidence-first summary you curate before sharing so startups know you reviewed every proof point yourself.
             </CardDescription>
           </div>
           <div className="flex items-center gap-3">
@@ -420,7 +428,7 @@ export function JobDetailPage() {
           )}
           {proof && (
             <div className="rounded-2xl border border-slate-800/80 bg-slate-950/60 p-3 text-[11px] text-muted-foreground">
-              Edits below are local for drafting. Regenerate to pull fresh model output—evidence + citations stay untouched.
+              Edits below are local for drafting. Regenerate to pull fresh model output while evidence and citations stay untouched.
             </div>
           )}
           {proof ? (
@@ -565,7 +573,7 @@ export function JobDetailPage() {
               </section>
             </div>
           ) : (
-            <p className="text-sm text-muted-foreground">No proof yet. Run generation once you have projects selected.</p>
+            <p className="text-sm text-muted-foreground">No packet yet. Generate once you have projects selected.</p>
           )}
         </CardContent>
       </Card>
@@ -1076,7 +1084,7 @@ function ShareLinkCallout({
           </p>
           <div className="mt-2">
             <p className="text-[11px] uppercase tracking-[0.2em] text-slate-500">Where to paste this</p>
-            <p className="mt-1 text-xs text-slate-400">Resume: use your profile link. Application or email: use the packet link.</p>
+            <p className="mt-1 text-xs text-slate-400">Resume: use your profile link. Application, email, or LinkedIn note: use the packet link.</p>
           </div>
           {!profileSlug && (
             <p className="text-xs text-amber-400">
@@ -1093,10 +1101,10 @@ function ShareLinkCallout({
             <Link to="/profile">Profile</Link>
           </Button>
           <Button variant="outline" size="sm" onClick={() => handleCopy(profileLink, "Profile link")} disabled={!profileLink}>
-            Copy profile
+            Copy profile link
           </Button>
           <Button variant="outline" size="sm" onClick={() => handleCopy(packetShortLink, "Packet link")} disabled={!packetShortLink}>
-            Copy packet
+            Copy packet link
           </Button>
         </div>
       </div>

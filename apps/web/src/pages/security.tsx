@@ -1,6 +1,7 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Link } from "react-router-dom";
+import { useSEO } from "@/lib/seo";
 
 const scopes = [
   { scope: "read:user", usage: "Verify your GitHub identity and avatar" },
@@ -8,6 +9,11 @@ const scopes = [
 ];
 
 export function SecurityPage() {
+  useSEO({
+    title: "Security and GitHub access",
+    description: "Learn how Evidensify handles GitHub scopes, access revocation, and data deletion.",
+    path: "/security",
+  });
   return (
     <div className="mx-auto max-w-4xl space-y-6 px-4 py-10">
       <div>
