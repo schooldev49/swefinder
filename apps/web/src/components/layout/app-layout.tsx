@@ -35,6 +35,7 @@ export function AppLayout() {
         <header className="rounded-2xl border border-slate-800/80 bg-slate-900/50 px-6 py-4 backdrop-blur">
           <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
             <div className="flex items-center justify-between gap-3">
+              <img src="/Evidensify.png" alt="Evidensify logo" className="h-8 w-8" />
               <Link to="/" className="text-lg font-semibold tracking-tight text-white">
                 Evidensify
               </Link>
