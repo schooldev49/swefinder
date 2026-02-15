@@ -7,6 +7,7 @@ import jsx from "refractor/lang/jsx.js";
 import json from "refractor/lang/json.js";
 import python from "refractor/lang/python.js";
 import bash from "refractor/lang/bash.js";
+import diff from "refractor/lang/diff.js";
 import { cn } from "@/lib/utils";
 
 type HighlightNode = {
@@ -26,7 +27,7 @@ function registerLanguage(grammar: Parameters<typeof refractor.register>[0]) {
   }
 }
 
-[tsx, typescript, javascript, jsx, json, python, bash].forEach(registerLanguage);
+[tsx, typescript, javascript, jsx, json, python, bash, diff].forEach(registerLanguage);
 
 type CodeSnippetProps = {
   code: string;
@@ -35,6 +36,21 @@ type CodeSnippetProps = {
 } & ComponentPropsWithoutRef<"pre">;
 
 export function CodeSnippet({ code, language = "tsx", wrap = false, className, ...props }: CodeSnippetProps) {
+  if (language === "diff") {
+    return (
+      <pre
+        className={cn(
+          "relative w-full max-h-64 overflow-auto rounded-xl bg-slate-950/80 p-3 font-mono text-xs leading-relaxed text-slate-100",
+          wrap ? "whitespace-pre-wrap break-words" : "whitespace-pre",
+          className
+        )}
+        {...props}
+      >
+        <code className="block">{renderDiffLines(code)}</code>
+      </pre>
+    );
+  }
+
   const nodes = highlightSafely(code, language);
 
   return (
@@ -49,6 +65,28 @@ export function CodeSnippet({ code, language = "tsx", wrap = false, className, .
       <code className={cn("block", `language-${language}`)}>{renderNodes(nodes)}</code>
     </pre>
   );
+}
+
+function renderDiffLines(code: string): ReactNode {
+  const lines = code.split("\n");
+  return lines.map((line, index) => {
+    const isInsert = line.startsWith("+") && !line.startsWith("+++");
+    const isDelete = line.startsWith("-") && !line.startsWith("---");
+    const isMeta = line.startsWith("@@") || line.startsWith("diff ") || line.startsWith("index ") || line.startsWith("---") || line.startsWith("+++");
+    return (
+      <span
+        key={`${index}-${line.slice(0, 12)}`}
+        className={cn(
+          "block px-1",
+          isInsert && "bg-emerald-500/10 text-emerald-200",
+          isDelete && "bg-rose-500/10 text-rose-200",
+          isMeta && "text-slate-400"
+        )}
+      >
+        {line || " "}
+      </span>
+    );
+  });
 }
 
 function highlightSafely(code: string, language: string): HighlightNode[] {

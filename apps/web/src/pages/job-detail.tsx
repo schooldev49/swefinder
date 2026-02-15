@@ -19,7 +19,6 @@ import {
   fetchProjects,
   generateProof,
   refreshJobSnapshot,
-  suggestPacketWording,
   updateJobRequirements,
   updateJobStatus,
   updateRequirementCoverage,
@@ -64,8 +63,6 @@ export function JobDetailPage() {
   const jobQuery = useQuery({ queryKey: ["job", jobId], queryFn: () => fetchJob(jobId), enabled: Boolean(jobId) });
   const projectsQuery = useQuery({ queryKey: ["projects"], queryFn: fetchProjects });
   const [selectedProjects, setSelectedProjects] = useState<Set<string>>(new Set());
-  const [bulletDrafts, setBulletDrafts] = useState<string[]>([]);
-  const [outreachDraft, setOutreachDraft] = useState("");
   const [selectedSamples, setSelectedSamples] = useState<Set<string>>(new Set());
   const [selectedRequirementId, setSelectedRequirementId] = useState<string | null>(null);
   const [requirementDrafts, setRequirementDrafts] = useState<Requirement[]>([]);
@@ -137,8 +134,6 @@ export function JobDetailPage() {
 
   useEffect(() => {
     if (!proof) {
-      setBulletDrafts([]);
-      setOutreachDraft("");
       setRequirementDrafts([]);
       setSelectedSamples(new Set());
       setCoverageMap({});
@@ -146,8 +141,6 @@ export function JobDetailPage() {
       setSelectedRequirementId(null);
       return;
     }
-    setBulletDrafts(proof.bullets);
-    setOutreachDraft(proof.outreachNote);
     setCoverageMap(proof.requirementCoverageMap || {});
     setRequirementDrafts(proof.requirements.slice(0, 5));
     setSelectedRequirementId((prev) => prev ?? proof.requirements[0]?.id ?? null);
@@ -224,15 +217,6 @@ export function JobDetailPage() {
       toast("Requirements saved");
     },
     onError: (error: Error) => toast("Could not save requirements", { description: error.message }),
-  });
-  const suggestWordingMutation = useMutation({
-    mutationFn: () => suggestPacketWording(jobId, { bullets: bulletDrafts, outreachNote: outreachDraft }),
-    onSuccess: (data) => {
-      if (data.bullets?.length) setBulletDrafts(data.bullets);
-      setOutreachDraft(data.outreachNote || "");
-      toast("Grammar polished");
-    },
-    onError: (error: Error) => toast("Could not suggest wording", { description: error.message }),
   });
 
   const requirementCoverageMutation = useMutation({
@@ -552,36 +536,8 @@ export function JobDetailPage() {
                 </div>
               </section>
               {proof.codeSamples && proof.codeSamples.length > 0 && <ProofCodeSamplesSection samples={proof.codeSamples} />}
-              <section>
-                <div className="flex items-center justify-between">
-                  <h3 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">Resume bullets</h3>
-                  <Button type="button" variant="outline" size="sm" onClick={() => suggestWordingMutation.mutate()} disabled={suggestWordingMutation.isPending}>
-                    {suggestWordingMutation.isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
-                    Suggest wording
-                  </Button>
-                </div>
-                <div className="mt-3 space-y-3">
-                  {bulletDrafts.map((bullet, index) => (
-                    <EditableCopyRow
-                      key={index}
-                      text={bullet}
-                      original={proof.bullets[index] ?? ""}
-                      label={`Bullet ${index + 1}`}
-                      onChange={(value) =>
-                        setBulletDrafts((prev) => {
-                          const next = [...prev];
-                          next[index] = value;
-                          return next;
-                        })
-                      }
-                    />
-                  ))}
-                </div>
-              </section>
-              <section>
-                <h3 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">Outreach note</h3>
-                <EditableCopyRow text={outreachDraft} original={proof.outreachNote} label="Outreach" onChange={setOutreachDraft} multiline />
-              </section>
+             
+              
               <section>
                 <div>
                   <h3 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">Evidence citations</h3>
@@ -726,9 +682,13 @@ function CodeSamplesSelector({
                     </a>
                   )}
                   {sample.type && sample.type !== "code" ? (
-                    <div className="rounded-xl border border-slate-900/70 bg-slate-900/60 p-3 text-sm text-slate-200 whitespace-pre-wrap">
-                      {sample.code}
-                    </div>
+                    sample.type === "commit" ? (
+                      <CodeSnippet code={sample.code} language="diff" />
+                    ) : (
+                      <div className="rounded-xl border border-slate-900/70 bg-slate-900/60 p-3 text-sm text-slate-200 whitespace-pre-wrap">
+                        {sample.code}
+                      </div>
+                    )
                   ) : (
                     <CodeSnippet code={sample.code} language={sample.language || inferLanguage(sample.filePath) || "tsx"} />
                   )}
@@ -806,16 +766,20 @@ function ProofCodeSamplesSection({ samples }: { samples: ProofPacketCodeSample[]
                   </Button>
                 </div>
               </div>
-              {isOpen && (
-                <div className="mt-3">
-                  {sample.type && sample.type !== "code" ? (
-                    <div className="rounded-xl border border-slate-900/70 bg-slate-900/60 p-3 text-sm text-slate-200 whitespace-pre-wrap">
-                      {sample.code}
+                  {isOpen && (
+                    <div className="mt-3">
+                      {sample.type && sample.type !== "code" ? (
+                        sample.type === "commit" ? (
+                          <CodeSnippet code={sample.code} language="diff" />
+                        ) : (
+                          <div className="rounded-xl border border-slate-900/70 bg-slate-900/60 p-3 text-sm text-slate-200 whitespace-pre-wrap">
+                            {sample.code}
+                          </div>
+                        )
+                      ) : (
+                        <CodeSnippet code={sample.code} language={sample.language || inferLanguage(sample.filePath) || "tsx"} />
+                      )}
                     </div>
-                  ) : (
-                    <CodeSnippet code={sample.code} language={sample.language || inferLanguage(sample.filePath) || "tsx"} />
-                  )}
-                </div>
               )}
             </div>
           );
@@ -1080,61 +1044,6 @@ function RequirementEvidenceEditor({
           Add sample
         </Button>
       </div>
-    </div>
-  );
-}
-
-function EditableCopyRow({
-  text,
-  original,
-  label,
-  onChange,
-  multiline,
-}: {
-  text: string;
-  original: string;
-  label: string;
-  onChange: (value: string) => void;
-  multiline?: boolean;
-}) {
-  const [copied, setCopied] = useState(false);
-  useEffect(() => {
-    if (!copied) return;
-    const timer = setTimeout(() => setCopied(false), 2000);
-    return () => clearTimeout(timer);
-  }, [copied]);
-
-  const handleCopy = async () => {
-    await navigator.clipboard.writeText(text);
-    setCopied(true);
-  };
-
-  const resetDisabled = text === original;
-
-  return (
-    <div className="space-y-2 rounded-2xl border border-slate-800/80 bg-slate-950/60 p-4">
-      <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-        <div className="flex items-center gap-2">
-          <p className="text-xs uppercase tracking-wide text-muted-foreground">{label}</p>
-          {!resetDisabled && <Badge variant="outline">Edited</Badge>}
-        </div>
-        <div className="flex flex-wrap gap-2">
-          <Button variant="ghost" size="sm" onClick={handleCopy}>
-            {copied ? "Copied" : "Copy"}
-          </Button>
-          <Button variant="ghost" size="sm" disabled={resetDisabled} onClick={() => onChange(original)}>
-            Reset
-          </Button>
-        </div>
-      </div>
-      <Textarea
-        value={text}
-        onChange={(event) => onChange(event.target.value)}
-        rows={multiline ? 5 : 3}
-        className="bg-slate-950/80 text-sm"
-        placeholder="Tighten phrasing or add context. Copy when ready."
-      />
-      <p className="text-[11px] text-muted-foreground">Only copied text is shared; packet citations stay read-only until you regenerate.</p>
     </div>
   );
 }

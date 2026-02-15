@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useParams } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
-import { CheckCircle2, ChevronRight } from "lucide-react";
+import { ChevronRight } from "lucide-react";
 import type { CommitEntry, Evidence, EvidenceMappingWithEvidence, ProofPacketCodeSample } from "@evidensify/types";
 import { fetchSharedPacket, fetchSharedPacketByToken } from "@/lib/api";
 import { PublicShareLayout } from "@/components/layout/public-share-layout";
@@ -131,25 +131,8 @@ function PacketView({
             {proof.codeSamples && proof.codeSamples.length > 0 && (
               <PublicCodeSamples samples={proof.codeSamples} />
             )}
-            <section>
-              <SectionHeading title="JD-specific bullets" />
-              <ul className="mt-4 space-y-3">
-                {proof.bullets.map((bullet, index) => (
-                  <li key={index} className="rounded-2xl border border-slate-900/80 bg-slate-950/60 p-4">
-                    <div className="flex items-start gap-3">
-                      <CheckCircle2 className="mt-0.5 h-4 w-4 text-primary" aria-hidden="true" />
-                      <p className="text-sm text-white">{bullet}</p>
-                    </div>
-                  </li>
-                ))}
-              </ul>
-            </section>
-            <section>
-              <SectionHeading title="Outreach note" />
-              <div className="rounded-2xl border border-slate-900/80 bg-slate-950/60 p-4 text-sm text-white">
-                {proof.outreachNote}
-              </div>
-            </section>
+           
+            
             <section id="packet-citations">
               <SectionHeading title="Evidence citations" subtitle="Click through to verify code, notebooks, or demos." />
               {citations.length === 0 ? (
@@ -361,9 +344,13 @@ function PublicCodeSamples({ samples }: { samples: ProofPacketCodeSample[] }) {
               {open && (
                 <div className="mt-3">
                   {sample.type && sample.type !== "code" ? (
-                    <div className="rounded-xl border border-slate-900/70 bg-slate-900/60 p-3 text-sm text-slate-200 whitespace-pre-wrap">
-                      {sample.code}
-                    </div>
+                    sample.type === "commit" ? (
+                      <CodeSnippet code={sample.code} language="diff" />
+                    ) : (
+                      <div className="rounded-xl border border-slate-900/70 bg-slate-900/60 p-3 text-sm text-slate-200 whitespace-pre-wrap">
+                        {sample.code}
+                      </div>
+                    )
                   ) : (
                     <CodeSnippet code={sample.code} language={sample.language || inferLanguage(sample.filePath) || "tsx"} />
                   )}
@@ -543,7 +530,11 @@ function EvidenceSnippetBlock({
           {isCodeSample ? (
             <CodeSnippet code={snippet.code} language={snippet.language} className="max-w-full text-sm" />
           ) : (
-            <div className="rounded-xl border border-slate-900/60 bg-slate-900/50 p-3 text-slate-200 whitespace-pre-wrap">{snippet.code}</div>
+            snippet.type === "commit" ? (
+              <CodeSnippet code={snippet.code} language="diff" className="max-w-full text-sm" />
+            ) : (
+              <div className="rounded-xl border border-slate-900/60 bg-slate-900/50 p-3 text-slate-200 whitespace-pre-wrap">{snippet.code}</div>
+            )
           )}
           {snippet.url && (
             <a href={snippet.url} target="_blank" rel="noopener noreferrer nofollow" className="text-primary underline">
