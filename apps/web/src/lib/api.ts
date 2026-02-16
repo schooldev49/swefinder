@@ -123,9 +123,23 @@ export interface RepoCommitSummary {
   date?: string | null;
 }
 
+export interface RepoCommitDiff {
+  sha: string;
+  message: string;
+  htmlUrl: string;
+  date?: string | null;
+  files: string[];
+  patch: string;
+}
+
 export function fetchRepoCommitsList(fullName: string, limit = 20) {
   const params = new URLSearchParams({ fullName, limit: limit.toString() });
   return apiFetch<RepoCommitSummary[]>(`/github/commits?${params.toString()}`);
+}
+
+export function fetchRepoCommitDiff(fullName: string, sha: string) {
+  const params = new URLSearchParams({ fullName, sha });
+  return apiFetch<RepoCommitDiff>(`/github/commit-diff?${params.toString()}`);
 }
 
 export function fetchRepoFileTree(fullName: string, ref?: string) {
@@ -270,15 +284,16 @@ export function createJobSample(
     projectId: string;
     type?: "code" | "readme" | "commit";
     summary: string;
-    code: string;
+    code?: string;
     language?: string;
     filePath?: string;
     lineStart?: number;
     lineEnd?: number;
     url?: string;
     tags?: string[];
+    authorshipContext?: string;
     readmeHeading?: string;
-    commitEntries?: { sha: string; message: string; date?: string | null; htmlUrl?: string }[];
+    commitEntries?: { sha: string; message: string; date?: string | null; htmlUrl?: string; patch?: string; files?: string[] }[];
     saveToProject?: boolean;
   }
 ) {

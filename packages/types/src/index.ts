@@ -25,6 +25,8 @@ export interface CommitEntry {
   message: string;
   date?: string | null;
   htmlUrl?: string;
+  patch?: string;
+  files?: string[];
 }
 
 export interface ProjectSnapshot {
@@ -46,6 +48,7 @@ export interface ProjectCodeSample {
   lineEnd?: number;
   url?: string;
   tags?: string[];
+  authorshipContext?: string;
   readmeHeading?: string;
   commitEntries?: CommitEntry[];
   isFeaturedProfile?: boolean;
@@ -68,6 +71,7 @@ export interface Project {
   isPrivate?: boolean;
   isFork?: boolean;
   description?: string;
+  whyItMatters?: string;
   primaryLanguage?: string;
   topics: string[];
   lastUpdated: string;

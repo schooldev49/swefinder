@@ -57,20 +57,20 @@ export function PublicProfilePage() {
                   <AvatarFallback>{profileQuery.data.user.githubLogin.slice(0, 2).toUpperCase()}</AvatarFallback>
                 </Avatar>
                 <div>
-                  <p className="text-sm uppercase tracking-wide text-muted-foreground">Proof profile</p>
+                  <p className="text-sm uppercase tracking-wide text-muted-foreground">Public profile</p>
                   <h1 className="text-2xl font-semibold text-white">@{profileQuery.data.user.profileSlug}</h1>
-                  <p className="text-sm text-muted-foreground">Quick review of featured technical proof and source links.</p>
+                  <p className="text-sm text-muted-foreground">Skimmable technical proof with linked evidence.</p>
                 </div>
               </div>
               <div className="rounded-xl border border-slate-800/80 bg-slate-950/60 px-4 py-3 text-xs text-muted-foreground">
-                For a role-specific packet, request an unlisted <span className="text-white">/p/&lt;token&gt;</span> link.
+                Connected via GitHub OAuth
               </div>
             </div>
           </header>
 
           <section className="space-y-4">
             <div>
-              <p className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">Featured proof snapshot</p>
+              <p className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">Featured projects</p>
               <p className="text-xs text-muted-foreground">Code, README, and commit evidence. Expand any card to inspect details.</p>
             </div>
             <FeaturedProofSection projects={profileQuery.data.projects} />
@@ -131,6 +131,7 @@ function ProjectCard({ project }: { project: Project }) {
         {formatProjectYearRange(project) && <span>{formatProjectYearRange(project)}</span>}
         {project.primaryLanguage && <span>{project.primaryLanguage}</span>}
       </div>
+      {project.whyItMatters ? <p className="text-[11px] text-slate-300">Why it matters: {project.whyItMatters}</p> : null}
       {aiUsage ? <p className="text-[11px] text-slate-400">{aiUsage}</p> : null}
       {highlights.length > 0 ? (
         <div className="rounded-xl border border-slate-800/70 bg-slate-950/60 p-3">
@@ -151,7 +152,7 @@ function ProjectCard({ project }: { project: Project }) {
           rel="noopener noreferrer nofollow"
           className="inline-flex items-center text-sm text-primary underline"
         >
-          View source
+          Open proof
         </a>
       )}
       {project.demoUrl && project.demoUrl !== project.htmlUrl && (
@@ -201,7 +202,9 @@ function FeaturedProofSection({ projects }: { projects: Project[] }) {
       url?: string;
       tags?: string[];
       readmeHeading?: string;
-      commitEntries?: Array<{ sha: string; message: string; date?: string | null; htmlUrl?: string }>;
+      commitEntries?: Array<{ sha: string; message: string; date?: string | null; htmlUrl?: string; patch?: string; files?: string[] }>;
+      sourceCommitSha?: string;
+      lastCommitDate?: string | null;
     }>
   ) => (
     <div className="space-y-2">
@@ -239,10 +242,13 @@ function FeaturedProofCard({
     url?: string;
     tags?: string[];
     readmeHeading?: string;
-    commitEntries?: Array<{ sha: string; message: string; date?: string | null; htmlUrl?: string }>;
+    commitEntries?: Array<{ sha: string; message: string; date?: string | null; htmlUrl?: string; patch?: string; files?: string[] }>;
+    sourceCommitSha?: string;
+    lastCommitDate?: string | null;
   };
 }) {
   const [open, setOpen] = useState(false);
+  const [openCommitSha, setOpenCommitSha] = useState<string | null>(null);
   const isCode = !sample.type || sample.type === "code";
   return (
     <div className="rounded-xl border border-slate-900/80 bg-slate-950/70 p-3">
@@ -274,26 +280,45 @@ function FeaturedProofCard({
           {sample.type === "commit" && sample.commitEntries && sample.commitEntries.length > 0 ? (
             <div className="rounded-lg border border-slate-900/70 bg-slate-900/40 p-2 text-[11px] text-slate-300">
               <p className="text-[10px] uppercase tracking-[0.3em] text-slate-500">Commit trail</p>
-              <ul className="mt-1 space-y-1">
-                {sample.commitEntries.slice(0, 5).map((entry) => (
-                  <li key={entry.sha} className="flex items-center justify-between gap-2">
-                    <span className="truncate">{entry.message.split("\n")[0]}</span>
-                    {entry.htmlUrl ? (
-                      <a href={entry.htmlUrl} target="_blank" rel="noopener noreferrer nofollow" className="font-mono text-[10px] text-primary underline">
-                        #{entry.sha.slice(0, 7)}
-                      </a>
-                    ) : (
-                      <span className="font-mono text-[10px] text-slate-500">#{entry.sha.slice(0, 7)}</span>
-                    )}
-                  </li>
-                ))}
-              </ul>
+              <div className="mt-1 space-y-2">
+                {sample.commitEntries.slice(0, 5).map((entry) => {
+                  const title = entry.message.split("\n")[0];
+                  const isOpen = openCommitSha === entry.sha;
+                  return (
+                    <div key={entry.sha} className="rounded-md border border-slate-800/80 bg-slate-950/40 p-2">
+                      <div className="flex items-center justify-between gap-2">
+                        <button
+                          type="button"
+                          onClick={() => setOpenCommitSha((prev) => (prev === entry.sha ? null : entry.sha))}
+                          className="truncate text-left text-slate-200"
+                        >
+                          {title}
+                        </button>
+                        {entry.htmlUrl ? (
+                          <a href={entry.htmlUrl} target="_blank" rel="noopener noreferrer nofollow" className="font-mono text-[10px] text-primary underline">
+                            #{entry.sha.slice(0, 7)}
+                          </a>
+                        ) : (
+                          <span className="font-mono text-[10px] text-slate-500">#{entry.sha.slice(0, 7)}</span>
+                        )}
+                      </div>
+                      {isOpen && entry.patch ? (
+                        <div className="mt-2">
+                          <CodeSnippet code={limitDiffLines(entry.patch, 40)} language="diff" />
+                        </div>
+                      ) : null}
+                    </div>
+                  );
+                })}
+              </div>
             </div>
           ) : null}
+          {sample.lastCommitDate ? <p className="text-[11px] text-slate-400">Updated {formatDate(sample.lastCommitDate)}</p> : null}
+          {sample.sourceCommitSha ? <p className="text-[11px] font-mono text-slate-500">Snapshot #{sample.sourceCommitSha.slice(0, 7)}</p> : null}
           {isCode ? (
             <CodeSnippet code={sample.code} language={sample.language || inferLanguage(sample.filePath) || "tsx"} />
           ) : sample.type === "commit" ? (
-            <CodeSnippet code={sample.code} language="diff" />
+            <p className="text-[11px] text-muted-foreground">Select a commit above to preview the diff.</p>
           ) : (
             <CodeSnippet code={sample.code} language={sample.language || inferLanguage(sample.filePath) || "markdown"} />
           )}
@@ -335,6 +360,19 @@ function formatAiUsage(project: Pick<Project, "aiRole" | "aiTools" | "aiSupervis
 
 function inferLanguage(filePath?: string) {
   return inferLanguageFromPath(filePath);
+}
+
+function limitDiffLines(diff: string, maxLines: number): string {
+  const lines = diff.split("\n");
+  if (lines.length <= maxLines) return diff;
+  return `${lines.slice(0, maxLines).join("\n")}\n...`;
+}
+
+function formatDate(value?: string | null): string {
+  if (!value) return "";
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return value;
+  return date.toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" });
 }
 
 function formatProjectYearRange(project: Pick<Project, "year" | "yearStart" | "yearEnd" | "yearPresent">): string {

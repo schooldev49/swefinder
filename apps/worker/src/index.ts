@@ -49,6 +49,7 @@ import {
   fetchRepoReadme,
   fetchRepoTree,
   fetchRepoCommits,
+  fetchCommitDetail,
   fetchUserRepos,
 } from "./github";
 import { createSession, destroySession, getSession } from "./session";
@@ -110,13 +111,14 @@ interface CreateJobSamplePayload {
   projectId: string;
   type?: ProjectCodeSample["type"];
   summary: string;
-  code: string;
+  code?: string;
   language?: string;
   filePath?: string;
   lineStart?: number;
   lineEnd?: number;
   url?: string;
   tags?: string[];
+  authorshipContext?: string;
   readmeHeading?: string;
   commitEntries?: ProjectCodeSample["commitEntries"];
   saveToProject?: boolean;
@@ -194,6 +196,10 @@ export default {
 
       if (url.pathname === "/api/github/commits" && request.method === "GET") {
         return withCors(await handleGitHubCommits(request, env), origin);
+      }
+
+      if (url.pathname === "/api/github/commit-diff" && request.method === "GET") {
+        return withCors(await handleGitHubCommitDiff(request, env), origin);
       }
 
       if (url.pathname === "/api/projects" && request.method === "POST") {
@@ -556,6 +562,35 @@ async function handleGitHubCommits(request: Request, env: Env): Promise<Response
   return jsonResponse(normalized);
 }
 
+async function handleGitHubCommitDiff(request: Request, env: Env): Promise<Response> {
+  const { user } = await requireUser(request, env);
+  const params = new URL(request.url).searchParams;
+  const fullName = params.get("fullName");
+  const sha = params.get("sha");
+  if (!fullName || !sha) {
+    return errorResponse("Missing fullName or sha", 400);
+  }
+  const encryptedToken = await getEncryptedToken(env, user.id);
+  const token = await decryptToken(env, encryptedToken);
+  if (!token) {
+    throw new HttpError("Missing GitHub token", 401);
+  }
+  const detail = await fetchCommitDetail(token, fullName, sha);
+  const files = (detail.files || []).map((file) => file.filename);
+  const patches = (detail.files || [])
+    .map((file) => file.patch || "")
+    .filter(Boolean)
+    .join("\n");
+  return jsonResponse({
+    sha: detail.sha,
+    htmlUrl: detail.html_url,
+    message: detail.commit?.message || "",
+    date: detail.commit?.author?.date || null,
+    files,
+    patch: patches,
+  });
+}
+
 async function handleListProjects(request: Request, env: Env): Promise<Response> {
   const { user } = await requireUser(request, env);
   const projects = await listProjects(env, user.id);
@@ -570,8 +605,8 @@ async function handleSaveProjects(request: Request, env: Env): Promise<Response>
   }
   const normalized: Project[] = payload.projects.map((project) => normalizeProjectPayload(project, user.id));
   const showcasedCount = normalized.filter((project) => project.isShowcased).length;
-  if (showcasedCount > 4) {
-    throw new HttpError("You can showcase at most 4 projects", 400);
+  if (showcasedCount > 3) {
+    throw new HttpError("You can feature at most 3 projects on your public profile", 400);
   }
   const featured = normalized.flatMap((project) => project.codeSamples || []).filter((sample) => sample.isFeaturedProfile);
   const featuredCode = featured.filter((sample) => (sample.type || "code") === "code").length;
@@ -820,8 +855,10 @@ async function handleCreateJobSample(request: Request, env: Env, jobId: string):
   const { user } = await requireUser(request, env);
   const payload = await parseJsonBody<CreateJobSamplePayload>(request);
   if (!payload.projectId) throw new HttpError("projectId is required", 400);
-  if (!payload.summary?.trim() || !payload.code?.trim()) {
-    throw new HttpError("summary and code are required", 400);
+  const sampleType = payload.type || "code";
+  const hasCommitEntries = Boolean(payload.commitEntries && payload.commitEntries.length > 0);
+  if (!payload.summary?.trim() || (!payload.code?.trim() && !(sampleType === "commit" && hasCommitEntries))) {
+    throw new HttpError("summary and evidence content are required", 400);
   }
 
   const job = await getJob(env, jobId);
@@ -838,13 +875,14 @@ async function handleCreateJobSample(request: Request, env: Env, jobId: string):
       id: crypto.randomUUID(),
       type: payload.type || "code",
       summary: payload.summary,
-      code: payload.code,
+      code: payload.code || "",
       language: payload.language,
       filePath: payload.filePath,
       lineStart: payload.lineStart,
       lineEnd: payload.lineEnd,
       url: payload.url,
       tags: payload.tags,
+      authorshipContext: payload.authorshipContext,
       readmeHeading: payload.readmeHeading,
       commitEntries: payload.commitEntries,
       sourceLocked: true,
@@ -1144,7 +1182,7 @@ async function handlePublicProfile(request: Request, env: Env, slug: string): Pr
     throw new HttpError("Profile not available", 404);
   }
   const projects = await listProjects(env, user.id);
-  const showcased = projects.filter((project) => project.isShowcased);
+  const showcased = projects.filter((project) => project.isShowcased).slice(0, 3);
   return jsonResponse({ user, projects: showcased });
 }
 
@@ -1228,6 +1266,7 @@ function normalizeProjectPayload(
     htmlUrl,
     externalUrl,
     description: project.description,
+    whyItMatters: project.whyItMatters?.trim() || undefined,
     primaryLanguage: project.primaryLanguage,
     defaultBranch: project.defaultBranch,
     isPrivate: false,
@@ -1303,9 +1342,19 @@ function normalizeCodeSamples(samples?: ProjectCodeSample[]): ProjectCodeSample[
   const now = new Date().toISOString();
   const sanitized: ProjectCodeSample[] = [];
   for (const sample of samples.slice(0, MAX_CODE_SAMPLES_PER_PROJECT)) {
+    const type = sample.type || "code";
     const summary = (sample.summary || "").trim();
     const code = (sample.code || "").trim();
-    if (!summary || !code) continue;
+    const commitEntries = (sample.commitEntries || []).slice(0, 20).map((entry) => ({
+      sha: entry.sha,
+      message: entry.message,
+      date: entry.date,
+      htmlUrl: entry.htmlUrl,
+      patch: entry.patch,
+      files: entry.files,
+    }));
+    const hasCommitEvidence = type === "commit" && commitEntries.length > 0;
+    if (!summary || (!code && !hasCommitEvidence)) continue;
     const truncatedSummary = summary.slice(0, MAX_SAMPLE_SUMMARY_CHARS);
     const truncatedCode = code.slice(0, MAX_SAMPLE_CODE_CHARS);
     let lineStart = typeof sample.lineStart === "number" ? Math.max(1, Math.floor(sample.lineStart)) : undefined;
@@ -1316,7 +1365,7 @@ function normalizeCodeSamples(samples?: ProjectCodeSample[]): ProjectCodeSample[
     const url = sample.url ? validateOptionalUrl(sample.url) : undefined;
     sanitized.push({
       id: sample.id || crypto.randomUUID(),
-      type: sample.type || "code",
+      type,
       summary: truncatedSummary,
       code: truncatedCode,
       language: sample.language || undefined,
@@ -1325,13 +1374,9 @@ function normalizeCodeSamples(samples?: ProjectCodeSample[]): ProjectCodeSample[
       lineEnd,
       url,
       tags: (sample.tags || []).map((tag) => tag.trim()).filter(Boolean).slice(0, 5),
+      authorshipContext: sample.authorshipContext?.trim().slice(0, 200) || undefined,
       readmeHeading: sample.readmeHeading?.trim() || undefined,
-      commitEntries: (sample.commitEntries || []).slice(0, 20).map((entry) => ({
-        sha: entry.sha,
-        message: entry.message,
-        date: entry.date,
-        htmlUrl: entry.htmlUrl,
-      })),
+      commitEntries,
       isFeaturedProfile: Boolean(sample.isFeaturedProfile),
       sourceCommitSha: sample.sourceCommitSha,
       lastCommitDate: sample.lastCommitDate || null,

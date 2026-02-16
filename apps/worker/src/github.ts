@@ -160,6 +160,32 @@ export async function fetchRepoCommits(token: string, fullName: string, perPage 
   return (await res.json()) as GitHubCommitRecord[];
 }
 
+export interface GitHubCommitDetail {
+  sha: string;
+  html_url: string;
+  commit: {
+    message: string;
+    author?: {
+      date?: string;
+    };
+  };
+  files?: Array<{
+    filename: string;
+    patch?: string;
+  }>;
+}
+
+export async function fetchCommitDetail(token: string, fullName: string, sha: string): Promise<GitHubCommitDetail> {
+  const safeSha = encodeURIComponent(sha);
+  const res = await fetch(`https://api.github.com/repos/${fullName}/commits/${safeSha}`, {
+    headers: githubHeaders(token),
+  });
+  if (!res.ok) {
+    throw new Error("Unable to fetch commit details");
+  }
+  return (await res.json()) as GitHubCommitDetail;
+}
+
 function githubHeaders(token: string): HeadersInit {
   return {
     Authorization: `Bearer ${token}`,

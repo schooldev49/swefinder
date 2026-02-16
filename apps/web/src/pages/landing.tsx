@@ -2,7 +2,6 @@ import { Link, useLocation } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
 import { useSession } from "@/hooks/use-session";
 import { buildGitHubLoginUrl } from "@/lib/auth";
 import { fetchJobs, fetchProjects } from "@/lib/api";
@@ -42,7 +41,7 @@ export function LandingPage() {
   useSEO({
     title: "Public proof profiles for hiring",
     description:
-      "Build a public proof profile and optional job-specific packets with verifiable links to public repos, docs, and commits.",
+      "Build a public proof profile with verifiable links to public repos, docs, and commits.",
     path: "/",
     jsonLd: {
       "@context": "https://schema.org",
@@ -50,16 +49,12 @@ export function LandingPage() {
       name: "Evidensify",
       url: typeof window !== "undefined" ? window.location.origin : "https://evidensify.com",
       description:
-        "Public proof profiles and optional job-specific packets for fast technical verification.",
+        "Public proof profiles for fast technical verification.",
     },
   });
 
   const handleProjectsLogin = () => {
     window.location.href = buildGitHubLoginUrl(nextPath || "/projects");
-  };
-
-  const handleOptionalPacketLogin = () => {
-    window.location.href = buildGitHubLoginUrl("/jobs/new");
   };
 
   return (
@@ -71,7 +66,7 @@ export function LandingPage() {
               <CardContent className="space-y-3 p-5">
                 <p className="text-sm text-slate-300">Hi {user?.githubLogin}</p>
                 <h1 className="text-2xl font-semibold text-white sm:text-3xl">Build your public proof profile</h1>
-                <p className="text-sm text-slate-300">Start with a reusable profile link. Add job-specific packets only when needed.</p>
+                <p className="text-sm text-slate-300">Use one profile link on your resume and keep proof easy to verify.</p>
                 <div className="grid gap-2 text-xs text-slate-300 sm:grid-cols-3">
                   <div className="rounded-lg border border-slate-800/80 bg-slate-950/60 px-3 py-2">
                     <p className="text-slate-500">Projects added</p>
@@ -92,9 +87,6 @@ export function LandingPage() {
                   <Button className="w-full sm:w-auto" asChild>
                     <Link to="/projects">Build evidence profile</Link>
                   </Button>
-                  <Button variant="outline" className="w-full sm:w-auto" asChild>
-                    <Link to="/jobs/new">Create optional job packet</Link>
-                  </Button>
                 </div>
               </CardContent>
             </Card>
@@ -108,7 +100,7 @@ export function LandingPage() {
                   <Link to="/projects#external">Add external project</Link>
                 </Button>
                 <Button variant="outline" className="w-full" asChild>
-                  <Link to="/example-packet">See example packet</Link>
+                  <Link to="/example-packet">See example profile</Link>
                 </Button>
               </CardContent>
             </Card>
@@ -121,21 +113,18 @@ export function LandingPage() {
               <CardContent className="space-y-4 p-6">
                 <p className="text-xs uppercase tracking-[0.25em] text-slate-500">Evidensify</p>
                 <h1 className="text-3xl font-semibold text-white sm:text-4xl">Build a public proof profile</h1>
-                <p className="text-sm text-slate-300">Start with your public proof profile. Add job-specific packets only when needed.</p>
+                <p className="text-sm text-slate-300">One link. Verifiable proof. Easy skim for recruiters.</p>
                
                 <div className="flex flex-wrap items-center gap-2">
                   <Button className="w-full sm:w-auto" onClick={handleProjectsLogin}>
                     Build evidence profile
-                  </Button>
-                  <Button variant="outline" className="w-full sm:w-auto" onClick={handleOptionalPacketLogin}>
-                    Create job packet (optional)
                   </Button>
                 </div>
               </CardContent>
             </Card>
             <Card className="rounded-2xl border-slate-800/80 bg-slate-950/80 shadow-xl">
               <CardContent className="space-y-4 p-4 sm:p-5">
-                <p className="text-sm text-slate-400">Proof Packet preview</p>
+                <p className="text-sm text-slate-400">Public profile preview</p>
                 <div className="space-y-3">
                   {previewRequirements.map((req) => (
                     <div key={req.title} className="rounded-xl border border-slate-800/80 bg-slate-900/60 p-3 text-sm">
@@ -148,7 +137,7 @@ export function LandingPage() {
                 </div>
                 <div className="grid gap-2 sm:grid-cols-2">
                   <Button variant="outline" asChild>
-                    <Link to="/example-packet">See example packet</Link>
+                    <Link to="/example-packet">See example profile</Link>
                   </Button>
                   <Button variant="outline" asChild>
                     <Link to="/security">How verification works</Link>
@@ -168,7 +157,7 @@ export function LandingPage() {
               <p className="rounded-lg border border-slate-800/80 bg-slate-950/60 px-3 py-2">Project</p>
               <p className="rounded-lg border border-slate-800/80 bg-slate-950/60 px-3 py-2">Requirement</p>
               <p className="rounded-lg border border-slate-800/80 bg-slate-950/60 px-3 py-2">Linked evidence</p>
-              <p className="pt-1 text-xs text-slate-400">Attach one packet link with your resume.</p>
+              <p className="pt-1 text-xs text-slate-400">Attach one profile link with your resume.</p>
             </div>
           </CardContent>
         </Card>
@@ -176,7 +165,7 @@ export function LandingPage() {
           <CardContent className="space-y-4 p-4 sm:p-5">
             <p className="text-sm text-slate-400">Action summary</p>
             <div className="space-y-3">
-              <p className="rounded-xl border border-slate-800/80 bg-slate-900/60 p-3 text-sm text-slate-200">Only public links are allowed in Proof Packets.</p>
+              <p className="rounded-xl border border-slate-800/80 bg-slate-900/60 p-3 text-sm text-slate-200">Only public links are allowed for evidence.</p>
               <p className="rounded-xl border border-slate-800/80 bg-slate-900/60 p-3 text-sm text-slate-200">Candidates choose requirements and evidence manually.</p>
               <p className="rounded-xl border border-slate-800/80 bg-slate-900/60 p-3 text-sm text-slate-200">Recruiters can skim fast and verify source links directly.</p>
             </div>

@@ -11,7 +11,7 @@ export function PublicShareLayout({ children }: { children: ReactNode }) {
             Evidensify
           </Link>
           <Button asChild size="sm" variant="secondary">
-            <Link to="/">Create your packet</Link>
+            <Link to="/">Create your profile</Link>
           </Button>
         </div>
       </header>

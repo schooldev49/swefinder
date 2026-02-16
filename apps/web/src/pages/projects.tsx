@@ -9,6 +9,7 @@ import {
   fetchRepoFileTree,
   fetchRepoReadmeContent,
   fetchRepoCommitsList,
+  fetchRepoCommitDiff,
   saveProjects,
   suggestSnippetSummary,
   suggestSnippetTags,
@@ -16,6 +17,7 @@ import {
   type ProjectPayload,
   type RepoTreeItem,
   type RepoCommitSummary,
+  type RepoCommitDiff,
 } from "@/lib/api";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
@@ -39,13 +41,14 @@ const AI_ROLE_OPTIONS = [
   { value: "co-design", label: "Co-design (AI drafts + your review)" },
   { value: "agent-orchestration", label: "Agent orchestration (built eval/guardrails)" },
 ];
-const MAX_SHOWCASED = 4;
+const MAX_SHOWCASED = 3;
 const MAX_FEATURED_CODE = 3;
 const MAX_FEATURED_COMMIT = 3;
 const MAX_FEATURED_README = 1;
 const MAX_SAMPLE_LINES = 40;
 const MAX_SAMPLE_CODE_CHARS = 2000;
 const MAX_PROJECT_DESCRIPTION_CHARS = 280;
+const MAX_PROJECT_IMPACT_CHARS = 120;
 const WRITEUP_SITES = ["notion.so", "medium.com", "docs.google.com", "substack.com", "mirror.xyz"];
 const DEMO_SITES = ["youtube.com", "codesandbox.io", "figma.com", "youtu.be", "loom.com", "streamlit", "vercel.app", "netlify.app", "azurewebsites"];
 const PROJECTS_CHECKLIST = [
@@ -56,10 +59,6 @@ const PROJECTS_CHECKLIST = [
   {
     title: "Add context & AI usage",
     detail: "Explain design choices and note how you used (or skipped) AI.",
-  },
-  {
-    title: "Generate packets",
-    detail: "Head to Jobs → New job to map requirements. It auto-fills from your featured proof.",
   },
 ];
 
@@ -91,6 +90,7 @@ type ExternalFormState = {
   title: string;
   url: string;
   description: string;
+  whyItMatters: string;
   techStack: string;
   context: string;
   yearStart: string;
@@ -102,6 +102,7 @@ const createEmptyExternalForm = (): ExternalFormState => ({
   title: "",
   url: "",
   description: "",
+  whyItMatters: "",
   techStack: "",
   context: "",
   yearStart: "",
@@ -389,6 +390,7 @@ export function ProjectsPage() {
       isPrivate: false,
       isFork: false,
       description: externalForm.description.trim() || undefined,
+      whyItMatters: externalForm.whyItMatters.trim() || undefined,
       topics,
       lastUpdated: new Date().toISOString(),
       context: externalForm.context || undefined,
@@ -429,7 +431,7 @@ export function ProjectsPage() {
 
   const toggleShowcased = (projectId: string, nextState: boolean) => {
     if (nextState && showcasedCount >= MAX_SHOWCASED) {
-      toast("Limit reached", { description: "You can showcase up to 4 projects." });
+      toast("Limit reached", { description: "You can feature up to 3 projects." });
       return;
     }
     if (!projects.some((project) => project.id === projectId)) {
@@ -441,7 +443,7 @@ export function ProjectsPage() {
       {
         toastTitle: nextState ? "Project showcased" : "Showcase updated",
         toastDescription: nextState
-          ? "This project will appear at the top of Proof Packets."
+          ? "This project will appear in Featured projects on your public profile."
           : "It will stay in your list but not be highlighted.",
       }
     );
@@ -491,7 +493,7 @@ export function ProjectsPage() {
         }),
       {
         toastTitle: nextState ? "Added to public profile" : "Removed from public profile",
-        toastDescription: nextState ? "Keep only your strongest and most defensible proof." : "It stays saved for packet use.",
+        toastDescription: nextState ? "Keep only your strongest and most defensible proof." : "It stays saved for optional job-specific links.",
       }
     );
   };
@@ -539,20 +541,20 @@ export function ProjectsPage() {
       <div className="rounded-2xl border border-slate-800/70 bg-slate-950/60 p-4">
         <div className="grid gap-2 md:grid-cols-3">
           <Button asChild className="justify-between">
-            <Link to="/jobs/new">
-              Create packet
-              <span>Go</span>
-            </Link>
-          </Button>
-          <Button asChild variant="outline" className="justify-between">
-            <Link to="/jobs">
-              Open job tracker
-              <span>Go</span>
-            </Link>
-          </Button>
-          <Button asChild variant="outline" className="justify-between">
             <Link to="/profile">
-              Manage public profile
+              Open public profile
+              <span>Go</span>
+            </Link>
+          </Button>
+          <Button asChild variant="outline" className="justify-between">
+            <Link to="/projects">
+              Manage projects
+              <span>Go</span>
+            </Link>
+          </Button>
+          <Button asChild variant="outline" className="justify-between">
+            <Link to="/example-packet">
+              See example profile
               <span>Go</span>
             </Link>
           </Button>
@@ -560,7 +562,7 @@ export function ProjectsPage() {
       </div>
       <div className="rounded-2xl border border-slate-800/70 bg-slate-950/50 p-5">
         <p className="text-xs uppercase tracking-[0.35em] text-muted-foreground">Setup checklist</p>
-        <div className="mt-4 grid gap-4 md:grid-cols-3">
+        <div className="mt-4 grid gap-4 md:grid-cols-2">
           {PROJECTS_CHECKLIST.map((step, index) => (
             <div key={step.title} className="rounded-xl border border-slate-800/70 bg-slate-950/70 p-4">
               <div className="text-sm font-semibold text-accent">Step {index + 1}</div>
@@ -574,7 +576,7 @@ export function ProjectsPage() {
         <CardHeader className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
           <div>
             <CardTitle className="text-white">Saved projects</CardTitle>
-            <CardDescription>These projects—GitHub repos or public links—become the evidence pool for every Proof Packet.</CardDescription>
+            <CardDescription>These projects become your public proof profile and optional job-specific links.</CardDescription>
             <p className="text-xs text-muted-foreground mt-1">
               Showcased projects: {showcasedCount}/{MAX_SHOWCASED}
             </p>
@@ -598,7 +600,7 @@ export function ProjectsPage() {
             <div className="rounded-2xl border border-dashed border-slate-700 bg-slate-950/60 p-5">
               <h3 className="text-sm font-semibold text-white">Add external project</h3>
               <p className="text-xs text-muted-foreground">
-                Link to a live demo, notebook, or write-up that proves your work. These links go straight into Proof Packets.
+                Link to a live demo, notebook, or write-up that proves your work. These links appear on your public profile.
               </p>
               <form className="mt-4 space-y-4" onSubmit={handleExternalSubmit}>
                 <div className="grid gap-4 md:grid-cols-2">
@@ -637,6 +639,16 @@ export function ProjectsPage() {
                   <p className="mt-1 text-[11px] text-muted-foreground">
                     Keep this brief ({MAX_PROJECT_DESCRIPTION_CHARS} chars max). Focus on concrete engineering choices and tradeoffs.
                   </p>
+                </div>
+                <div>
+                  <Label>Why this matters (optional)</Label>
+                  <Input
+                    value={externalForm.whyItMatters}
+                    onChange={handleExternalInput("whyItMatters")}
+                    maxLength={MAX_PROJECT_IMPACT_CHARS}
+                    className="mt-2"
+                    placeholder="Used in production / validated by users / measurable impact"
+                  />
                 </div>
                 <div>
                   <Label>Tech stack (comma separated)</Label>
@@ -687,7 +699,7 @@ export function ProjectsPage() {
               </form>
             </div>
           )}
-          <p className="text-xs text-muted-foreground">Only public links are allowed in Proof Packets.</p>
+          <p className="text-xs text-muted-foreground">Only public links are allowed in profile proof.</p>
           {privateProjects.length > 0 ? (
             <div className="space-y-2 rounded-xl border border-amber-700/60 bg-amber-950/20 p-3">
               <p className="text-xs text-amber-300">
@@ -831,6 +843,16 @@ export function ProjectsPage() {
                       placeholder="https://"
                     />
                     <p className="mt-1 text-[11px] text-muted-foreground">Must be public. Recruiters will click to verify.</p>
+                  </div>
+                  <div className="md:col-span-2">
+                    <Label>Why this matters (optional)</Label>
+                    <Input
+                      value={project.whyItMatters || ""}
+                      onChange={(event) => updateProject(project.id, { whyItMatters: event.target.value || undefined })}
+                      maxLength={MAX_PROJECT_IMPACT_CHARS}
+                      className="mt-2"
+                      placeholder="Used in production / validated by users / measurable impact"
+                    />
                   </div>
                 </div>
                 <div className="mt-4">
@@ -1048,6 +1070,7 @@ export function ProjectsPage() {
 type SampleDraft = {
   type: CodeSampleType;
   summary: string;
+  authorshipContext: string;
   filePath: string;
   lineStart: string;
   lineEnd: string;
@@ -1088,6 +1111,7 @@ type FilePreviewState = {
 const createEmptySampleDraft = (): SampleDraft => ({
   type: "code",
   summary: "",
+  authorshipContext: "",
   filePath: "",
   lineStart: "",
   lineEnd: "",
@@ -1143,6 +1167,7 @@ export function ProjectCodeSamplesEditor({
       setDraft({
         type: sample.type || "code",
         summary: sample.summary || "",
+        authorshipContext: sample.authorshipContext || "",
         filePath: sample.filePath || "",
         lineStart: sample.lineStart ? sample.lineStart.toString() : "",
         lineEnd: sample.lineEnd ? sample.lineEnd.toString() : "",
@@ -1195,15 +1220,16 @@ export function ProjectCodeSamplesEditor({
   const upsertSample = () => {
     const summary = draft.summary.trim();
     const code = draft.code.trim();
-    if (!summary || !code) {
-      toast("Add details", { description: "Summary and code are required." });
+    const sampleType: CodeSampleType = draft.type || "code";
+    const hasCommitEntries = sampleType === "commit" && Boolean(draft.commitEntries && draft.commitEntries.length > 0);
+    if (!summary || (!code && !hasCommitEntries)) {
+      toast("Add details", { description: "Summary and evidence content are required." });
       return;
     }
-    if (code.length > MAX_SAMPLE_CODE_CHARS) {
+    if (code && code.length > MAX_SAMPLE_CODE_CHARS) {
       toast("Snippet too long", { description: `Limit samples to ${MAX_SAMPLE_CODE_CHARS} characters.` });
       return;
     }
-    const sampleType: CodeSampleType = draft.type || "code";
     const enforceLines = sampleType === "code";
     const lineStart = enforceLines && draft.lineStart ? Math.max(1, Number.parseInt(draft.lineStart, 10)) : undefined;
     let lineEnd = enforceLines && draft.lineEnd ? Math.max(1, Number.parseInt(draft.lineEnd, 10)) : undefined;
@@ -1224,6 +1250,7 @@ export function ProjectCodeSamplesEditor({
       type: sampleType,
       summary: summary.slice(0, 200),
       code,
+      authorshipContext: draft.authorshipContext.trim() || undefined,
       filePath: draft.filePath.trim() || undefined,
       lineStart,
       lineEnd,
@@ -1238,6 +1265,8 @@ export function ProjectCodeSamplesEditor({
         message: entry.message,
         date: entry.date,
         htmlUrl: entry.htmlUrl,
+        patch: entry.patch,
+        files: entry.files,
       })),
       sourceLocked: draft.sourceLocked,
     };
@@ -1289,7 +1318,7 @@ export function ProjectCodeSamplesEditor({
         <div>
           <p className="text-sm font-semibold text-white">Samples (code, README, commit)</p>
           <p className="text-xs text-muted-foreground">
-            Capture short snippets or doc excerpts with commentary. You can attach up to 3 per Proof Packet.
+            Capture short snippets or doc excerpts with commentary. Keep them easy to skim and verify.
           </p>
         </div>
         <div className="flex gap-2">
@@ -1318,6 +1347,9 @@ export function ProjectCodeSamplesEditor({
                     <p className="text-[11px] uppercase tracking-[0.3em] text-slate-500">
                       {sample.filePath || 'snippet'} {formatLineRange(sample.lineStart, sample.lineEnd)}
                     </p>
+                    {sample.authorshipContext ? (
+                      <p className="mt-1 text-[11px] text-slate-400">What to notice: {sample.authorshipContext}</p>
+                    ) : null}
                   {sample.tags && sample.tags.length > 0 && (
                     <div className="mt-1 flex flex-wrap gap-1">
                       {sample.tags.map((tag) => (
@@ -1445,6 +1477,16 @@ function SampleEditorModal({
               </div>
             )}
           </div>
+          <div>
+            <Label>What to notice (optional)</Label>
+            <Input
+              value={draft.authorshipContext}
+              onChange={onDraftChange("authorshipContext")}
+              className="mt-2"
+              maxLength={200}
+              placeholder="I wrote X, reviewed Y, integrated Z"
+            />
+          </div>
           <div className="grid gap-3 md:grid-cols-2">
             <div>
               <Label>File path</Label>
@@ -1558,7 +1600,7 @@ function SampleEditorModal({
               )}
               rows={draft.type === "code" ? 6 : 5}
               placeholder={codePlaceholder}
-              required
+              required={draft.type !== "commit"}
               readOnly={draft.sourceLocked}
               aria-readonly={draft.sourceLocked}
             />
@@ -1566,6 +1608,8 @@ function SampleEditorModal({
               <p className="mt-1 text-[11px] text-muted-foreground">
                 Limit {MAX_SAMPLE_LINES} lines / {MAX_SAMPLE_CODE_CHARS} characters.
               </p>
+            ) : draft.type === "commit" ? (
+              <p className="mt-1 text-[11px] text-muted-foreground">Commit samples are entry-based. Use selected commits and expandable diffs.</p>
             ) : (
               <p className="mt-1 text-[11px] text-muted-foreground">Keep it concise (under {MAX_SAMPLE_CODE_CHARS} characters) and focused on evidence.</p>
             )}
@@ -1898,26 +1942,61 @@ function CodeSamplePicker({ project, initialTab = "code", onClose, onSelect }: C
       htmlUrl: entry.htmlUrl,
     }));
 
-  const handleUseCommitTrail = () => {
+  const commitDiffPreview = (detail: RepoCommitDiff) => {
+    const patchLines = (detail.patch || "")
+      .split("\n")
+      .filter((line) => line.trim().length > 0)
+      .slice(0, 40)
+      .join("\n");
+    if (!patchLines) {
+      return `diff --git a/${(detail.files[0] || "file")} b/${(detail.files[0] || "file")}\n# Patch not available for this commit`;
+    }
+    return patchLines;
+  };
+
+  const handleUseCommitTrail = async () => {
     const entries = commits.filter((commit) => selectedCommitShas.has(commit.sha));
     if (entries.length < 2) {
       setCommitsError("Select at least two commits to build a trail.");
       return;
     }
-    const snippet = entries
-      .map((entry) => {
-        const message = entry.message?.split("\n")[0]?.trim() || entry.sha;
-        return `- ${message} (${entry.sha.slice(0, 7)})`;
-      })
+    let detailedEntries: CommitEntry[] = mapCommitSummaries(entries);
+    let snippet = entries
+      .map((entry) => `- ${(entry.message?.split("\n")[0]?.trim() || entry.sha)} (${entry.sha.slice(0, 7)})`)
       .join("\n");
+
+    try {
+      const details = await Promise.all(
+        entries.slice(0, 3).map(async (entry) => fetchRepoCommitDiff(project.fullName, entry.sha))
+      );
+      detailedEntries = details.map((detail) => ({
+        sha: detail.sha,
+        message: detail.message,
+        date: detail.date,
+        htmlUrl: detail.htmlUrl,
+        files: detail.files.slice(0, 3),
+        patch: commitDiffPreview(detail),
+      }));
+      snippet = details
+        .map((detail) => {
+          const title = detail.message?.split("\n")[0] || detail.sha;
+          const header = `# ${title} (${detail.sha.slice(0, 7)})`;
+          const patch = commitDiffPreview(detail);
+          return `${header}\n${patch}`;
+        })
+        .join("\n\n")
+        .slice(0, MAX_SAMPLE_CODE_CHARS);
+    } catch {
+      // Keep fallback summary if commit patch fetch fails.
+    }
     const sourceUrl = entries[0]?.htmlUrl || project.htmlUrl || `https://github.com/${project.fullName}`;
     onSelect({
       type: "commit",
       filePath: `Commits (${entries.length})`,
-      language: "text",
+      language: "diff",
       code: snippet,
       sourceUrl,
-      commitEntries: mapCommitSummaries(entries),
+      commitEntries: detailedEntries,
     });
     setSelectedCommitShas(new Set());
   };

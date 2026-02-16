@@ -383,7 +383,7 @@ function PublicCodeSamples({ samples }: { samples: ProofPacketCodeSample[] }) {
                 <div className="mt-3">
                   {sample.type && sample.type !== "code" ? (
                     sample.type === "commit" ? (
-                      <CodeSnippet code={sample.code} language="diff" />
+                      <p className="text-[11px] text-muted-foreground">Select a commit above to preview the diff.</p>
                     ) : (
                       <CodeSnippet code={sample.code} language={sample.language || inferLanguage(sample.filePath) || "markdown"} />
                     )
@@ -429,26 +429,41 @@ function SampleHighlightMetaPublic({
 }
 
 function PublicCommitTrail({ entries }: { entries: CommitEntry[] }) {
+  const [openCommitSha, setOpenCommitSha] = useState<string | null>(null);
   if (!entries.length) return null;
   const trimmed = entries.slice(0, 5);
   return (
     <div className="mt-2 rounded-lg border border-slate-900/70 bg-slate-900/40 p-2 text-[11px] text-slate-300">
       <p className="text-[10px] uppercase tracking-[0.3em] text-slate-500">Commit trail · {trimmed.length} entr{trimmed.length === 1 ? "y" : "ies"}</p>
-      <ul className="mt-1 space-y-1">
+      <ul className="mt-1 space-y-2">
         {trimmed.map((entry) => {
           const label = truncateTextPublic(entry.message?.split("\n")[0] || entry.sha, 90);
           const shortSha = entry.sha ? entry.sha.slice(0, 7) : "commit";
+          const isOpen = openCommitSha === entry.sha;
           return (
-            <li key={entry.sha} className="flex items-center gap-2">
-              <span className="flex-1 truncate">{label}</span>
-              {entry.date ? <span className="text-[10px] text-slate-500">{formatPublicDate(entry.date)}</span> : null}
-              {entry.htmlUrl ? (
-                <a href={entry.htmlUrl} target="_blank" rel="noopener noreferrer nofollow" className="font-mono text-[10px] text-primary underline">
-                  #{shortSha}
-                </a>
-              ) : (
-                <span className="font-mono text-[10px] text-slate-500">#{shortSha}</span>
-              )}
+            <li key={entry.sha} className="rounded-md border border-slate-800/80 bg-slate-950/40 p-2">
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  className="flex-1 truncate text-left"
+                  onClick={() => setOpenCommitSha((prev) => (prev === entry.sha ? null : entry.sha))}
+                >
+                  {label}
+                </button>
+                {entry.date ? <span className="text-[10px] text-slate-500">{formatPublicDate(entry.date)}</span> : null}
+                {entry.htmlUrl ? (
+                  <a href={entry.htmlUrl} target="_blank" rel="noopener noreferrer nofollow" className="font-mono text-[10px] text-primary underline">
+                    #{shortSha}
+                  </a>
+                ) : (
+                  <span className="font-mono text-[10px] text-slate-500">#{shortSha}</span>
+                )}
+              </div>
+              {isOpen && entry.patch ? (
+                <div className="mt-2">
+                  <CodeSnippet code={limitDiffLinesPublic(entry.patch, 40)} language="diff" />
+                </div>
+              ) : null}
             </li>
           );
         })}
@@ -460,6 +475,12 @@ function PublicCommitTrail({ entries }: { entries: CommitEntry[] }) {
 function truncateTextPublic(value: string, max = 80) {
   if (!value) return "";
   return value.length <= max ? value : `${value.slice(0, max - 1)}…`;
+}
+
+function limitDiffLinesPublic(diff: string, maxLines: number): string {
+  const lines = diff.split("\n");
+  if (lines.length <= maxLines) return diff;
+  return `${lines.slice(0, maxLines).join("\n")}\n...`;
 }
 
 function PrivateRepoBadgePublic() {
@@ -558,7 +579,7 @@ function EvidenceSnippetBlock({
             <CodeSnippet code={snippet.code} language={snippet.language} className="max-w-full text-sm" />
           ) : (
             snippet.type === "commit" ? (
-              <CodeSnippet code={snippet.code} language="diff" className="max-w-full text-sm" />
+              <p className="text-[11px] text-muted-foreground">Commit evidence is shown in the commit trail cards above.</p>
             ) : (
               <CodeSnippet
                 code={snippet.code}

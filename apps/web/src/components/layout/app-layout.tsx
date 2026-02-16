@@ -11,7 +11,6 @@ import { cn } from "@/lib/utils";
 const navLinks = [
   { to: "/profile", label: "Profile" },
   { to: "/projects", label: "Projects" },
-  { to: "/jobs", label: "Jobs" },
 ];
 
 export function AppLayout() {
