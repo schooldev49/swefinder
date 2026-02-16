@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import type { ChangeEvent, FormEvent } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Link } from "react-router-dom";
+import { Link, useLocation } from "react-router-dom";
 import {
   fetchGitHubRepos,
   fetchProjects,
@@ -44,6 +44,7 @@ const MAX_FEATURED_COMMIT = 3;
 const MAX_FEATURED_README = 1;
 const MAX_SAMPLE_LINES = 40;
 const MAX_SAMPLE_CODE_CHARS = 2000;
+const MAX_PROJECT_DESCRIPTION_CHARS = 280;
 const PROJECTS_CHECKLIST = [
   {
     title: "Import repos",
@@ -188,6 +189,7 @@ export function ProjectsPage() {
     robots: "noindex,nofollow",
   });
   const queryClient = useQueryClient();
+  const location = useLocation();
   const { data: savedProjects, isLoading } = useQuery({ queryKey: ["projects"], queryFn: fetchProjects });
   const [projects, setProjects] = useState<EditableProject[]>([]);
   const [repos, setRepos] = useState<ApiRepoSummary[]>([]);
@@ -217,6 +219,12 @@ export function ProjectsPage() {
       setProjects(savedProjects.map(toEditableProject));
     }
   }, [savedProjects]);
+
+  useEffect(() => {
+    if (location.hash === "#external") {
+      setShowExternalForm(true);
+    }
+  }, [location.hash]);
 
   const saveMutation = useMutation({
     mutationFn: (payload: ProjectPayload[]) => saveProjects(payload),
@@ -287,6 +295,7 @@ export function ProjectsPage() {
         htmlUrl: repo.htmlUrl,
         defaultBranch: repo.defaultBranch,
         isPrivate: false,
+        isFork: Boolean(repo.fork),
         description: repo.description,
         primaryLanguage: repo.language,
         topics: repo.topics || [],
@@ -338,7 +347,8 @@ export function ProjectsPage() {
       fullName: title,
       htmlUrl: url,
       externalUrl: url,
-       isPrivate: false,
+      isPrivate: false,
+      isFork: false,
       description: externalForm.description.trim() || undefined,
       topics,
       lastUpdated: new Date().toISOString(),
@@ -568,9 +578,13 @@ export function ProjectsPage() {
                     value={externalForm.description}
                     onChange={handleExternalInput("description")}
                     rows={3}
+                    maxLength={MAX_PROJECT_DESCRIPTION_CHARS}
                     className="mt-2"
-                    placeholder="Describe design choices, tools, what you learned, and any limitations. Use your own words; AI can help polish, but only include facts you can defend."
+                    placeholder="Briefly explain design choices, constraints, and what you would improve."
                   />
+                  <p className="mt-1 text-[11px] text-muted-foreground">
+                    Keep this brief ({MAX_PROJECT_DESCRIPTION_CHARS} chars max). Focus on concrete engineering choices and tradeoffs.
+                  </p>
                 </div>
                 <div>
                   <Label>Tech stack (comma separated)</Label>
@@ -642,6 +656,7 @@ export function ProjectsPage() {
                       <Badge variant={project.sourceType === "link" ? "outline" : "default"}>
                         {project.sourceType === "link" ? "Link" : "GitHub"}
                       </Badge>
+                      {project.isFork ? <Badge variant="warning">Fork</Badge> : null}
                     </div>
                     <p className="text-xs text-muted-foreground">
                       Updated {formatUpdated(project.lastUpdated)}
@@ -714,11 +729,20 @@ export function ProjectsPage() {
                   <Textarea
                     className="mt-2"
                     rows={3}
+                    maxLength={MAX_PROJECT_DESCRIPTION_CHARS}
                     value={project.description || ""}
                     onChange={(event) => updateProject(project.id, { description: event.target.value })}
-                    placeholder="Short reminder of the problem, stack, and key outcomes."
+                    placeholder="Briefly explain design choices, constraints, and what you would improve."
                   />
+                  <p className="mt-1 text-[11px] text-muted-foreground">
+                    Keep this brief ({MAX_PROJECT_DESCRIPTION_CHARS} chars max). Mention specific technical decisions so reviewers can verify your reasoning.
+                  </p>
                 </div>
+                {project.isFork ? (
+                  <div className="mt-3 rounded-xl border border-amber-700/60 bg-amber-950/20 p-3 text-[11px] text-amber-200">
+                    This repository is a fork. Add PR, commit, or file-level proof that shows your own contribution.
+                  </div>
+                ) : null}
                
                 <div className="mt-4">
                   <ProjectCodeSamplesEditor

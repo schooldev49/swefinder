@@ -154,6 +154,18 @@ function PacketView({
                   {citations.map((evidence) => (
                     <div key={evidence.id} className="rounded-2xl border border-slate-900/80 bg-slate-950/60 p-4 text-xs text-muted-foreground">
                       <p className="text-[11px] uppercase tracking-[0.2em] text-slate-500">{evidence.projectFullName}</p>
+                      <div className="mt-1 flex flex-wrap gap-1">
+                        {getEvidenceProofTypes(evidence).map((type) => (
+                          <Badge key={`${evidence.id}-${type}`} variant="outline" className="text-[10px] uppercase tracking-wide">
+                            {type}
+                          </Badge>
+                        ))}
+                      </div>
+                      {getEvidenceProofTypes(evidence).includes("Unapproved Link") ? (
+                        <p className="mt-1 text-[11px] text-amber-300">
+                          Warning: this link type is currently not supported for strong verification.
+                        </p>
+                      ) : null}
                       {evidence.description && <p className="text-sm text-white">{evidence.description}</p>}
                       {evidence.lastCommitDate ? <p className="text-[11px] text-slate-400">Updated {formatPublicDate(evidence.lastCommitDate)}</p> : null}
                       {evidence.fileUrl && (
@@ -220,6 +232,18 @@ function RequirementPublicCard({
           trimmedMappings.map((mapping) => (
             <div key={mapping.id} className="rounded-xl border border-slate-900/80 p-3 text-xs text-muted-foreground">
               <p className="font-semibold text-white">{mapping.evidence.projectFullName}</p>
+              <div className="mt-1 flex flex-wrap gap-1">
+                {getEvidenceProofTypes(mapping.evidence).map((type) => (
+                  <Badge key={`${mapping.id}-${type}`} variant="outline" className="text-[10px] uppercase tracking-wide">
+                    {type}
+                  </Badge>
+                ))}
+              </div>
+              {getEvidenceProofTypes(mapping.evidence).includes("Unapproved Link") ? (
+                <p className="mt-1 text-[11px] text-amber-300">
+                  Warning: this link type is currently not supported for strong verification.
+                </p>
+              ) : null}
               {mapping.evidence.isPrivate ? <PrivateRepoBadgePublic /> : null}
               {mapping.rationale && <p>{mapping.rationale}</p>}
               {mapping.evidence.lastCommitDate ? (
@@ -565,4 +589,36 @@ function PacketError() {
       Job-specific packet not found. Double-check the link with the candidate.
     </div>
   );
+}
+
+function getEvidenceProofTypes(evidence: Evidence): string[] {
+  const labels = new Set<string>();
+  const sourceStr = `${evidence.fileUrl || ""}`.toLowerCase();
+  const demoStr = (evidence.demoUrl || "").toLowerCase();
+
+  if (evidence.sourceType === "github") labels.add("Repo");
+  if (sourceStr.includes("/pull/")) labels.add("PR");
+  if (sourceStr.includes("/commit/")) labels.add("Commit");
+
+  const writeupSites = ["notion.so", "medium.com", "docs.google.com", "substack.com", "mirror.xyz"];
+  if (writeupSites.some((site) => sourceStr.includes(site))) labels.add("Writeup");
+  if (sourceStr.includes("readme") || sourceStr.includes(".md")) labels.add("Writeup");
+  if (sourceStr.includes("case-study") || sourceStr.includes("casestudy")) labels.add("Case study");
+
+  const demoSites = [
+    "youtube.com",
+    "codesandbox.io",
+    "figma.com",
+    "youtu.be",
+    "loom.com",
+    "streamlit",
+    "vercel.app",
+    "netlify.app",
+    "azurewebsites",
+  ];
+  if (demoSites.some((site) => demoStr.includes(site))) labels.add("Demo");
+
+  if (evidence.sourceType === "link" && labels.size === 0) labels.add("Case study");
+  if (labels.size === 0) labels.add("Unapproved Link");
+  return Array.from(labels);
 }

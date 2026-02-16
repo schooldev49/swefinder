@@ -102,6 +102,7 @@ export function PublicProfilePage() {
 function ProjectCard({ project }: { project: Project }) {
   const highlights = (project.codeSamples || []).filter((sample) => sample.isFeaturedProfile).slice(0, 2);
   const aiUsage = formatAiUsage(project);
+  const proofTypes = getProjectProofTypes(project);
   return (
     <div className="rounded-2xl border border-slate-900/80 bg-slate-950/80 p-5 space-y-2">
       <div className="flex items-start justify-between gap-3">
@@ -110,8 +111,20 @@ function ProjectCard({ project }: { project: Project }) {
           {project.description && <p className="text-sm text-muted-foreground">{project.description}</p>}
         </div>
         <Badge variant={project.sourceType === "link" ? "outline" : "default"} className="text-[10px] uppercase tracking-wide">
-          {project.sourceType === "link" ? "Link" : "GitHub"}
+          {project.sourceType === "link" ? "External" : "GitHub"}
         </Badge>
+      </div>
+      <div className="flex flex-wrap gap-1">
+        {proofTypes.map((type) => (
+          <Badge key={type} variant="outline" className="text-[10px] uppercase tracking-wide">
+            {type}
+          </Badge>
+        ))}
+        {project.isFork ? (
+          <Badge variant="warning" className="text-[10px] uppercase tracking-wide">
+            Fork
+          </Badge>
+        ) : null}
       </div>
       <div className="flex flex-wrap gap-3 text-xs text-muted-foreground">
         {project.context && <span>{project.context}</span>}
@@ -222,6 +235,49 @@ function formatAiUsage(project: Pick<Project, "aiRole" | "aiTools" | "aiSupervis
     parts.push(`Supervision: ${project.aiSupervisionNotes}`);
   }
   return parts.length ? parts.join(" · ") : null;
+}
+function getProjectProofTypes(project: Project): string[] {
+  const labels = new Set<string>();
+  
+  // Normalize all possible signal sources
+  const sourceStr = `${project.htmlUrl || ''} ${project.externalUrl || ''}`.toLowerCase();
+  const demoStr = (project.demoUrl || "").toLowerCase();
+
+  // 1. Explicit Type Checks
+  if (project.sourceType === "github") labels.add("Repo");
+
+  // 2. Pattern Matching for Source
+  if (sourceStr.includes("/pull/")) labels.add("PR");
+  if (sourceStr.includes("/commit/")) labels.add("Commit");
+  
+  const writeupSites = ["notion.so", "medium.com", "docs.google.com", "substack.com", "mirror.xyz"];
+  if (writeupSites.some(site => sourceStr.includes(site))) {
+    labels.add("Writeup");
+  }
+
+  if (sourceStr.includes("case-study") || sourceStr.includes("casestudy")) {
+    labels.add("Case study");
+  }
+
+  // 3. Demo Checks
+  const demoSites = ["youtube.com", "codesandbox.io", "figma.com","youtu.be", "loom.com", "streamlit", "vercel.app", "netlify.app", "azurewebsites"];
+  if (demoSites.some(site => demoStr.includes(site))) {
+    labels.add("Demo");
+  }
+
+  // 4. Fallback Logic
+  // Only auto-label as 'Case study' if it's explicitly marked as a 'link' type
+  if (project.sourceType === "link" && labels.size === 0) {
+    labels.add("Case study");
+  }
+
+  // 5. Final Safety Net: Unapproved Detection
+  // If after all checks the set is still empty, mark it for review
+  if (labels.size === 0) {
+    labels.add("Unapproved Link");
+  }
+
+  return Array.from(labels);
 }
 
 function ErrorState() {

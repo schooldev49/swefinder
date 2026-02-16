@@ -105,7 +105,7 @@ export function LandingPage() {
                   <Link to="/projects">Add evidence from projects</Link>
                 </Button>
                 <Button variant="outline" className="w-full" asChild>
-                  <Link to="/jobs">Import job description</Link>
+                  <Link to="/projects#external">Add external project</Link>
                 </Button>
                 <Button variant="outline" className="w-full" asChild>
                   <Link to="/example-packet">See example packet</Link>

@@ -66,6 +66,7 @@ export interface Project {
   externalUrl?: string; // optional additional link for external projects
   defaultBranch?: string;
   isPrivate?: boolean;
+  isFork?: boolean;
   description?: string;
   primaryLanguage?: string;
   topics: string[];

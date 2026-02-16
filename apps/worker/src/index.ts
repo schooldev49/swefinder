@@ -1230,6 +1230,7 @@ function normalizeProjectPayload(
     primaryLanguage: project.primaryLanguage,
     defaultBranch: project.defaultBranch,
     isPrivate: false,
+    isFork: Boolean(project.isFork),
     topics,
     lastUpdated: project.lastUpdated || now,
     demoUrl: project.demoUrl,
