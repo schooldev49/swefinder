@@ -719,48 +719,7 @@ export function ProjectsPage() {
                     placeholder="Short reminder of the problem, stack, and key outcomes."
                   />
                 </div>
-                <div className="mt-4 rounded-2xl border border-slate-800/70 bg-slate-950/50 p-4 text-xs text-muted-foreground">
-                  <p className="text-[11px] uppercase tracking-[0.3em] text-slate-500">AI usage (optional)</p>
-                  <p className="mt-2">
-                    Recruiters care less about whether you used AI and more about how you used it. Be specific and honest. It's fine if a project used no AI at all.
-                  </p>
-                  <div className="mt-3 grid gap-3 md:grid-cols-2">
-                    <label className="space-y-1 text-xs text-muted-foreground">
-                      Role
-                      <select
-                        className="w-full rounded-lg border border-border bg-transparent px-3 py-2 text-sm text-white"
-                        value={project.aiRole || ""}
-                        onChange={(event) => updateProject(project.id, { aiRole: event.target.value as AIRole || undefined })}
-                      >
-                        <option value="">Select</option>
-                        {AI_ROLE_OPTIONS.map((option) => (
-                          <option key={option.value} className="bg-slate-900" value={option.value}>
-                            {option.label}
-                          </option>
-                        ))}
-                      </select>
-                    </label>
-                    <label className="space-y-1 text-xs text-muted-foreground">
-                      Tools (comma separated)
-                      <Input
-                        className="text-sm"
-                        value={project.aiTools && project.aiTools.length ? project.aiTools.join(", ") : ""}
-                        onChange={(event) => handleAiToolsChange(project.id, event.target.value)}
-                        placeholder="Copilot, Cursor"
-                      />
-                    </label>
-                  </div>
-                  <label className="mt-3 block space-y-1 text-xs text-muted-foreground">
-                    Supervision notes
-                    <Textarea
-                      rows={2}
-                      maxLength={400}
-                      value={project.aiSupervisionNotes || ""}
-                      onChange={(event) => updateProject(project.id, { aiSupervisionNotes: event.target.value })}
-                      placeholder="Example: Reviewed and refactored agent output, added tests for race conditions."
-                    />
-                  </label>
-                </div>
+               
                 <div className="mt-4">
                   <ProjectCodeSamplesEditor
                     project={project}
@@ -802,6 +761,48 @@ export function ProjectsPage() {
                       ))}
                     </div>
                   )}
+                </div>
+                 <div className="mt-4 rounded-2xl border border-slate-800/70 bg-slate-950/50 p-4 text-xs text-muted-foreground">
+                  <p className="text-[11px] uppercase tracking-[0.3em] text-slate-500">AI usage (optional)</p>
+                  <p className="mt-2">
+                    Recruiters care less about whether you used AI and more about how you used it. Be specific and honest. It's fine if a project used no AI at all.
+                  </p>
+                  <div className="mt-3 grid gap-3 md:grid-cols-2">
+                    <label className="space-y-1 text-xs text-muted-foreground">
+                      Role
+                      <select
+                        className="w-full rounded-lg border border-border bg-transparent px-3 py-2 text-sm text-white"
+                        value={project.aiRole || ""}
+                        onChange={(event) => updateProject(project.id, { aiRole: event.target.value as AIRole || undefined })}
+                      >
+                        <option value="">Select</option>
+                        {AI_ROLE_OPTIONS.map((option) => (
+                          <option key={option.value} className="bg-slate-900" value={option.value}>
+                            {option.label}
+                          </option>
+                        ))}
+                      </select>
+                    </label>
+                    <label className="space-y-1 text-xs text-muted-foreground">
+                      Tools (comma separated)
+                      <Input
+                        className="text-sm"
+                        value={project.aiTools && project.aiTools.length ? project.aiTools.join(", ") : ""}
+                        onChange={(event) => handleAiToolsChange(project.id, event.target.value)}
+                        placeholder="Copilot, Cursor"
+                      />
+                    </label>
+                  </div>
+                  <label className="mt-3 block space-y-1 text-xs text-muted-foreground">
+                    Supervision notes
+                    <Textarea
+                      rows={2}
+                      maxLength={400}
+                      value={project.aiSupervisionNotes || ""}
+                      onChange={(event) => updateProject(project.id, { aiSupervisionNotes: event.target.value })}
+                      placeholder="Example: Reviewed and refactored agent output, added tests for race conditions."
+                    />
+                  </label>
                 </div>
               </div>
             ))}
