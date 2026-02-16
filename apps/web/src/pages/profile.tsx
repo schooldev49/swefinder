@@ -192,7 +192,7 @@ export function ProfilePage() {
               </div>
             </div>
           </div>
-
+ { /*
           <div className="space-y-3">
             <div className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
               <div>
@@ -262,6 +262,7 @@ export function ProfilePage() {
               </Table>
             )}
           </div>
+          */}
         </CardContent>
       </Card>
     </div>
