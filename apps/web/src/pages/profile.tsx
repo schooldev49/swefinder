@@ -1,28 +1,15 @@
 /* eslint-disable react-hooks/set-state-in-effect */
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Link } from "react-router-dom";
-import type { Job } from "@evidensify/types";
-import { fetchJobs, fetchProfile, updateProfile } from "@/lib/api";
+import { fetchProfile, updateProfile } from "@/lib/api";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Button } from "@/components/ui/button";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Badge } from "@/components/ui/badge";
 import { Copy, ExternalLink } from "lucide-react";
 import { toast } from "sonner";
 import { useSEO } from "@/lib/seo";
-
-const STATUS_DISPLAY: Record<Job["status"], { label: string; variant: "default" | "outline" | "success" | "warning" }> = {
-  DRAFT: { label: "Draft", variant: "outline" },
-  PROOF_GENERATED: { label: "Proof ready", variant: "success" },
-  APPLIED: { label: "Applied", variant: "default" },
-  INTERVIEW: { label: "Interview", variant: "success" },
-  REJECTED: { label: "Rejected", variant: "outline" },
-  OFFER: { label: "Offer", variant: "success" },
-};
 
 export function ProfilePage() {
   useSEO({
@@ -33,7 +20,6 @@ export function ProfilePage() {
   });
   const queryClient = useQueryClient();
   const profileQuery = useQuery({ queryKey: ["profile"], queryFn: fetchProfile });
-  const jobsQuery = useQuery({ queryKey: ["jobs"], queryFn: fetchJobs });
   const [slug, setSlug] = useState("");
   const [isPublic, setIsPublic] = useState(false);
 
@@ -63,11 +49,6 @@ export function ProfilePage() {
   const slugTooLong = trimmedSlug.length > 20;
   const slugInvalidChars = trimmedSlug.length > 0 && !/^[a-z0-9-]+$/.test(trimmedSlug);
   const githubLoginTooLong = (profileQuery.data?.user.githubLogin || "").length > 20;
-
-  const shareableJobs = useMemo(
-    () => (jobsQuery.data || []).filter((job) => Boolean(job.shareToken && job.proofPacketId)),
-    [jobsQuery.data]
-  );
 
   const handleSave = () => {
     if (!trimmedSlug) {

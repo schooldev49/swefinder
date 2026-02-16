@@ -266,6 +266,18 @@ function FeaturedProofCard({
         </div>
         <ChevronRight className={cn("h-4 w-4 text-slate-500 transition-transform", open ? "rotate-90" : "")} />
       </button>
+      {sample.type === "commit" && sample.commitEntries && sample.commitEntries.length > 0 ? (
+        <div className="mt-2 rounded-md border border-slate-800/70 bg-slate-950/40 p-2 text-[11px] text-slate-300">
+          <p className="text-[10px] uppercase tracking-[0.3em] text-slate-500">Commit titles</p>
+          <ul className="mt-1 space-y-1">
+            {sample.commitEntries.slice(0, 3).map((entry) => (
+              <li key={`${sample.id}-${entry.sha}`} className="truncate">
+                {entry.message.split("\n")[0]}
+              </li>
+            ))}
+          </ul>
+        </div>
+      ) : null}
       {sample.tags && sample.tags.length > 0 ? (
         <div className="mt-2 flex flex-wrap gap-1">
           {sample.tags.map((tag) => (
