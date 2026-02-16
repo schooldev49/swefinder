@@ -45,6 +45,8 @@ const MAX_FEATURED_README = 1;
 const MAX_SAMPLE_LINES = 40;
 const MAX_SAMPLE_CODE_CHARS = 2000;
 const MAX_PROJECT_DESCRIPTION_CHARS = 280;
+const WRITEUP_SITES = ["notion.so", "medium.com", "docs.google.com", "substack.com", "mirror.xyz"];
+const DEMO_SITES = ["youtube.com", "codesandbox.io", "figma.com", "youtu.be", "loom.com", "streamlit", "vercel.app", "netlify.app", "azurewebsites"];
 const PROJECTS_CHECKLIST = [
   {
     title: "Import repos",
@@ -234,6 +236,13 @@ export function ProjectsPage() {
     nextProjects: EditableProject[],
     options?: { toastTitle?: string; toastDescription?: string }
   ) => {
+    const unsupported = findUnsupportedProject(nextProjects);
+    if (unsupported) {
+      toast("Unsupported link type", {
+        description: `${unsupported.fullName}: this URL is currently not supported for strong verification.`,
+      });
+      return;
+    }
     const payload = nextProjects.map((project) => toProjectPayload(project));
     saveMutation.mutate(payload, {
       onSuccess: async (data) => {
@@ -362,6 +371,12 @@ export function ProjectsPage() {
       aiRole: "none",
       aiTools: [],
     };
+    if (getProjectProofTypes(newProject).includes("Unapproved Link")) {
+      toast("Unsupported link type", {
+        description: "Use a verifiable project URL (repo, PR/commit, writeup, or known demo host).",
+      });
+      return;
+    }
     setProjects((prev) => [newProject, ...prev]);
     setExternalForm(createEmptyExternalForm());
     setShowExternalForm(false);
@@ -458,6 +473,10 @@ export function ProjectsPage() {
   const emptyState = !isLoading && projects.length === 0;
   const publicProjects = useMemo(() => projects.filter((project) => !project.isPrivate), [projects]);
   const privateProjects = useMemo(() => projects.filter((project) => project.isPrivate), [projects]);
+  const unsupportedProjects = useMemo(
+    () => projects.filter((project) => project.sourceType === "link" && getProjectProofTypes(project).includes("Unapproved Link")),
+    [projects]
+  );
   const reposPerPage = 15;
   const filteredRepos = useMemo(() => {
     const publicRepos = repos.filter((repo) => !repo.isPrivate);
@@ -534,7 +553,7 @@ export function ProjectsPage() {
             <Button variant="outline" onClick={() => setShowExternalForm((prev) => !prev)}>
               {showExternalForm ? "Cancel external project" : "Add external project"}
             </Button>
-            <Button onClick={handleSave} disabled={saveMutation.isPending}>
+            <Button onClick={handleSave} disabled={saveMutation.isPending || unsupportedProjects.length > 0}>
               Save changes
             </Button>
           </div>
@@ -646,6 +665,26 @@ export function ProjectsPage() {
               </div>
             </div>
           ) : null}
+          {unsupportedProjects.length > 0 ? (
+            <div className="space-y-2 rounded-xl border border-rose-700/60 bg-rose-950/20 p-3">
+              <p className="text-xs text-rose-300">
+                {unsupportedProjects.length} unsupported link(s) are blocked. Remove them or switch to a supported public host.
+              </p>
+              <div className="grid gap-2">
+                {unsupportedProjects.map((project) => (
+                  <div
+                    key={project.id}
+                    className="flex items-center justify-between rounded-lg border border-rose-800/60 bg-rose-950/30 px-3 py-2 text-xs"
+                  >
+                    <span className="text-rose-200">{project.fullName}</span>
+                    <Button variant="ghost" size="sm" onClick={() => removeProject(project.id)}>
+                      Remove
+                    </Button>
+                  </div>
+                ))}
+              </div>
+            </div>
+          ) : null}
           <div className="grid gap-4">
             {publicProjects.map((project) => (
               <div key={project.id} className="rounded-2xl border border-slate-800/80 bg-slate-950/60 p-5">
@@ -657,6 +696,14 @@ export function ProjectsPage() {
                         {project.sourceType === "link" ? "Link" : "GitHub"}
                       </Badge>
                       {project.isFork ? <Badge variant="warning">Fork</Badge> : null}
+                      {getProjectProofTypes(project)
+                        .filter((type) => type !== "Repo")
+                        .slice(0, 2)
+                        .map((type) => (
+                          <Badge key={`${project.id}-${type}`} variant="outline">
+                            {type}
+                          </Badge>
+                        ))}
                     </div>
                     <p className="text-xs text-muted-foreground">
                       Updated {formatUpdated(project.lastUpdated)}
@@ -2327,6 +2374,26 @@ function CodeSamplePicker({ project, initialTab = "code", onClose, onSelect }: C
       </div>
     </div>
   );
+}
+
+function getProjectProofTypes(project: Pick<Project, "sourceType" | "htmlUrl" | "externalUrl" | "demoUrl">): string[] {
+  const labels = new Set<string>();
+  const sourceStr = `${project.htmlUrl || ""} ${project.externalUrl || ""}`.toLowerCase();
+  const demoStr = (project.demoUrl || "").toLowerCase();
+
+  if (project.sourceType === "github") labels.add("Repo");
+  if (sourceStr.includes("/pull/")) labels.add("PR");
+  if (sourceStr.includes("/commit/")) labels.add("Commit");
+  if (WRITEUP_SITES.some((site) => sourceStr.includes(site))) labels.add("Writeup");
+  if (sourceStr.includes("case-study") || sourceStr.includes("casestudy")) labels.add("Case study");
+  if (DEMO_SITES.some((site) => demoStr.includes(site))) labels.add("Demo");
+
+  if (labels.size === 0) labels.add("Unapproved Link");
+  return Array.from(labels);
+}
+
+function findUnsupportedProject(projects: EditableProject[]): EditableProject | null {
+  return projects.find((project) => project.sourceType === "link" && getProjectProofTypes(project).includes("Unapproved Link")) || null;
 }
 
 function inferLanguage(filePath?: string) {
