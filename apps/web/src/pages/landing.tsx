@@ -54,8 +54,8 @@ export function LandingPage() {
     },
   });
 
-  const handleProfileLogin = () => {
-    window.location.href = buildGitHubLoginUrl(nextPath || "/profile");
+  const handleProjectsLogin = () => {
+    window.location.href = buildGitHubLoginUrl(nextPath || "/projects");
   };
 
   const handleOptionalPacketLogin = () => {
@@ -90,7 +90,7 @@ export function LandingPage() {
                 </div>
                 <div className="flex flex-wrap items-center gap-2">
                   <Button className="w-full sm:w-auto" asChild>
-                    <Link to="/profile">Build public profile</Link>
+                    <Link to="/projects">Build evidence profile</Link>
                   </Button>
                   <Button variant="outline" className="w-full sm:w-auto" asChild>
                     <Link to="/jobs/new">Create optional job packet</Link>
@@ -127,8 +127,8 @@ export function LandingPage() {
                   <Badge variant="outline">Public-only links</Badge>
                 </div>
                 <div className="flex flex-wrap items-center gap-2">
-                  <Button className="w-full sm:w-auto" onClick={handleProfileLogin}>
-                    Build public profile
+                  <Button className="w-full sm:w-auto" onClick={handleProjectsLogin}>
+                    Build evidence profile
                   </Button>
                   <Button variant="outline" className="w-full sm:w-auto" onClick={handleOptionalPacketLogin}>
                     Create job packet (optional)
