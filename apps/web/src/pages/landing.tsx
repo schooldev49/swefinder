@@ -122,10 +122,7 @@ export function LandingPage() {
                 <p className="text-xs uppercase tracking-[0.25em] text-slate-500">Evidensify</p>
                 <h1 className="text-3xl font-semibold text-white sm:text-4xl">Build a public proof profile</h1>
                 <p className="text-sm text-slate-300">Start with your public proof profile. Add job-specific packets only when needed.</p>
-                <div className="flex flex-wrap items-center gap-2">
-                  <Badge variant="outline">Manual mapping</Badge>
-                  <Badge variant="outline">Public-only links</Badge>
-                </div>
+               
                 <div className="flex flex-wrap items-center gap-2">
                   <Button className="w-full sm:w-auto" onClick={handleProjectsLogin}>
                     Build evidence profile
