@@ -1218,6 +1218,7 @@ function normalizeProjectPayload(
   const aiRole = normalizeAiRole(project.aiRole);
   const aiTools = normalizeAiTools(project.aiTools);
   const aiSupervisionNotes = normalizeAiSupervisionNotes(project.aiSupervisionNotes);
+  const normalizedYears = normalizeProjectYears(project.yearStart, project.yearEnd, project.yearPresent, project.year);
 
   return {
     id: project.id || crypto.randomUUID(),
@@ -1235,7 +1236,10 @@ function normalizeProjectPayload(
     lastUpdated: project.lastUpdated || now,
     demoUrl: project.demoUrl,
     context: project.context,
-    year: project.year,
+    year: normalizedYears.year,
+    yearStart: normalizedYears.yearStart,
+    yearEnd: normalizedYears.yearEnd,
+    yearPresent: normalizedYears.yearPresent,
     createdAt: project.createdAt || now,
     updatedAt: now,
     tags: project.tags ?? [],
@@ -1255,6 +1259,44 @@ const MAX_AI_SUPERVISION_LENGTH = 400;
 const MAX_AI_TOOLS = 5;
 const MAX_AI_TOOL_LENGTH = 40;
 const AI_ROLE_VALUES: AIRole[] = ["none", "assist", "co-design", "agent-orchestration"];
+const MIN_PROJECT_YEAR = 1970;
+const MAX_PROJECT_YEAR = 2100;
+
+function normalizeProjectYears(
+  yearStart?: number,
+  yearEnd?: number,
+  yearPresent?: boolean,
+  legacyYear?: number
+): { year?: number; yearStart?: number; yearEnd?: number; yearPresent?: boolean } {
+  const nowYear = new Date().getFullYear();
+  const clampYear = (value?: number) => {
+    if (typeof value !== "number" || Number.isNaN(value)) return undefined;
+    const rounded = Math.floor(value);
+    if (rounded < MIN_PROJECT_YEAR || rounded > MAX_PROJECT_YEAR) return undefined;
+    return rounded;
+  };
+
+  const fallbackYear = clampYear(legacyYear);
+  const nextStart = clampYear(yearStart) ?? fallbackYear;
+  const present = Boolean(yearPresent);
+  let nextEnd = present ? undefined : clampYear(yearEnd) ?? fallbackYear;
+
+  if (nextStart && nextEnd && nextEnd < nextStart) {
+    nextEnd = nextStart;
+  }
+
+  const derivedYear =
+    nextStart && ((present && nextStart === nowYear) || (!present && nextEnd && nextStart === nextEnd))
+      ? nextStart
+      : undefined;
+
+  return {
+    year: derivedYear ?? fallbackYear,
+    yearStart: nextStart,
+    yearEnd: present ? undefined : nextEnd,
+    yearPresent: present || undefined,
+  };
+}
 
 function normalizeCodeSamples(samples?: ProjectCodeSample[]): ProjectCodeSample[] {
   if (!samples || samples.length === 0) return [];
@@ -1356,8 +1398,8 @@ function validateProjectUrl(url: string): string {
 }
 
 function validateProfileSlug(slug: string) {
-  if (!slug || !/^[a-z0-9-]{3,30}$/.test(slug)) {
-    throw new HttpError("Slug must be 3-30 lowercase letters, numbers, or dashes", 400);
+  if (!slug || !/^[a-z0-9-]{3,20}$/.test(slug)) {
+    throw new HttpError("Handle must be 3-20 lowercase letters, numbers, or dashes", 400);
   }
 }
 
@@ -1374,6 +1416,10 @@ async function ensureProfileDefaults(env: Env, user: User, login: string) {
 async function generateAvailableSlug(env: Env, base: string): Promise<string> {
   // Normalize: lowercase, remove special chars, trim
   let candidate = base.toLowerCase().replace(/[^a-z0-9]/g, '-') || "user";
+  candidate = candidate.replace(/-+/g, "-").replace(/^-|-$/g, "");
+  if (candidate.length > 20) {
+    candidate = candidate.slice(0, 20).replace(/-+$/g, "");
+  }
   if (candidate.length < 3) {
     candidate = `${candidate}-${Math.random().toString(36).substring(2, 7)}`;
   }
@@ -1383,14 +1429,15 @@ async function generateAvailableSlug(env: Env, base: string): Promise<string> {
   for (let i = 0; i < MAX_RETRIES; i++) {
     // Strategy: Try the base, then try adding a random short string
     // This is often faster than sequential numbers (1, 2, 3...)
-    const slug = i === 0 ? candidate : `${candidate}-${Math.random().toString(36).substring(2, 5)}`;
+    const suffix = Math.random().toString(36).substring(2, 5);
+    const slug = i === 0 ? candidate : `${candidate.slice(0, Math.max(3, 16))}-${suffix}`;
     
     const existing = await getUserBySlug(env, slug);
     if (!existing) return slug;
   }
 
   // Fallback: If we still haven't found one, use a timestamp to guarantee uniqueness
-  return `${candidate}-${Date.now().toString(36)}`;
+  return `${candidate.slice(0, Math.max(3, 13))}-${Date.now().toString(36).slice(-6)}`;
 }
 
 function slugify(value: string): string {
@@ -1545,6 +1592,9 @@ function buildMappingsFromCoverage(
           demoUrl: project.demoUrl,
           context: project.context,
           year: project.year,
+          yearStart: project.yearStart,
+          yearEnd: project.yearEnd,
+          yearPresent: project.yearPresent,
           sourceCommitSha: snapshotLookup?.get(project.id)?.commitSha,
           lastCommitDate: snapshotLookup?.get(project.id)?.committedAt || project.lastUpdated,
           aiRole: project.aiRole,

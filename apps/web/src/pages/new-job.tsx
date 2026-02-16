@@ -14,6 +14,7 @@ import { toast } from "sonner";
 import { Loader2 } from "lucide-react";
 import { CodeSnippet } from "@/components/ui/code-snippet";
 import { useSEO } from "@/lib/seo";
+import { inferLanguageFromPath } from "@/lib/language";
 
 export function NewJobPage() {
   useSEO({
@@ -734,16 +735,7 @@ function tokenize(text: string): string[] {
 }
 
 function inferLanguage(filePath?: string) {
-  if (!filePath) return "";
-  const lower = filePath.toLowerCase();
-  if (lower.endsWith(".py")) return "python";
-  if (lower.endsWith(".ts") || lower.endsWith(".tsx")) return "tsx";
-  if (lower.endsWith(".js") || lower.endsWith(".jsx")) return "javascript";
-  if (lower.endsWith(".rs")) return "rust";
-  if (lower.endsWith(".go")) return "go";
-  if (lower.endsWith(".java")) return "java";
-  if (lower.endsWith(".sql")) return "sql";
-  return "";
+  return inferLanguageFromPath(filePath);
 }
 
 function formatLineLabel(filePath?: string, start?: number, end?: number) {

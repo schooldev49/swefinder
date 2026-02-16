@@ -30,6 +30,7 @@ import { Loader2, RefreshCw, Search, Trash2, X, Pencil } from "lucide-react";
 import { toast } from "sonner";
 import type { AIRole, CodeSampleType, CommitEntry, Project, ProjectCodeSample } from "@evidensify/types";
 import { useSEO } from "@/lib/seo";
+import { inferLanguageFromPath } from "@/lib/language";
 
 const CONTEXT_OPTIONS = ["Personal", "Course", "Open Source", "Startup", "Research"];
 const AI_ROLE_OPTIONS = [
@@ -92,7 +93,9 @@ type ExternalFormState = {
   description: string;
   techStack: string;
   context: string;
-  year: string;
+  yearStart: string;
+  yearEnd: string;
+  yearPresent: boolean;
 };
 
 const createEmptyExternalForm = (): ExternalFormState => ({
@@ -101,7 +104,9 @@ const createEmptyExternalForm = (): ExternalFormState => ({
   description: "",
   techStack: "",
   context: "",
-  year: "",
+  yearStart: "",
+  yearEnd: "",
+  yearPresent: false,
 });
 
 const generateProjectId = () =>
@@ -132,6 +137,23 @@ const getProjectHost = (value?: string) => {
 };
 
 const formatUpdated = (value?: string) => (value ? new Date(value).toLocaleDateString() : "Recently added");
+const CURRENT_YEAR = new Date().getFullYear();
+
+const toYearValue = (value?: number) => (typeof value === "number" ? String(value) : "");
+
+const formatProjectYearRange = (project: Pick<Project, "year" | "yearStart" | "yearEnd" | "yearPresent">) => {
+  if (project.yearStart) {
+    if (project.yearPresent) {
+      return project.yearStart === CURRENT_YEAR ? String(CURRENT_YEAR) : `${project.yearStart} - Present`;
+    }
+    if (project.yearEnd && project.yearEnd !== project.yearStart) {
+      return `${project.yearStart} - ${project.yearEnd}`;
+    }
+    return String(project.yearStart);
+  }
+  if (project.year) return String(project.year);
+  return "";
+};
 
 type EditableProject = ProjectPayload & { draft?: boolean };
 
@@ -312,6 +334,9 @@ export function ProjectsPage() {
         context: undefined,
         demoUrl: undefined,
         year: new Date(repo.updatedAt).getFullYear(),
+        yearStart: new Date(repo.updatedAt).getFullYear(),
+        yearEnd: new Date(repo.updatedAt).getFullYear(),
+        yearPresent: false,
         draft: true,
         isShowcased: false,
         codeSamples: [],
@@ -330,6 +355,11 @@ export function ProjectsPage() {
   const handleExternalInput =
     (field: keyof ExternalFormState) =>
     (event: ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
+      if (field === "yearPresent") {
+        const checked = (event.target as HTMLInputElement).checked;
+        setExternalForm((prev) => ({ ...prev, yearPresent: checked, yearEnd: checked ? "" : prev.yearEnd }));
+        return;
+      }
       const value = event.target.value;
       setExternalForm((prev) => ({ ...prev, [field]: value }));
     };
@@ -362,7 +392,10 @@ export function ProjectsPage() {
       topics,
       lastUpdated: new Date().toISOString(),
       context: externalForm.context || undefined,
-      year: externalForm.year ? Number(externalForm.year) : undefined,
+      year: externalForm.yearStart ? Number(externalForm.yearStart) : undefined,
+      yearStart: externalForm.yearStart ? Number(externalForm.yearStart) : undefined,
+      yearEnd: externalForm.yearPresent ? undefined : externalForm.yearEnd ? Number(externalForm.yearEnd) : undefined,
+      yearPresent: externalForm.yearPresent,
       primaryLanguage: topics[0],
       demoUrl: url,
       draft: true,
@@ -630,15 +663,22 @@ export function ProjectsPage() {
                       ))}
                     </select>
                   </div>
-                  <div>
-                    <Label>Year</Label>
-                    <Input
-                      type="number"
-                      value={externalForm.year}
-                      onChange={handleExternalInput("year")}
-                      className="mt-2"
-                      placeholder="2024"
-                    />
+                  <div className="space-y-2">
+                    <Label>Year range</Label>
+                    <div className="grid grid-cols-2 gap-2">
+                      <Input type="number" value={externalForm.yearStart} onChange={handleExternalInput("yearStart")} placeholder="Start" />
+                      <Input
+                        type="number"
+                        value={externalForm.yearEnd}
+                        onChange={handleExternalInput("yearEnd")}
+                        placeholder={externalForm.yearPresent ? "Present" : "End"}
+                        disabled={externalForm.yearPresent}
+                      />
+                    </div>
+                    <label className="flex items-center gap-2 text-xs text-muted-foreground">
+                      <Checkbox checked={externalForm.yearPresent} onCheckedChange={(checked) => setExternalForm((prev) => ({ ...prev, yearPresent: Boolean(checked), yearEnd: checked ? "" : prev.yearEnd }))} />
+                      Ongoing (Present)
+                    </label>
                   </div>
                 </div>
                 <div className="flex justify-end">
@@ -709,6 +749,7 @@ export function ProjectsPage() {
                       Updated {formatUpdated(project.lastUpdated)}
                       {project.htmlUrl ? ` • ${getProjectHost(project.htmlUrl)}` : ""}
                     </p>
+                    {formatProjectYearRange(project) ? <p className="text-xs text-muted-foreground">Project range: {formatProjectYearRange(project)}</p> : null}
                   </div>
                   <div className="flex flex-wrap gap-2">
                     <Button
@@ -730,7 +771,7 @@ export function ProjectsPage() {
                     </Button>
                   </div>
                 </div>
-                <div className="mt-4 grid gap-4 md:grid-cols-3">
+                <div className="mt-4 grid gap-4 md:grid-cols-4">
                   <div>
                     <Label>Context</Label>
                     <select
@@ -746,16 +787,40 @@ export function ProjectsPage() {
                       ))}
                     </select>
                   </div>
-                  <div>
-                    <Label>Year</Label>
-                    <Input
-                      type="number"
-                      value={project.year || ""}
-                      onChange={(event) =>
-                        updateProject(project.id, { year: event.target.value ? Number(event.target.value) : undefined })
-                      }
-                      className="mt-2"
-                    />
+                  <div className="space-y-2">
+                    <Label>Year range</Label>
+                    <div className="grid grid-cols-2 gap-2">
+                      <Input
+                        type="number"
+                        value={toYearValue(project.yearStart ?? project.year)}
+                        onChange={(event) =>
+                          updateProject(project.id, {
+                            yearStart: event.target.value ? Number(event.target.value) : undefined,
+                            year: event.target.value ? Number(event.target.value) : undefined,
+                          })
+                        }
+                        placeholder="Start"
+                      />
+                      <Input
+                        type="number"
+                        value={toYearValue(project.yearEnd)}
+                        onChange={(event) => updateProject(project.id, { yearEnd: event.target.value ? Number(event.target.value) : undefined })}
+                        placeholder={project.yearPresent ? "Present" : "End"}
+                        disabled={Boolean(project.yearPresent)}
+                      />
+                    </div>
+                    <label className="flex items-center gap-2 text-xs text-muted-foreground">
+                      <Checkbox
+                        checked={Boolean(project.yearPresent)}
+                        onCheckedChange={(checked) =>
+                          updateProject(project.id, {
+                            yearPresent: Boolean(checked),
+                            yearEnd: checked ? undefined : project.yearEnd,
+                          })
+                        }
+                      />
+                      Ongoing (Present)
+                    </label>
                   </div>
                   <div>
                     <Label>Demo or doc URL</Label>
@@ -1120,21 +1185,6 @@ export function ProjectCodeSamplesEditor({
         setTagSuggestions([]);
       }
     };
-  const handleSampleTypeChange = (value: CodeSampleType) => {
-    setDraft((prev) => ({
-      ...prev,
-      type: value,
-      ...(value === "code"
-        ? {}
-        : {
-            lineStart: "",
-            lineEnd: "",
-            language: value === "readme" ? "markdown" : prev.language || "",
-            readmeHeading: value === "readme" ? prev.readmeHeading : undefined,
-            commitEntries: value === "commit" ? prev.commitEntries : undefined,
-          }),
-    }));
-  };
   const handleDelete = (sampleId: string) => {
     onChange(samples.filter((sample) => sample.id !== sampleId));
     if (editingSampleId === sampleId) {
@@ -1219,20 +1269,6 @@ export function ProjectCodeSamplesEditor({
     setIsPickerOpen(false);
     toast("Snippet captured", { description: "Review the summary and tags, then save." });
   };
-  const handleUnlockSourceFields = () => {
-    setDraft((prev) => ({
-      ...prev,
-      sourceLocked: false,
-      filePath: "",
-      lineStart: "",
-      lineEnd: "",
-      url: projectUrl || "",
-      code: "",
-      readmeHeading: undefined,
-      commitEntries: undefined,
-    }));
-    toast("Fields unlocked", { description: "You can edit the snippet manually." });
-  };
   const handleSuggestSummary = () => {
     if (!draft.summary.trim() || !draft.code.trim()) {
       toast("Add summary + code", { description: "Enter both summary and code before polishing." });
@@ -1313,7 +1349,6 @@ export function ProjectCodeSamplesEditor({
           mode={modalMode}
           onClose={closeModal}
           onSave={upsertSample}
-          onTypeChange={handleSampleTypeChange}
           onDraftChange={handleDraftChange}
           onSuggestSummary={handleSuggestSummary}
           onSuggestTags={handleSuggestTags}
@@ -1322,7 +1357,6 @@ export function ProjectCodeSamplesEditor({
           summaryPending={summaryMutation.isPending}
           tagsPending={tagsMutation.isPending}
           onSelectFromGitHub={canUsePicker ? openPickerForType : undefined}
-          onUnlockSourceFields={handleUnlockSourceFields}
         />
       ) : null}
       {canUsePicker && isPickerOpen ? (
@@ -1341,7 +1375,6 @@ interface SampleEditorModalProps {
   mode: "create" | "edit";
   onClose: () => void;
   onSave: () => void;
-  onTypeChange: (value: CodeSampleType) => void;
   onDraftChange: (field: keyof SampleDraft) => (event: ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => void;
   onSuggestSummary: () => void;
   onSuggestTags: () => void;
@@ -1350,7 +1383,6 @@ interface SampleEditorModalProps {
   summaryPending?: boolean;
   tagsPending?: boolean;
   onSelectFromGitHub?: (type: CodeSampleType) => void;
-  onUnlockSourceFields?: () => void;
 }
 
 function SampleEditorModal({
@@ -1358,7 +1390,6 @@ function SampleEditorModal({
   mode,
   onClose,
   onSave,
-  onTypeChange,
   onDraftChange,
   onSuggestSummary,
   onSuggestTags,
@@ -1367,7 +1398,6 @@ function SampleEditorModal({
   summaryPending,
   tagsPending,
   onSelectFromGitHub,
-  onUnlockSourceFields,
 }: SampleEditorModalProps) {
   const typeCopy = SAMPLE_TYPE_OPTIONS.find((option) => option.value === draft.type);
   const codeLabel = draft.type === "code" ? "Code" : "Excerpt";
@@ -1395,20 +1425,8 @@ function SampleEditorModal({
         </div>
         <div className="mt-4 space-y-4">
           <div>
-            <Label>Sample type</Label>
-            <div className="mt-2 flex flex-wrap gap-2">
-              {SAMPLE_TYPE_OPTIONS.map((option) => (
-                <Button
-                  key={option.value}
-                  type="button"
-                  size="sm"
-                  variant={draft.type === option.value ? "secondary" : "ghost"}
-                  onClick={() => onTypeChange(option.value)}
-                >
-                  {option.label}
-                </Button>
-              ))}
-            </div>
+            <Label>Sample type: {typeCopy?.label}</Label>
+            
             {typeCopy?.helper ? <p className="mt-1 text-[11px] text-muted-foreground">{typeCopy.helper}</p> : null}
           </div>
           <div>
@@ -1501,11 +1519,7 @@ function SampleEditorModal({
             <div className="rounded-xl border border-amber-500/30 bg-amber-500/5 px-3 py-2 text-[11px] text-amber-200">
               <div className="flex flex-wrap items-center justify-between gap-2">
                 <p>Source fields locked because this snippet came directly from GitHub.</p>
-                {onUnlockSourceFields ? (
-                  <Button type="button" variant="ghost" size="sm" className="text-[11px]" onClick={onUnlockSourceFields}>
-                    Clear & unlock
-                  </Button>
-                ) : null}
+                
               </div>
             </div>
           ) : null}
@@ -2101,16 +2115,7 @@ function CodeSamplePicker({ project, initialTab = "code", onClose, onSelect }: C
             >
               Docs & commits
             </button>
-            <button
-              type="button"
-              className={cn(
-                "rounded-full px-3 py-1 transition-colors",
-                activeTab === "link" ? "bg-slate-800 text-white" : "text-slate-400"
-              )}
-              onClick={() => setActiveTab("link")}
-            >
-              Paste GitHub URL
-            </button>
+           
           </div>
         </div>
         <div className="space-y-4 overflow-y-auto px-6 py-4">
@@ -2397,16 +2402,7 @@ function findUnsupportedProject(projects: EditableProject[]): EditableProject | 
 }
 
 function inferLanguage(filePath?: string) {
-  if (!filePath) return "";
-  const lower = filePath.toLowerCase();
-  if (lower.endsWith(".py")) return "python";
-  if (lower.endsWith(".ts") || lower.endsWith(".tsx")) return "tsx";
-  if (lower.endsWith(".js") || lower.endsWith(".jsx")) return "javascript";
-  if (lower.endsWith(".rs")) return "rust";
-  if (lower.endsWith(".go")) return "go";
-  if (lower.endsWith(".java")) return "java";
-  if (lower.endsWith(".sql")) return "sql";
-  return "";
+  return inferLanguageFromPath(filePath);
 }
 
 function formatLineRange(start?: number, end?: number) {

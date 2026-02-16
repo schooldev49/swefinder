@@ -1,11 +1,17 @@
+import { useState } from "react";
 import { useParams } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
+import { ChevronRight } from "lucide-react";
 import type { Project } from "@evidensify/types";
 import { fetchPublicProfile } from "@/lib/api";
 import { PublicShareLayout } from "@/components/layout/public-share-layout";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { CodeSnippet } from "@/components/ui/code-snippet";
+import { cn } from "@/lib/utils";
 import { useSEO } from "@/lib/seo";
+import { inferLanguageFromPath } from "@/lib/language";
 
 export function PublicProfilePage() {
   const { handle } = useParams();
@@ -53,33 +59,27 @@ export function PublicProfilePage() {
                 <div>
                   <p className="text-sm uppercase tracking-wide text-muted-foreground">Proof profile</p>
                   <h1 className="text-2xl font-semibold text-white">@{profileQuery.data.user.profileSlug}</h1>
-                  <p className="text-sm text-muted-foreground">
-                    Curated projects shared via Evidensify. Each link opens a repo, demo, or doc you can verify in seconds.
-                  </p>
-                  <p className="text-sm text-muted-foreground">
-                    Candidates pick the evidence themselves, so you’re seeing the exact work they’re proud to stand behind.
-                  </p>
+                  <p className="text-sm text-muted-foreground">Quick review of featured technical proof and source links.</p>
                 </div>
               </div>
               <div className="rounded-xl border border-slate-800/80 bg-slate-950/60 px-4 py-3 text-xs text-muted-foreground">
-                Looking for a job-specific Proof Packet? Ask the candidate for{" "}
-                <span className="text-white">/p/&lt;token&gt;</span> so the packet stays unlisted and role-specific.
+                For a role-specific packet, request an unlisted <span className="text-white">/p/&lt;token&gt;</span> link.
               </div>
             </div>
           </header>
 
           <section className="space-y-4">
             <div>
-              <p className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">Featured proof</p>
-              <p className="text-xs text-muted-foreground">Curated highlights only, code, README, and commit proof.</p>
+              <p className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">Featured proof snapshot</p>
+              <p className="text-xs text-muted-foreground">Code, README, and commit evidence. Expand any card to inspect details.</p>
             </div>
             <FeaturedProofSection projects={profileQuery.data.projects} />
           </section>
 
           <section className="space-y-4">
             <div>
-              <p className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">Showcased projects</p>
-              <p className="text-xs text-muted-foreground">Each project links to verifiable code or artifacts.</p>
+              <p className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">Project index</p>
+              <p className="text-xs text-muted-foreground">Public sources and concise project context.</p>
             </div>
             {profileQuery.data.projects.length === 0 ? (
               <div className="rounded-2xl border border-dashed border-slate-800/80 p-6 text-sm text-muted-foreground">
@@ -128,7 +128,7 @@ function ProjectCard({ project }: { project: Project }) {
       </div>
       <div className="flex flex-wrap gap-3 text-xs text-muted-foreground">
         {project.context && <span>{project.context}</span>}
-        {project.year && <span>{project.year}</span>}
+        {formatProjectYearRange(project) && <span>{formatProjectYearRange(project)}</span>}
         {project.primaryLanguage && <span>{project.primaryLanguage}</span>}
       </div>
       {aiUsage ? <p className="text-[11px] text-slate-400">{aiUsage}</p> : null}
@@ -188,22 +188,28 @@ function FeaturedProofSection({ projects }: { projects: Project[] }) {
 
   const renderGroup = (
     title: string,
-    items: Array<{ id: string; summary: string; projectFullName: string; filePath?: string; lineStart?: number; lineEnd?: number; type?: string }>
+    items: Array<{
+      id: string;
+      summary: string;
+      projectFullName: string;
+      filePath?: string;
+      lineStart?: number;
+      lineEnd?: number;
+      type?: string;
+      language?: string;
+      code: string;
+      url?: string;
+      tags?: string[];
+      readmeHeading?: string;
+      commitEntries?: Array<{ sha: string; message: string; date?: string | null; htmlUrl?: string }>;
+    }>
   ) => (
     <div className="space-y-2">
       <p className="text-[11px] uppercase tracking-[0.2em] text-slate-500">{title}</p>
       {items.length === 0 ? (
         <p className="text-xs text-muted-foreground">None featured.</p>
       ) : (
-        items.map((sample) => (
-          <div key={sample.id} className="rounded-xl border border-slate-900/80 bg-slate-950/70 p-3">
-            <p className="text-sm text-white">{sample.summary}</p>
-            <p className="mt-1 text-[11px] text-slate-400">{sample.projectFullName}</p>
-            <p className="text-[11px] text-slate-500">
-              {(sample.filePath || "snippet") + (sample.lineStart && sample.lineEnd ? ` #L${sample.lineStart}-${sample.lineEnd}` : "")}
-            </p>
-          </div>
-        ))
+        items.map((sample) => <FeaturedProofCard key={sample.id} sample={sample} />)
       )}
     </div>
   );
@@ -213,6 +219,96 @@ function FeaturedProofSection({ projects }: { projects: Project[] }) {
       {renderGroup("Code samples (max 3)", code)}
       {renderGroup("Commit samples (max 3)", commit)}
       {renderGroup("README sample (max 1)", readme)}
+    </div>
+  );
+}
+
+function FeaturedProofCard({
+  sample,
+}: {
+  sample: {
+    id: string;
+    summary: string;
+    projectFullName: string;
+    filePath?: string;
+    lineStart?: number;
+    lineEnd?: number;
+    type?: string;
+    language?: string;
+    code: string;
+    url?: string;
+    tags?: string[];
+    readmeHeading?: string;
+    commitEntries?: Array<{ sha: string; message: string; date?: string | null; htmlUrl?: string }>;
+  };
+}) {
+  const [open, setOpen] = useState(false);
+  const isCode = !sample.type || sample.type === "code";
+  return (
+    <div className="rounded-xl border border-slate-900/80 bg-slate-950/70 p-3">
+      <button
+        type="button"
+        className="flex w-full items-center justify-between gap-2 text-left"
+        onClick={() => setOpen((prev) => !prev)}
+      >
+        <div>
+          <p className="text-sm text-white">{sample.summary}</p>
+          <p className="mt-1 text-[11px] text-slate-400">{sample.projectFullName}</p>
+          <p className="text-[11px] text-slate-500">
+            {(sample.filePath || "snippet") + (sample.lineStart && sample.lineEnd ? ` #L${sample.lineStart}-${sample.lineEnd}` : "")}
+          </p>
+        </div>
+        <ChevronRight className={cn("h-4 w-4 text-slate-500 transition-transform", open ? "rotate-90" : "")} />
+      </button>
+      {sample.tags && sample.tags.length > 0 ? (
+        <div className="mt-2 flex flex-wrap gap-1">
+          {sample.tags.map((tag) => (
+            <Badge key={`${sample.id}-${tag}`} variant="outline" className="text-[10px]">
+              {tag}
+            </Badge>
+          ))}
+        </div>
+      ) : null}
+      {open ? (
+        <div className="mt-3 space-y-2">
+          {sample.type === "commit" && sample.commitEntries && sample.commitEntries.length > 0 ? (
+            <div className="rounded-lg border border-slate-900/70 bg-slate-900/40 p-2 text-[11px] text-slate-300">
+              <p className="text-[10px] uppercase tracking-[0.3em] text-slate-500">Commit trail</p>
+              <ul className="mt-1 space-y-1">
+                {sample.commitEntries.slice(0, 5).map((entry) => (
+                  <li key={entry.sha} className="flex items-center justify-between gap-2">
+                    <span className="truncate">{entry.message.split("\n")[0]}</span>
+                    {entry.htmlUrl ? (
+                      <a href={entry.htmlUrl} target="_blank" rel="noopener noreferrer nofollow" className="font-mono text-[10px] text-primary underline">
+                        #{entry.sha.slice(0, 7)}
+                      </a>
+                    ) : (
+                      <span className="font-mono text-[10px] text-slate-500">#{entry.sha.slice(0, 7)}</span>
+                    )}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          ) : null}
+          {isCode ? (
+            <CodeSnippet code={sample.code} language={sample.language || inferLanguage(sample.filePath) || "tsx"} />
+          ) : sample.type === "commit" ? (
+            <CodeSnippet code={sample.code} language="diff" />
+          ) : (
+            <CodeSnippet code={sample.code} language={sample.language || inferLanguage(sample.filePath) || "markdown"} />
+          )}
+          {sample.readmeHeading ? <p className="text-[11px] text-slate-400">README section: {sample.readmeHeading}</p> : null}
+          {sample.url ? (
+            <Button asChild variant="outline" size="sm">
+              <a href={sample.url} target="_blank" rel="noopener noreferrer nofollow">
+                Open source
+              </a>
+            </Button>
+          ) : null}
+        </div>
+      ) : (
+        <p className="mt-2 text-[11px] text-muted-foreground">Collapsed for quick scan.</p>
+      )}
     </div>
   );
 }
@@ -236,6 +332,25 @@ function formatAiUsage(project: Pick<Project, "aiRole" | "aiTools" | "aiSupervis
   }
   return parts.length ? parts.join(" · ") : null;
 }
+
+function inferLanguage(filePath?: string) {
+  return inferLanguageFromPath(filePath);
+}
+
+function formatProjectYearRange(project: Pick<Project, "year" | "yearStart" | "yearEnd" | "yearPresent">): string {
+  const currentYear = new Date().getFullYear();
+  if (project.yearStart) {
+    if (project.yearPresent) {
+      return project.yearStart === currentYear ? String(currentYear) : `${project.yearStart} - Present`;
+    }
+    if (project.yearEnd && project.yearEnd !== project.yearStart) {
+      return `${project.yearStart} - ${project.yearEnd}`;
+    }
+    return String(project.yearStart);
+  }
+  return project.year ? String(project.year) : "";
+}
+
 function getProjectProofTypes(project: Project): string[] {
   const labels = new Set<string>();
   

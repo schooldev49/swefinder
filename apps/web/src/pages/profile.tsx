@@ -60,6 +60,9 @@ export function ProfilePage() {
   const initialPublic = Boolean(profileQuery.data?.user.profilePublic);
   const hasChanges = trimmedSlug !== initialSlug || isPublic !== initialPublic;
   const slugTooShort = trimmedSlug.length > 0 && trimmedSlug.length < 3;
+  const slugTooLong = trimmedSlug.length > 20;
+  const slugInvalidChars = trimmedSlug.length > 0 && !/^[a-z0-9-]+$/.test(trimmedSlug);
+  const githubLoginTooLong = (profileQuery.data?.user.githubLogin || "").length > 20;
 
   const shareableJobs = useMemo(
     () => (jobsQuery.data || []).filter((job) => Boolean(job.shareToken && job.proofPacketId)),
@@ -97,14 +100,24 @@ export function ProfilePage() {
             <Input
               id="profile-slug"
               value={slug}
-              onChange={(event) => setSlug(event.target.value)}
+              onChange={(event) => {
+                const sanitized = event.target.value.toLowerCase().replace(/[^a-z0-9-]/g, "");
+                setSlug(sanitized.slice(0, 20));
+              }}
               placeholder="e.g. demo-student"
               className="max-w-md"
+              maxLength={20}
             />
             <p className="text-xs text-muted-foreground">
               Your profile lives at <span className="text-white/80">/u/{trimmedSlug || "<handle>"}</span>
             </p>
+            <p className="text-xs text-muted-foreground">3-20 chars. Lowercase letters, numbers, and dashes only.</p>
+            {githubLoginTooLong ? (
+              <p className="text-xs text-amber-400">Your GitHub username is longer than 20 chars. Use a shorter handle for cleaner links.</p>
+            ) : null}
             {slugTooShort && <p className="text-xs text-red-400">Handle must be at least 3 characters.</p>}
+            {slugTooLong && <p className="text-xs text-red-400">Handle cannot exceed 20 characters.</p>}
+            {slugInvalidChars && <p className="text-xs text-red-400">Use lowercase letters, numbers, or dashes only.</p>}
           </div>
 
           <div className="flex items-start gap-3 rounded-xl border border-slate-800/80 bg-slate-950/60 p-4">
@@ -130,7 +143,7 @@ export function ProfilePage() {
             </div>
             <Button
               onClick={handleSave}
-              disabled={!hasChanges || !trimmedSlug || slugTooShort || saveMutation.isPending}
+              disabled={!hasChanges || !trimmedSlug || slugTooShort || slugTooLong || slugInvalidChars || saveMutation.isPending}
             >
               {saveMutation.isPending ? "Saving…" : "Save changes"}
             </Button>

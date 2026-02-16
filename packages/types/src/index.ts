@@ -74,6 +74,9 @@ export interface Project {
   demoUrl?: string;
   context?: string;
   year?: number;
+  yearStart?: number;
+  yearEnd?: number;
+  yearPresent?: boolean;
   createdAt?: string;
   updatedAt?: string;
   tags?: string[];
@@ -123,6 +126,9 @@ export interface Evidence {
   fileUrl?: string;
   demoUrl?: string;
   year?: number;
+  yearStart?: number;
+  yearEnd?: number;
+  yearPresent?: boolean;
   context?: string;
   metrics?: Record<string, EvidenceMetric>;
   codeSnippet?: EvidenceSnippet;

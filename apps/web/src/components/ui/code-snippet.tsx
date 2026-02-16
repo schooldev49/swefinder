@@ -8,6 +8,18 @@ import json from "refractor/lang/json.js";
 import python from "refractor/lang/python.js";
 import bash from "refractor/lang/bash.js";
 import diff from "refractor/lang/diff.js";
+import markup from "refractor/lang/markup.js";
+import markdown from "refractor/lang/markdown.js";
+import cpp from "refractor/lang/cpp.js";
+import c from "refractor/lang/c.js";
+import csharp from "refractor/lang/csharp.js";
+import css from "refractor/lang/css.js";
+import sql from "refractor/lang/sql.js";
+import r from "refractor/lang/r.js";
+import swift from "refractor/lang/swift.js";
+import rust from "refractor/lang/rust.js";
+import go from "refractor/lang/go.js";
+import kotlin from "refractor/lang/kotlin.js";
 import { cn } from "@/lib/utils";
 
 type HighlightNode = {
@@ -27,7 +39,28 @@ function registerLanguage(grammar: Parameters<typeof refractor.register>[0]) {
   }
 }
 
-[tsx, typescript, javascript, jsx, json, python, bash, diff].forEach(registerLanguage);
+[
+  tsx,
+  typescript,
+  javascript,
+  jsx,
+  json,
+  python,
+  bash,
+  diff,
+  markup,
+  markdown,
+  cpp,
+  c,
+  csharp,
+  css,
+  sql,
+  r,
+  swift,
+  rust,
+  go,
+  kotlin,
+].forEach(registerLanguage);
 
 type CodeSnippetProps = {
   code: string;
@@ -36,7 +69,9 @@ type CodeSnippetProps = {
 } & ComponentPropsWithoutRef<"pre">;
 
 export function CodeSnippet({ code, language = "tsx", wrap = false, className, ...props }: CodeSnippetProps) {
-  if (language === "diff") {
+  const normalizedLanguage = normalizeLanguage(language);
+
+  if (normalizedLanguage === "diff") {
     return (
       <pre
         className={cn(
@@ -51,7 +86,7 @@ export function CodeSnippet({ code, language = "tsx", wrap = false, className, .
     );
   }
 
-  const nodes = highlightSafely(code, language);
+  const nodes = highlightSafely(code, normalizedLanguage);
 
   return (
     <pre
@@ -62,9 +97,22 @@ export function CodeSnippet({ code, language = "tsx", wrap = false, className, .
       )}
       {...props}
     >
-      <code className={cn("block", `language-${language}`)}>{renderNodes(nodes)}</code>
+      <code className={cn("block", `language-${normalizedLanguage}`)}>{renderNodes(nodes)}</code>
     </pre>
   );
+}
+
+function normalizeLanguage(language?: string): string {
+  const lower = (language || "tsx").trim().toLowerCase();
+  const aliases: Record<string, string> = {
+    "c++": "cpp",
+    "c#": "csharp",
+    "md": "markdown",
+    "shell": "bash",
+    "sh": "bash",
+    "html": "markup",
+  };
+  return aliases[lower] || lower;
 }
 
 function renderDiffLines(code: string): ReactNode {

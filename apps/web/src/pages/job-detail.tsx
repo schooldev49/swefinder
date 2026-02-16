@@ -34,6 +34,7 @@ import { toast } from "sonner";
 import { useSession } from "@/hooks/use-session";
 import { CodeSnippet } from "@/components/ui/code-snippet";
 import { useSEO } from "@/lib/seo";
+import { inferLanguageFromPath } from "@/lib/language";
 
 const STATUS_ORDER: Job["status"][] = ["DRAFT", "PROOF_GENERATED", "APPLIED", "INTERVIEW", "REJECTED", "OFFER"];
 const SAMPLE_TYPE_LABELS: Record<string, string> = {
@@ -693,9 +694,10 @@ function CodeSamplesSelector({
                     sample.type === "commit" ? (
                       <CodeSnippet code={sample.code} language="diff" />
                     ) : (
-                      <div className="rounded-xl border border-slate-900/70 bg-slate-900/60 p-3 text-sm text-slate-200 whitespace-pre-wrap">
-                        {sample.code}
-                      </div>
+                      <CodeSnippet
+                        code={sample.code}
+                        language={sample.language || inferLanguage(sample.filePath) || "markdown"}
+                      />
                     )
                   ) : (
                     <CodeSnippet code={sample.code} language={sample.language || inferLanguage(sample.filePath) || "tsx"} />
@@ -780,9 +782,10 @@ function ProofCodeSamplesSection({ samples }: { samples: ProofPacketCodeSample[]
                         sample.type === "commit" ? (
                           <CodeSnippet code={sample.code} language="diff" />
                         ) : (
-                          <div className="rounded-xl border border-slate-900/70 bg-slate-900/60 p-3 text-sm text-slate-200 whitespace-pre-wrap">
-                            {sample.code}
-                          </div>
+                          <CodeSnippet
+                            code={sample.code}
+                            language={sample.language || inferLanguage(sample.filePath) || "markdown"}
+                          />
                         )
                       ) : (
                         <CodeSnippet code={sample.code} language={sample.language || inferLanguage(sample.filePath) || "tsx"} />
@@ -1113,16 +1116,7 @@ function ShareLinkCallout({
 }
 
 function inferLanguage(filePath?: string) {
-  if (!filePath) return "";
-  const lower = filePath.toLowerCase();
-  if (lower.endsWith(".py")) return "python";
-  if (lower.endsWith(".ts") || lower.endsWith(".tsx")) return "tsx";
-  if (lower.endsWith(".js") || lower.endsWith(".jsx")) return "javascript";
-  if (lower.endsWith(".rs")) return "rust";
-  if (lower.endsWith(".go")) return "go";
-  if (lower.endsWith(".java")) return "java";
-  if (lower.endsWith(".sql")) return "sql";
-  return "";
+  return inferLanguageFromPath(filePath);
 }
 
 function getNextStatus(current: Job["status"]): Job["status"] | null {

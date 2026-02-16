@@ -12,6 +12,7 @@ import { CodeSnippet } from "@/components/ui/code-snippet";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { useSEO } from "@/lib/seo";
+import { inferLanguageFromPath } from "@/lib/language";
 
 const SAMPLE_TYPE_LABELS: Record<string, string> = {
   code: "Code sample",
@@ -296,9 +297,10 @@ function RequirementPublicCard({
           {openSample ? (
             selectedSample.type && selectedSample.type !== "code" ? (
               <>
-                <div className="rounded-lg border border-slate-900/80 bg-slate-900/60 p-3 text-sm text-slate-200 whitespace-pre-wrap">
-                  {selectedSample.code}
-                </div>
+                <CodeSnippet
+                  code={selectedSample.code}
+                  language={selectedSample.type === "commit" ? "diff" : selectedSample.language || inferLanguage(selectedSample.filePath) || "markdown"}
+                />
                 {selectedSample.url && (
                   <a href={selectedSample.url} target="_blank" rel="noopener noreferrer nofollow" className="text-primary underline">
                     View on GitHub
@@ -383,9 +385,7 @@ function PublicCodeSamples({ samples }: { samples: ProofPacketCodeSample[] }) {
                     sample.type === "commit" ? (
                       <CodeSnippet code={sample.code} language="diff" />
                     ) : (
-                      <div className="rounded-xl border border-slate-900/70 bg-slate-900/60 p-3 text-sm text-slate-200 whitespace-pre-wrap">
-                        {sample.code}
-                      </div>
+                      <CodeSnippet code={sample.code} language={sample.language || inferLanguage(sample.filePath) || "markdown"} />
                     )
                   ) : (
                     <CodeSnippet code={sample.code} language={sample.language || inferLanguage(sample.filePath) || "tsx"} />
@@ -475,16 +475,7 @@ function getPublicSampleLabel(sample?: { type?: string }) {
 }
 
 function inferLanguage(filePath?: string) {
-  if (!filePath) return "";
-  const lower = filePath.toLowerCase();
-  if (lower.endsWith(".py")) return "python";
-  if (lower.endsWith(".ts") || lower.endsWith(".tsx")) return "tsx";
-  if (lower.endsWith(".js") || lower.endsWith(".jsx")) return "javascript";
-  if (lower.endsWith(".rs")) return "rust";
-  if (lower.endsWith(".go")) return "go";
-  if (lower.endsWith(".java")) return "java";
-  if (lower.endsWith(".sql")) return "sql";
-  return "";
+  return inferLanguageFromPath(filePath);
 }
 
 function buildCitationList(mappings: EvidenceMappingWithEvidence[]): Evidence[] {
@@ -569,7 +560,11 @@ function EvidenceSnippetBlock({
             snippet.type === "commit" ? (
               <CodeSnippet code={snippet.code} language="diff" className="max-w-full text-sm" />
             ) : (
-              <div className="rounded-xl border border-slate-900/60 bg-slate-900/50 p-3 text-slate-200 whitespace-pre-wrap">{snippet.code}</div>
+              <CodeSnippet
+                code={snippet.code}
+                language={snippet.language || inferLanguage(snippet.filePath) || "markdown"}
+                className="max-w-full text-sm"
+              />
             )
           )}
           {snippet.url && (
