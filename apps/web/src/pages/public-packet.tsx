@@ -383,7 +383,13 @@ function PublicCodeSamples({ samples }: { samples: ProofPacketCodeSample[] }) {
                 <div className="mt-3">
                   {sample.type && sample.type !== "code" ? (
                     sample.type === "commit" ? (
-                      <p className="text-[11px] text-muted-foreground">Select a commit above to preview the diff.</p>
+                      sample.commitEntries && sample.commitEntries.length > 0 ? (
+                        <p className="text-[11px] text-muted-foreground">Select a commit above to preview the diff.</p>
+                      ) : sample.code ? (
+                        <CodeSnippet code={limitDiffLinesPublic(sample.code, 40)} language="diff" />
+                      ) : (
+                        <p className="text-[11px] text-muted-foreground">No commit diff available for this sample.</p>
+                      )
                     ) : (
                       <CodeSnippet code={sample.code} language={sample.language || inferLanguage(sample.filePath) || "markdown"} />
                     )
@@ -579,7 +585,11 @@ function EvidenceSnippetBlock({
             <CodeSnippet code={snippet.code} language={snippet.language} className="max-w-full text-sm" />
           ) : (
             snippet.type === "commit" ? (
-              <p className="text-[11px] text-muted-foreground">Commit evidence is shown in the commit trail cards above.</p>
+              snippet.code ? (
+                <CodeSnippet code={limitDiffLinesPublic(snippet.code, 40)} language="diff" className="max-w-full text-sm" />
+              ) : (
+                <p className="text-[11px] text-muted-foreground">Commit evidence is shown in the commit trail cards above.</p>
+              )
             ) : (
               <CodeSnippet
                 code={snippet.code}

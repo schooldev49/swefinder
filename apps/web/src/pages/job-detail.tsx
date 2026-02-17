@@ -692,7 +692,13 @@ function CodeSamplesSelector({
                   )}
                   {sample.type && sample.type !== "code" ? (
                     sample.type === "commit" ? (
-                      <p className="text-[11px] text-muted-foreground">Select a commit above to preview the diff.</p>
+                      sample.commitEntries && sample.commitEntries.length > 0 ? (
+                        <p className="text-[11px] text-muted-foreground">Select a commit above to preview the diff.</p>
+                      ) : sample.code ? (
+                        <CodeSnippet code={limitDiffLines(sample.code, 40)} language="diff" />
+                      ) : (
+                        <p className="text-[11px] text-muted-foreground">No commit diff available for this sample.</p>
+                      )
                     ) : (
                       <CodeSnippet
                         code={sample.code}
@@ -780,7 +786,13 @@ function ProofCodeSamplesSection({ samples }: { samples: ProofPacketCodeSample[]
                     <div className="mt-3">
                       {sample.type && sample.type !== "code" ? (
                         sample.type === "commit" ? (
-                          <p className="text-[11px] text-muted-foreground">Select a commit above to preview the diff.</p>
+                          sample.commitEntries && sample.commitEntries.length > 0 ? (
+                            <p className="text-[11px] text-muted-foreground">Select a commit above to preview the diff.</p>
+                          ) : sample.code ? (
+                            <CodeSnippet code={limitDiffLines(sample.code, 40)} language="diff" />
+                          ) : (
+                            <p className="text-[11px] text-muted-foreground">No commit diff available for this sample.</p>
+                          )
                         ) : (
                           <CodeSnippet
                             code={sample.code}
