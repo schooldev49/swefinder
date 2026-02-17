@@ -6,6 +6,7 @@ import { App } from "./App";
 import { initPostHog } from "@/lib/analytics";
 import "./index.css";
 
+
 const queryClient = new QueryClient();
 initPostHog();
 

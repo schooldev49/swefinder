@@ -8,6 +8,7 @@ import { useSession } from "@/hooks/use-session";
 import { buildGitHubLoginUrl } from "@/lib/auth";
 import { logout } from "@/lib/api";
 import { capturePageView, identifyPostHogUser, resetPostHogUser } from "@/lib/analytics";
+import { PostHogErrorBoundary } from "@/components/analytics/posthog-error-boundary";
 import { cn } from "@/lib/utils";
 const navLinks = [
   { to: "/profile", label: "Profile" },
@@ -132,7 +133,9 @@ export function AppLayout() {
           ) : null}
         </header>
         <main className="flex-1">
-          <Outlet />
+          <PostHogErrorBoundary>
+            <Outlet />
+          </PostHogErrorBoundary>
         </main>
       </div>
     </div>
