@@ -48,7 +48,6 @@ const MAX_FEATURED_README = 1;
 const MAX_SAMPLE_LINES = 40;
 const MAX_SAMPLE_CODE_CHARS = 2000;
 const MAX_PROJECT_DESCRIPTION_CHARS = 280;
-const MAX_PROJECT_IMPACT_CHARS = 120;
 const WRITEUP_SITES = ["notion.so", "medium.com", "docs.google.com", "substack.com", "mirror.xyz"];
 const DEMO_SITES = ["youtube.com", "codesandbox.io", "figma.com", "youtu.be", "loom.com", "streamlit", "vercel.app", "netlify.app", "azurewebsites"];
 const PROJECTS_CHECKLIST = [
@@ -90,7 +89,6 @@ type ExternalFormState = {
   title: string;
   url: string;
   description: string;
-  whyItMatters: string;
   techStack: string;
   context: string;
   yearStart: string;
@@ -102,7 +100,6 @@ const createEmptyExternalForm = (): ExternalFormState => ({
   title: "",
   url: "",
   description: "",
-  whyItMatters: "",
   techStack: "",
   context: "",
   yearStart: "",
@@ -155,6 +152,21 @@ const formatProjectYearRange = (project: Pick<Project, "year" | "yearStart" | "y
   if (project.year) return String(project.year);
   return "";
 };
+
+const BUZZWORD_PATTERN =
+  /\b(scalable|robust|cutting[- ]edge|best[- ]in[- ]class|innovative|synergy|seamless|world[- ]class|optimized|high[- ]performance)\b/i;
+const CONCRETE_SIGNAL_PATTERN =
+  /\b(test|latency|error|retry|timeout|schema|validation|commit|line|query|cache|queue|api|endpoint|migration|benchmark|incident|p95|p99|coverage)\b/i;
+
+function getConcreteNudge(text?: string): string | null {
+  const trimmed = (text || "").trim();
+  if (!trimmed) return null;
+  if (trimmed.length < 24) return null;
+  if (BUZZWORD_PATTERN.test(trimmed) && !CONCRETE_SIGNAL_PATTERN.test(trimmed)) {
+    return "Can you make this more concrete? Mention one design tradeoff or verifiable detail.";
+  }
+  return null;
+}
 
 type EditableProject = ProjectPayload & { draft?: boolean };
 
@@ -390,7 +402,6 @@ export function ProjectsPage() {
       isPrivate: false,
       isFork: false,
       description: externalForm.description.trim() || undefined,
-      whyItMatters: externalForm.whyItMatters.trim() || undefined,
       topics,
       lastUpdated: new Date().toISOString(),
       context: externalForm.context || undefined,
@@ -627,28 +638,21 @@ export function ProjectsPage() {
                   </div>
                 </div>
                 <div>
-                  <Label>Short description</Label>
+                  <Label>What did you build and why does it matter?</Label>
                   <Textarea
                     value={externalForm.description}
                     onChange={handleExternalInput("description")}
                     rows={3}
                     maxLength={MAX_PROJECT_DESCRIPTION_CHARS}
                     className="mt-2"
-                    placeholder="Briefly explain design choices, constraints, and what you would improve."
+                    placeholder="Explain what changed, key tradeoff, and where this is verified."
                   />
                   <p className="mt-1 text-[11px] text-muted-foreground">
-                    Keep this brief ({MAX_PROJECT_DESCRIPTION_CHARS} chars max). Focus on concrete engineering choices and tradeoffs.
+                    What changed? What tradeoff did you make? Where can this be verified?
                   </p>
-                </div>
-                <div>
-                  <Label>Why this matters (optional)</Label>
-                  <Input
-                    value={externalForm.whyItMatters}
-                    onChange={handleExternalInput("whyItMatters")}
-                    maxLength={MAX_PROJECT_IMPACT_CHARS}
-                    className="mt-2"
-                    placeholder="Used in production / validated by users / measurable impact"
-                  />
+                  {getConcreteNudge(externalForm.description) ? (
+                    <p className="mt-1 text-[11px] text-amber-400">{getConcreteNudge(externalForm.description)}</p>
+                  ) : null}
                 </div>
                 <div>
                   <Label>Tech stack (comma separated)</Label>
@@ -844,21 +848,11 @@ export function ProjectsPage() {
                     />
                     <p className="mt-1 text-[11px] text-muted-foreground">Must be public. Recruiters will click to verify.</p>
                   </div>
-                  <div className="md:col-span-2">
-                    <Label>Why this matters (optional)</Label>
-                    <Input
-                      value={project.whyItMatters || ""}
-                      onChange={(event) => updateProject(project.id, { whyItMatters: event.target.value || undefined })}
-                      maxLength={MAX_PROJECT_IMPACT_CHARS}
-                      className="mt-2"
-                      placeholder="Used in production / validated by users / measurable impact"
-                    />
-                  </div>
                 </div>
                 <div className="mt-4">
-                  <Label>What did you build?</Label>
+                  <Label>What did you build and why does it matter?</Label>
                   <p className="mt-1 text-[11px] text-muted-foreground">
-                    Describe design choices, tools, what you learned, and any limitations. Use your own words; AI can help polish, but only include facts you can defend.
+                    What changed? What tradeoff did you make? Where can this be verified?
                   </p>
                   <Textarea
                     className="mt-2"
@@ -866,11 +860,14 @@ export function ProjectsPage() {
                     maxLength={MAX_PROJECT_DESCRIPTION_CHARS}
                     value={project.description || ""}
                     onChange={(event) => updateProject(project.id, { description: event.target.value })}
-                    placeholder="Briefly explain design choices, constraints, and what you would improve."
+                    placeholder="What changed, what tradeoff you made, and where this is verified."
                   />
                   <p className="mt-1 text-[11px] text-muted-foreground">
                     Keep this brief ({MAX_PROJECT_DESCRIPTION_CHARS} chars max). Mention specific technical decisions so reviewers can verify your reasoning.
                   </p>
+                  {getConcreteNudge(project.description) ? (
+                    <p className="mt-1 text-[11px] text-amber-400">{getConcreteNudge(project.description)}</p>
+                  ) : null}
                 </div>
                 {project.isFork ? (
                   <div className="mt-3 rounded-xl border border-amber-700/60 bg-amber-950/20 p-3 text-[11px] text-amber-200">
@@ -1433,6 +1430,7 @@ function SampleEditorModal({
 }: SampleEditorModalProps) {
   const typeCopy = SAMPLE_TYPE_OPTIONS.find((option) => option.value === draft.type);
   const codeLabel = draft.type === "code" ? "Code" : "Excerpt";
+  const summaryNudge = getConcreteNudge(draft.summary);
   const codePlaceholder =
     draft.type === "code"
       ? "Paste 10–40 lines of code, tests, or evaluator logic."
@@ -1469,6 +1467,7 @@ function SampleEditorModal({
               </Button>
             </div>
             <Input value={draft.summary} onChange={onDraftChange("summary")} className="mt-2" placeholder="What does this snippet show?" required />
+            {summaryNudge ? <p className="mt-1 text-[11px] text-amber-400">{summaryNudge}</p> : null}
             {summarySuggestion && (
               <div className="mt-2 rounded-xl border border-slate-800/80 bg-slate-950/70 p-3 text-xs text-muted-foreground">
                 <p className="text-[11px] uppercase tracking-[0.3em] text-slate-500">AI suggestion</p>

@@ -126,6 +126,17 @@ export function NewJobPage() {
       }
 
       const selectedSampleIds = Array.from(new Set(coveragePayload.map((entry) => entry.sampleId).filter(Boolean))) as string[];
+      const hasAtLeastOneAnchor = selectedSampleIds.some((sampleId) => {
+        const sample = availableSamples.find((entry) => entry.id === sampleId);
+        return sample ? hasProofAnchor(sample) : false;
+      });
+      if (coveragePayload.length > 0 && !hasAtLeastOneAnchor) {
+        toast("Add one proof anchor", {
+          description: "Attach at least one sample with a line range, commit entry, or README section.",
+        });
+        setIsSubmitting(false);
+        return;
+      }
 
       await generateProof(job.id, {
         selectedProjectIds: selectedPublic.map((project) => project.id),
@@ -571,9 +582,21 @@ function RequirementEvidenceMapper({
           requirements.map((requirement) => {
             const coverage = getCoverage(requirement.id);
             const suggestions = buildSampleSuggestions(requirement.text, samples).slice(0, 3);
+            const selectedSample = coverage.sampleId ? samples.find((sample) => sample.id === coverage.sampleId) : undefined;
+            const hasAnchor = selectedSample ? hasProofAnchor(selectedSample) : false;
+            const buzzwordNudge = getBuzzwordNudge(coverage.rationale);
+            const isMapped = coverage.projectIds.length > 0 || Boolean(coverage.sampleId) || coverage.rationale.trim().length > 0;
+            const isWeak = isMapped && (!hasAnchor || coverage.rationale.trim().length < 16 || Boolean(buzzwordNudge));
             return (
               <div key={requirement.id} className="rounded-xl border border-slate-800/80 bg-slate-950/60 p-3 text-xs text-muted-foreground">
-                <p className="text-sm font-semibold text-white">{requirement.text}</p>
+                <div className="flex flex-wrap items-center gap-2">
+                  <p className="text-sm font-semibold text-white">{requirement.text}</p>
+                  {isWeak ? (
+                    <Badge variant="warning" className="text-[10px] uppercase tracking-wide">
+                      Weak signal
+                    </Badge>
+                  ) : null}
+                </div>
                 <p className="mt-1 text-[11px] text-slate-400">Select 1-2 projects, then choose one sample if relevant.</p>
                 <div className="mt-2 flex flex-wrap gap-2">
                   {projects.map((project) => (
@@ -633,17 +656,24 @@ function RequirementEvidenceMapper({
                   )}
                 </div>
                 <div className="mt-3">
-                  <label className="text-[11px] uppercase tracking-[0.2em] text-slate-500">In one sentence, explain the design choice or code behavior that proves this requirement.</label>
+                  <label className="text-[11px] uppercase tracking-[0.2em] text-slate-500">What did you build and why does it matter?</label>
                   <Textarea
                     value={coverage.rationale}
                     onChange={(event) => updateRationale(requirement.id, event.target.value)}
                     rows={2}
                     className="mt-1"
-                    placeholder="Example: This API handler uses typed validation and explicit error paths, and the test file proves edge-case coverage."
+                    placeholder="What changed? What tradeoff did you make? Where can this be verified?"
                   />
+                  <p className="mt-1 text-[11px] text-slate-400">What changed? What tradeoff did you make? Where can this be verified?</p>
                 </div>
                 {(coverage.projectIds.length > 0 || coverage.sampleId) && coverage.rationale.trim().length < 8 ? (
                   <p className="mt-2 text-[11px] text-amber-400">Add a short explanation before generating.</p>
+                ) : null}
+                {buzzwordNudge ? <p className="mt-1 text-[11px] text-amber-400">{buzzwordNudge}</p> : null}
+                {isMapped && !hasAnchor ? (
+                  <p className="mt-1 text-[11px] text-amber-400">
+                    Add one proof anchor: line range, commit entry, or README section.
+                  </p>
                 ) : null}
               </div>
             );
@@ -732,6 +762,30 @@ function tokenize(text: string): string[] {
         .filter((token) => token.length >= 4)
     )
   ).slice(0, 20);
+}
+
+const BUZZWORD_PATTERN =
+  /\b(scalable|robust|cutting[- ]edge|best[- ]in[- ]class|innovative|synergy|seamless|world[- ]class|optimized|high[- ]performance)\b/i;
+const CONCRETE_SIGNAL_PATTERN =
+  /\b(test|latency|error|retry|timeout|schema|validation|commit|line|query|cache|queue|api|endpoint|migration|benchmark|incident|p95|p99|coverage)\b/i;
+
+function getBuzzwordNudge(text?: string): string | null {
+  const trimmed = (text || "").trim();
+  if (!trimmed || trimmed.length < 24) return null;
+  if (BUZZWORD_PATTERN.test(trimmed) && !CONCRETE_SIGNAL_PATTERN.test(trimmed)) {
+    return "Can you make this more concrete? Add one technical tradeoff or verifiable detail.";
+  }
+  return null;
+}
+
+function hasProofAnchor(sample: SampleOption): boolean {
+  if (sample.type === "commit") {
+    return Boolean(sample.commitEntries && sample.commitEntries.length > 0);
+  }
+  if (sample.type === "readme") {
+    return Boolean(sample.readmeHeading || (sample.lineStart && sample.lineEnd));
+  }
+  return Boolean((sample.filePath && sample.lineStart && sample.lineEnd) || sample.url);
 }
 
 function inferLanguage(filePath?: string) {
