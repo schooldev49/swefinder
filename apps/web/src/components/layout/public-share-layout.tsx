@@ -1,8 +1,16 @@
 import type { ReactNode } from "react";
-import { Link } from "react-router-dom";
+import { useEffect } from "react";
+import { Link, useLocation } from "react-router-dom";
 import { Button } from "@/components/ui/button";
+import { capturePageView } from "@/lib/analytics";
 
 export function PublicShareLayout({ children }: { children: ReactNode }) {
+  const location = useLocation();
+
+  useEffect(() => {
+    capturePageView(`${location.pathname}${location.search}`);
+  }, [location.pathname, location.search]);
+
   return (
     <div className="min-h-screen bg-gradient-to-b from-slate-950 via-slate-950 to-slate-900 text-white">
       <header className="border-b border-slate-900/80 bg-slate-950/80">

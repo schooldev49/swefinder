@@ -1,5 +1,5 @@
-import { Link, NavLink, Outlet } from "react-router-dom";
-import { useState } from "react";
+import { Link, NavLink, Outlet, useLocation } from "react-router-dom";
+import { useEffect, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { Menu, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -7,6 +7,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useSession } from "@/hooks/use-session";
 import { buildGitHubLoginUrl } from "@/lib/auth";
 import { logout } from "@/lib/api";
+import { capturePageView, identifyPostHogUser, resetPostHogUser } from "@/lib/analytics";
 import { cn } from "@/lib/utils";
 const navLinks = [
   { to: "/profile", label: "Profile" },
@@ -15,9 +16,23 @@ const navLinks = [
 
 export function AppLayout() {
   const { data: user, isLoading } = useSession();
+  const location = useLocation();
   const queryClient = useQueryClient();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const isAuthenticated = Boolean(user);
+
+  useEffect(() => {
+    capturePageView(`${location.pathname}${location.search}`);
+  }, [location.pathname, location.search]);
+
+  useEffect(() => {
+    if (isLoading) return;
+    if (user) {
+      identifyPostHogUser(user);
+      return;
+    }
+    resetPostHogUser();
+  }, [isLoading, user]);
 
   const handleLogin = () => {
     window.location.href = buildGitHubLoginUrl("/projects");
