@@ -202,7 +202,7 @@ const MULTIWORD_TOOL_PATTERN =
 
 function getConcreteNudge(text?: string): string | null {
   const trimmed = (text || "").trim();
-  if (!trimmed || trimmed.length < 24) return null;
+  if (!trimmed) return null;
 
   const hasBuzz = BUZZWORD_PATTERN.test(trimmed);
   const hasConcrete = CONCRETE_SIGNAL_PATTERN.test(trimmed);
