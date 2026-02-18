@@ -154,9 +154,10 @@ const formatProjectYearRange = (project: Pick<Project, "year" | "yearStart" | "y
 };
 
 const BUZZWORD_PATTERN =
-  /\b(scalable|robust|cutting[- ]edge|best[- ]in[- ]class|innovative|synergy|seamless|world[- ]class|optimized|high[- ]performance)\b/i;
+  /\b(scalable|robust|cutting[- ]edge|best[- ]in[- ]class|innovative|synergy|seamless|world[- ]class|optimized|high[- ]performance|impactful|leverag(?:e|ing)|empower|redefine|revolutionize|state[- ]of[- ]the[- ]art|end[- ]to[- ]end|holistic|transformative|next[- ]gen|visionary|dynamic|game[- ]changing|industry[- ]leading)\b/i;
+
 const CONCRETE_SIGNAL_PATTERN =
-  /\b(test|latency|error|retry|timeout|schema|validation|commit|line|query|cache|queue|api|endpoint|migration|benchmark|incident|p95|p99|coverage)\b/i;
+  /\b(test|latency|error|retry|timeout|schema|validation|commit|line|query|cache|queue|api|endpoint|migration|benchmark|incident|p95|p99|coverage|throughput|memory|cpu|profil(?:e|ing)|trace|log|metrics|alert|monitor|index|join|constraint|transaction|rollback|shard|replica|exception|fail(?:ed|ure)|deploy|hotfix|patch|render|state|hook|bundle|hydration)\b/i;
 
 function getConcreteNudge(text?: string): string | null {
   const trimmed = (text || "").trim();
