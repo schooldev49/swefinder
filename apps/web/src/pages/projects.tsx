@@ -159,13 +159,63 @@ const BUZZWORD_PATTERN =
 const CONCRETE_SIGNAL_PATTERN =
   /\b(test|latency|error|retry|timeout|schema|validation|commit|line|query|cache|queue|api|endpoint|migration|benchmark|incident|p95|p99|coverage|throughput|memory|cpu|profil(?:e|ing)|trace|log|metrics|alert|monitor|index|join|constraint|transaction|rollback|shard|replica|exception|fail(?:ed|ure)|deploy|hotfix|patch|render|state|hook|bundle|hydration)\b/i;
 
+const METRIC_PATTERN =
+  /\b\d+(\.\d+)?\s?(ms|s|%|mb|gb|rps|req|users?|nodes?|threads?|x)\b/i;
+
+  const GENERIC_VERB_PATTERN =
+  /\b(built|created|developed|implemented|designed|improved|enhanced|delivered|drove)\b/i;
+
+
+
+const TOOL_TERMS = [
+  // db / search
+  "postgres", "mysql", "sqlite", "mongodb", "dynamodb", "redis", "memcached",
+  "elasticsearch", "opensearch", "clickhouse", "bigquery", "snowflake", "redshift",
+
+  // queues / streaming
+  "kafka", "rabbitmq", "sqs", "sns", "pubsub", "kinesis", "eventbridge", "pulsar", "nats",
+
+  // cloud / infra
+  "aws", "gcp", "azure", "lambda", "cloudflare", "vercel", "netlify",
+  "docker", "kubernetes", "terraform", "pulumi", "helm", "nginx",
+
+  // backend / api
+  "graphql", "rest", "grpc", "openapi", "swagger", "protobuf",
+
+  // frontend / build
+  "react", "next\\.js", "vue", "svelte", "vite", "webpack", "tailwind",
+
+  // ci/cd + obs
+  "github actions", "gitlab ci", "jenkins",
+  "prometheus", "grafana", "datadog", "sentry", "opentelemetry",
+
+  // auth/payments/comms
+  "oauth", "oidc", "jwt", "auth0", "clerk",
+  "stripe", "twilio", "sendgrid"
+];
+
+const TOOL_PATTERN = new RegExp(`\\b(${TOOL_TERMS.join("|")})\\b`, "i");
+
+const MULTIWORD_TOOL_PATTERN =
+  /\b(github actions|gitlab ci|new relic|firebase auth)\b/i;
+
+
 function getConcreteNudge(text?: string): string | null {
   const trimmed = (text || "").trim();
-  if (!trimmed) return null;
-  if (trimmed.length < 24) return null;
-  if (BUZZWORD_PATTERN.test(trimmed) && !CONCRETE_SIGNAL_PATTERN.test(trimmed)) {
-    return "Can you make this more concrete? Mention one design tradeoff or verifiable detail.";
+  if (!trimmed || trimmed.length < 24) return null;
+
+  const hasBuzz = BUZZWORD_PATTERN.test(trimmed);
+  const hasConcrete = CONCRETE_SIGNAL_PATTERN.test(trimmed);
+  const hasMetric = METRIC_PATTERN.test(trimmed);
+  const hasTool = TOOL_PATTERN.test(trimmed) || MULTIWORD_TOOL_PATTERN.test(trimmed);
+  const hasGenericVerb = GENERIC_VERB_PATTERN.test(trimmed);
+
+  const lacksProof = !hasConcrete && !hasMetric && !hasTool;
+
+  if ((hasBuzz && lacksProof) || (hasGenericVerb && lacksProof)) {
+    return "This reads a bit high-level. Add one metric, tool, constraint, or design tradeoff.";
   }
+
   return null;
 }
 
