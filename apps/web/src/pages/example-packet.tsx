@@ -13,7 +13,7 @@ type ExampleCommitEntry = {
   sha: string;
   message: string;
   date: string;
-  patch: string;
+  htmlUrl: string;
 };
 
 type ExampleSample = {
@@ -114,22 +114,13 @@ const exampleProjects: ExampleProject[] = [
             sha: "6f3kq2a",
             message: "feat(eval): add typed metrics logger and failure export",
             date: "Jan 12, 2026",
-            patch: `@@ -31,6 +31,12 @@ def evaluate_model(...):
-+ if results.total_examples == 0:
-+     raise ValueError("empty evaluation set")
-@@ -49,2 +55,3 @@ def evaluate_model(...):
-- old_log_metrics(metrics)
-+ log_metrics(metrics)
-+ save_failure_cases(results.hard_negatives, "artifacts/failures.csv")`,
+            htmlUrl: "https://github.com/pallets/flask/commits/main",
           },
           {
             sha: "9bc14de",
             message: "test(eval): add zero-example guard and regression test",
             date: "Jan 10, 2026",
-            patch: `@@ -4,0 +5,5 @@
-+ def test_empty_dataset_raises():
-+     with pytest.raises(ValueError):
-+         evaluate_model(model, empty_loader)`,
+            htmlUrl: "https://github.com/pallets/flask/commits/main",
           },
         ],
       },
@@ -187,7 +178,7 @@ export function ExamplePacketPage() {
 
         <section className="space-y-4">
           <div>
-            <p className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">Featured projects</p>
+            <p className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">Featured samples</p>
             <p className="text-xs text-muted-foreground">Code, README, and commit evidence. Expand cards to inspect details.</p>
           </div>
           <div className="grid gap-3 md:grid-cols-3">
@@ -199,7 +190,7 @@ export function ExamplePacketPage() {
 
         <section className="space-y-4">
           <div>
-            <p className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">Project index</p>
+            <p className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">Featured projects</p>
             <p className="text-xs text-muted-foreground">Public-source project context for quick recruiter scan.</p>
           </div>
           <div className="grid gap-4 md:grid-cols-2">
@@ -228,7 +219,6 @@ function FeaturedGroup({ title, items }: { title: string; items: ExampleSample[]
 
 function FeaturedProofCard({ sample }: { sample: ExampleSample }) {
   const [open, setOpen] = useState(false);
-  const [openCommitSha, setOpenCommitSha] = useState<string | null>(null);
   const isCode = sample.type === "code";
 
   return (
@@ -258,22 +248,22 @@ function FeaturedProofCard({ sample }: { sample: ExampleSample }) {
               <p className="text-[10px] uppercase tracking-[0.3em] text-slate-500">Commit trail</p>
               <div className="mt-1 space-y-2">
                 {sample.commitEntries.map((entry) => {
-                  const expanded = openCommitSha === entry.sha;
                   return (
                     <div key={entry.sha} className="rounded-md border border-slate-800/80 bg-slate-950/40 p-2">
-                      <button
-                        type="button"
-                        className="flex w-full items-center justify-between gap-2 text-left"
-                        onClick={() => setOpenCommitSha((prev) => (prev === entry.sha ? null : entry.sha))}
-                      >
+                      <div className="flex w-full items-center justify-between gap-2 text-left">
                         <span className="truncate text-slate-200">{entry.message}</span>
-                        <span className="font-mono text-[10px] text-slate-500">#{entry.sha.slice(0, 7)}</span>
-                      </button>
-                      {expanded ? (
-                        <div className="mt-2">
-                          <CodeSnippet code={limitDiffLines(entry.patch, 40)} language="diff" />
+                        <div className="flex items-center gap-2">
+                          <span className="font-mono text-[10px] text-slate-500">#{entry.sha.slice(0, 7)}</span>
+                          <a
+                            href={entry.htmlUrl}
+                            target="_blank"
+                            rel="noopener noreferrer nofollow"
+                            className="rounded border border-slate-700 px-2 py-0.5 text-[10px] text-primary hover:border-slate-500"
+                          >
+                            Open diff
+                          </a>
                         </div>
-                      ) : null}
+                      </div>
                     </div>
                   );
                 })}
@@ -284,7 +274,7 @@ function FeaturedProofCard({ sample }: { sample: ExampleSample }) {
           {isCode ? (
             <CodeSnippet code={sample.code || ""} language={sample.language || "tsx"} />
           ) : sample.type === "commit" ? (
-            <p className="text-[11px] text-muted-foreground">Select a commit above to preview the diff.</p>
+            <p className="text-[11px] text-muted-foreground">Use Open diff to view each commit in a new tab.</p>
           ) : (
             <CodeSnippet code={sample.code || ""} language={sample.language || "markdown"} />
           )}
@@ -358,12 +348,6 @@ function formatProjectYearRange(project: Pick<ExampleProject, "yearStart" | "yea
     return `${project.yearStart} - ${project.yearEnd}`;
   }
   return String(project.yearStart);
-}
-
-function limitDiffLines(diff: string, maxLines: number): string {
-  const lines = diff.split("\n");
-  if (lines.length <= maxLines) return diff;
-  return `${lines.slice(0, maxLines).join("\n")}\n...`;
 }
 
 function getProjectProofTypes(project: Pick<ExampleProject, "sourceType" | "fullName" | "demoUrl">): string[] {

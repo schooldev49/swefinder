@@ -70,7 +70,7 @@ export function PublicProfilePage() {
 
           <section className="space-y-4">
             <div>
-              <p className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">Featured projects</p>
+              <p className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">Featured samples</p>
               <p className="text-xs text-muted-foreground">Code, README, and commit evidence. Expand any card to inspect details.</p>
             </div>
             <FeaturedProofSection projects={profileQuery.data.projects} />
@@ -78,7 +78,7 @@ export function PublicProfilePage() {
 
           <section className="space-y-4">
             <div>
-              <p className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">Project index</p>
+              <p className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">Featured projects</p>
               <p className="text-xs text-muted-foreground">Public sources and concise project context.</p>
             </div>
             {profileQuery.data.projects.length === 0 ? (

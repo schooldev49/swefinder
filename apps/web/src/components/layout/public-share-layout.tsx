@@ -3,6 +3,7 @@ import { useEffect } from "react";
 import { Link, useLocation } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { capturePageView } from "@/lib/analytics";
+import { PostHogErrorBoundary } from "@/components/analytics/posthog-error-boundary";
 
 export function PublicShareLayout({ children }: { children: ReactNode }) {
   const location = useLocation();
@@ -23,7 +24,9 @@ export function PublicShareLayout({ children }: { children: ReactNode }) {
           </Button>
         </div>
       </header>
-      <main className="mx-auto w-full max-w-5xl px-6 py-10">{children}</main>
+      <main className="mx-auto w-full max-w-5xl px-6 py-10">
+        <PostHogErrorBoundary>{children}</PostHogErrorBoundary>
+      </main>
       <footer className="mx-auto max-w-5xl px-6 pb-10 text-xs text-muted-foreground">
         Built for evidence-first applications. Links open in new tabs.
       </footer>
