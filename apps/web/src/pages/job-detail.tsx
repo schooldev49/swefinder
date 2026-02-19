@@ -339,12 +339,12 @@ export function JobDetailPage() {
   }, [editableCoverage?.projectIds]);
 
   if (jobQuery.isLoading) {
-    return <div className="h-32 animate-pulse rounded-xl bg-slate-900/60" />;
+    return <div className="h-32 animate-pulse rounded-xl bg-card/85" />;
   }
 
   if (!job) {
     return (
-      <div className="rounded-xl border border-slate-800/80 p-10 text-center text-muted-foreground">
+      <div className="rounded-xl border border-border p-10 text-center text-muted-foreground">
         Job not found.
       </div>
     );
@@ -356,10 +356,10 @@ export function JobDetailPage() {
 
   return (
     <div className="grid gap-6">
-      <Card className="border-slate-800/80 bg-slate-950/40">
+      <Card className="border-border bg-card/80">
         <CardHeader className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
           <div>
-            <CardTitle className="text-white">{job.title}</CardTitle>
+            <CardTitle className="text-foreground">{job.title}</CardTitle>
             <CardDescription>{job.company}</CardDescription>
             {job.jobUrl && (
               <a href={job.jobUrl} target="_blank" rel="noreferrer" className="text-xs text-primary underline">
@@ -382,10 +382,10 @@ export function JobDetailPage() {
         </CardContent>
       </Card>
 
-      <Card className="border-slate-800/80 bg-slate-950/40">
+      <Card className="border-border bg-card/80">
         <CardHeader className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
           <div>
-            <CardTitle className="text-white">Job-specific packet</CardTitle>
+            <CardTitle className="text-foreground">Job-specific packet</CardTitle>
             <CardDescription>
               Evidence-first summary you curate before sharing so startups know you reviewed every proof point yourself.
             </CardDescription>
@@ -428,7 +428,7 @@ export function JobDetailPage() {
             />
           )}
           {proof && (
-            <div className="rounded-2xl border border-slate-800/80 bg-slate-950/60 p-3 text-[11px] text-muted-foreground">
+            <div className="rounded-2xl border border-border bg-card/85 p-3 text-[11px] text-muted-foreground">
               Edits below are local for drafting. Regenerate to pull fresh model output while evidence and citations stay untouched.
             </div>
           )}
@@ -441,7 +441,7 @@ export function JobDetailPage() {
                     <div className="text-xs text-muted-foreground">
                       <span>{backedCount}/{proofRequirements.length} backed</span>
                       <span className="mx-2">•</span>
-                      <span className={strongPacket ? "text-emerald-300" : "text-slate-400"}>
+                      <span className={strongPacket ? "text-emerald-300" : "text-muted-foreground"}>
                         {strongPacket ? "Strong packet" : "Lighter packet"}
                       </span>
                     </div>
@@ -467,11 +467,11 @@ export function JobDetailPage() {
                             setCoverageDraft(null);
                           }}
                           className={`w-full rounded-xl border p-3 text-left transition ${
-                            isActive ? "border-accent/60 bg-slate-900/70" : "border-slate-800/80 bg-slate-950/60 hover:border-slate-700"
+                            isActive ? "border-accent/60 bg-card/90" : "border-border bg-card/85 hover:border-border"
                           }`}
                         >
                           <div className="flex items-start justify-between gap-2">
-                            <p className="text-sm font-semibold text-white">{requirement.text}</p>
+                            <p className="text-sm font-semibold text-foreground">{requirement.text}</p>
                             <Badge variant={isCovered ? "success" : "outline"} className="text-[10px] uppercase tracking-wide">
                               {isCovered ? "Backed" : "Unbacked"}
                             </Badge>
@@ -481,7 +481,7 @@ export function JobDetailPage() {
                       );
                     })}
                   </div>
-                  <div className="rounded-2xl border border-slate-800/80 bg-slate-950/60 p-4">
+                  <div className="rounded-2xl border border-border bg-card/85 p-4">
                     {selectedRequirement && editableCoverage ? (
                       <RequirementEvidenceEditor
                         requirement={selectedRequirement}
@@ -557,11 +557,11 @@ export function JobDetailPage() {
                 ) : (
                   <div className="mt-3 space-y-3">
                     {filteredCitations.map((evidence) => (
-                      <div key={evidence.id} className="rounded-2xl border border-slate-800/80 bg-slate-950/60 p-4 text-xs text-slate-300">
-                        <div className="mb-2 text-[10px] font-semibold uppercase tracking-[0.3em] text-slate-500">
+                      <div key={evidence.id} className="rounded-2xl border border-border bg-card/85 p-4 text-xs text-muted-foreground">
+                        <div className="mb-2 text-[10px] font-semibold uppercase tracking-[0.3em] text-muted-foreground">
                           {evidence.fileUrl || evidence.repoPath || evidence.projectFullName}
                         </div>
-                        {evidence.description && <p className="text-sm text-white">{evidence.description}</p>}
+                        {evidence.description && <p className="text-sm text-foreground">{evidence.description}</p>}
                         {evidence.fileUrl && (
                           <a href={evidence.fileUrl} target="_blank" rel="noopener noreferrer nofollow" className="text-accent">
                             View source
@@ -591,19 +591,19 @@ function ProjectSelector({ projects, selected, onChange }: { projects: Project[]
   };
 
   return (
-    <div className="rounded-2xl border border-slate-800/80 bg-slate-950/60 p-4">
+    <div className="rounded-2xl border border-border bg-card/85 p-4">
       <p className="text-xs uppercase tracking-wide text-muted-foreground">Projects included in this packet</p>
       <p className="text-[11px] text-muted-foreground">Only checked projects will feed requirements and bullets.</p>
       <div className="mt-3 grid gap-2 md:grid-cols-2">
         {projects.map((project) => (
           <label
             key={project.id}
-            className="flex cursor-pointer items-start gap-3 rounded-xl border border-transparent px-3 py-2 hover:border-slate-700"
+            className="flex cursor-pointer items-start gap-3 rounded-xl border border-transparent px-3 py-2 hover:border-border"
           >
             <Checkbox checked={selected.has(project.id)} onCheckedChange={(value) => toggleProject(project.id, Boolean(value))} />
             <div className="space-y-1">
             <div className="flex flex-wrap items-center gap-2">
-              <p className="text-sm font-medium text-white">{project.fullName}</p>
+              <p className="text-sm font-medium text-foreground">{project.fullName}</p>
               <Badge variant={project.sourceType === "link" ? "outline" : "default"} className="text-[10px]">
                 {project.sourceType === "link" ? "Link" : "GitHub"}
               </Badge>
@@ -641,7 +641,7 @@ function CodeSamplesSelector({
   const [expandedId, setExpandedId] = useState<string | null>(null);
 
   return (
-    <div className="rounded-2xl border border-slate-800/80 bg-slate-950/60 p-4">
+    <div className="rounded-2xl border border-border bg-card/85 p-4">
       <div className="flex flex-col gap-1 md:flex-row md:items-center md:justify-between">
         <div>
           <p className="text-xs uppercase tracking-wide text-muted-foreground">Attach samples</p>
@@ -653,19 +653,19 @@ function CodeSamplesSelector({
         {samples.map((sample) => {
           const isExpanded = expandedId === sample.id;
           return (
-            <div key={sample.id} className="rounded-xl border border-slate-800/80 bg-slate-950/60 p-3 text-xs text-muted-foreground">
+            <div key={sample.id} className="rounded-xl border border-border bg-card/85 p-3 text-xs text-muted-foreground">
               <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
                 <label className="flex flex-1 cursor-pointer items-start gap-3">
                   <Checkbox checked={selected.has(sample.id)} onCheckedChange={(value) => onToggle(sample.id, Boolean(value))} />
                   <div className="space-y-1">
                     <div className="flex flex-wrap items-center gap-2">
-                      <p className="text-sm font-semibold text-white">{sample.summary}</p>
+                      <p className="text-sm font-semibold text-foreground">{sample.summary}</p>
                       <Badge variant="outline" className="border-accent/60 text-[10px] uppercase tracking-wide text-accent">
                         {getSampleTypeLabel(sample)}
                       </Badge>
                       {sample.isPrivate ? <PrivateRepoBadge /> : null}
                     </div>
-                    <p className="text-[11px] uppercase tracking-[0.3em] text-slate-500">
+                    <p className="text-[11px] uppercase tracking-[0.3em] text-muted-foreground">
                       {sample.projectFullName} {formatLineLabel(sample.filePath, sample.lineStart, sample.lineEnd)}
                     </p>
                     {sample.tags && sample.tags.length > 0 && (
@@ -741,17 +741,17 @@ function ProofCodeSamplesSection({ samples }: { samples: ProofPacketCodeSample[]
         {samples.map((sample) => {
           const isOpen = expanded.has(sample.id);
           return (
-            <div key={sample.id} className="rounded-2xl border border-slate-800/80 bg-slate-950/60 p-3 text-xs text-muted-foreground">
+            <div key={sample.id} className="rounded-2xl border border-border bg-card/85 p-3 text-xs text-muted-foreground">
               <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
                 <div>
                   <div className="flex flex-wrap items-center gap-2">
-                    <p className="text-sm font-semibold text-white">{sample.summary}</p>
+                    <p className="text-sm font-semibold text-foreground">{sample.summary}</p>
                     <Badge variant="outline" className="border-accent/60 text-[10px] uppercase tracking-wide text-accent">
                       {getSampleTypeLabel(sample)}
                     </Badge>
                     {sample.isPrivate ? <PrivateRepoBadge /> : null}
                   </div>
-                  <p className="text-[11px] uppercase tracking-[0.3em] text-slate-500">
+                  <p className="text-[11px] uppercase tracking-[0.3em] text-muted-foreground">
                     {sample.projectFullName} {formatLineLabel(sample.filePath, sample.lineStart, sample.lineEnd)}
                   </p>
                   <SampleHighlightMeta sample={sample} />
@@ -832,7 +832,7 @@ function SampleHighlightMeta({ sample, variant = "internal" }: { sample?: { type
   const showHeading = sample.type === "readme" && sample.readmeHeading;
   const entries = sample.type === "commit" ? sample.commitEntries ?? [] : [];
   if (!showHeading && entries.length === 0) return null;
-  const textClass = variant === "public" ? "text-slate-400" : "text-muted-foreground";
+  const textClass = variant === "public" ? "text-muted-foreground" : "text-muted-foreground";
   return (
     <div className="mt-1 space-y-2">
       {showHeading ? <p className={`text-[11px] ${textClass}`}>README section: {sample.readmeHeading}</p> : null}
@@ -844,18 +844,18 @@ function SampleHighlightMeta({ sample, variant = "internal" }: { sample?: { type
 function CommitTrailList({ entries, variant = "internal" }: { entries: CommitEntry[]; variant?: "internal" | "public" }) {
   const [openCommitSha, setOpenCommitSha] = useState<string | null>(null);
   if (!entries.length) return null;
-  const boxClasses = variant === "public" ? "border-slate-900/70 bg-slate-900/40" : "border-slate-900/70 bg-slate-900/40";
-  const textClass = variant === "public" ? "text-slate-300" : "text-slate-200";
+  const boxClasses = variant === "public" ? "border-border bg-card/80" : "border-border bg-card/80";
+  const textClass = variant === "public" ? "text-muted-foreground" : "text-foreground";
   return (
     <div className={`mt-2 rounded-lg border ${boxClasses} p-2 text-[11px]`}> 
-      <p className="text-[10px] uppercase tracking-[0.3em] text-slate-500">Commit trail · {entries.length} entr{entries.length === 1 ? "y" : "ies"}</p>
+      <p className="text-[10px] uppercase tracking-[0.3em] text-muted-foreground">Commit trail · {entries.length} entr{entries.length === 1 ? "y" : "ies"}</p>
       <ul className="mt-1 space-y-2">
         {entries.map((entry) => {
           const label = truncateText(entry.message?.split("\n")[0] || entry.sha, 90);
           const shortSha = entry.sha ? entry.sha.slice(0, 7) : "commit";
           const isOpen = openCommitSha === entry.sha;
           return (
-            <li key={entry.sha} className="rounded-md border border-slate-800/80 bg-slate-950/40 p-2">
+            <li key={entry.sha} className="rounded-md border border-border bg-card/80 p-2">
               <div className="flex items-center gap-2">
                 <button
                   type="button"
@@ -869,7 +869,7 @@ function CommitTrailList({ entries, variant = "internal" }: { entries: CommitEnt
                     #{shortSha}
                   </a>
                 ) : (
-                  <span className="font-mono text-[10px] text-slate-500">#{shortSha}</span>
+                  <span className="font-mono text-[10px] text-muted-foreground">#{shortSha}</span>
                 )}
               </div>
               {isOpen && entry.patch ? (
@@ -943,24 +943,24 @@ function RequirementEvidenceEditor({
           value={requirement.text}
           onChange={(event) => onRequirementTextChange(event.target.value.slice(0, 240))}
           rows={2}
-          className="mt-1 bg-slate-950/80 text-sm"
+          className="mt-1 bg-card/95 text-sm"
           placeholder="Requirement text"
         />
         <p className="mt-1 text-[11px] text-muted-foreground">Priority {requirement.priority}</p>
       </div>
 
       <div className="space-y-2">
-        <p className="text-xs font-semibold text-white">Choose 1-2 projects</p>
+        <p className="text-xs font-semibold text-foreground">Choose 1-2 projects</p>
         <div className="grid gap-2">
           {projects.map((project) => (
-            <label key={project.id} className="flex cursor-pointer items-start gap-2 rounded-lg border border-slate-800/70 px-3 py-2">
+            <label key={project.id} className="flex cursor-pointer items-start gap-2 rounded-lg border border-border px-3 py-2">
               <Checkbox
                 checked={selectedProjects.includes(project.id)}
                 onCheckedChange={(value) => onToggleProject(project.id, Boolean(value))}
               />
               <div className="space-y-1">
                 <div className="flex flex-wrap items-center gap-2">
-                  <p className="text-sm text-white">{project.fullName}</p>
+                  <p className="text-sm text-foreground">{project.fullName}</p>
                   {project.isPrivate ? <PrivateRepoBadge /> : null}
                 </div>
                 {project.description ? <p className="text-xs text-muted-foreground">{project.description}</p> : null}
@@ -971,9 +971,9 @@ function RequirementEvidenceEditor({
       </div>
 
       <div className="space-y-2">
-        <p className="text-xs font-semibold text-white">Optional sample</p>
+        <p className="text-xs font-semibold text-foreground">Optional sample</p>
         <select
-          className="w-full rounded-lg border border-slate-800/80 bg-slate-950/80 px-3 py-2 text-sm text-white"
+          className="w-full rounded-lg border border-border bg-card/95 px-3 py-2 text-sm text-foreground"
           value={selectedSampleId ?? ""}
           onChange={(event) => onSampleChange(event.target.value ? event.target.value : null)}
         >
@@ -987,13 +987,13 @@ function RequirementEvidenceEditor({
       </div>
 
       <div className="space-y-2">
-        <p className="text-xs font-semibold text-white">Why this proves the requirement</p>
+        <p className="text-xs font-semibold text-foreground">Why this proves the requirement</p>
         <Textarea
           value={rationale}
           onChange={(event) => onRationaleChange(event.target.value.slice(0, 240))}
           rows={3}
           placeholder="1-2 sentences, concrete and technical."
-          className="bg-slate-950/80 text-sm"
+          className="bg-card/95 text-sm"
         />
         <p className="text-[11px] text-muted-foreground">{rationale.length}/240</p>
       </div>
@@ -1003,12 +1003,12 @@ function RequirementEvidenceEditor({
         Save requirement evidence
       </Button>
 
-      <div className="space-y-2 rounded-xl border border-slate-800/70 bg-slate-950/70 p-3">
-        <p className="text-xs font-semibold text-white">Add sample in this job flow</p>
+      <div className="space-y-2 rounded-xl border border-border bg-card/90 p-3">
+        <p className="text-xs font-semibold text-foreground">Add sample in this job flow</p>
         <p className="text-[11px] text-muted-foreground">Optional. Keep it short and specific.</p>
         <div className="grid gap-2 sm:grid-cols-2">
           <select
-            className="rounded-lg border border-slate-800/80 bg-slate-950/80 px-3 py-2 text-sm text-white"
+            className="rounded-lg border border-border bg-card/95 px-3 py-2 text-sm text-foreground"
             value={sampleDraft.projectId}
             onChange={(event) => onSampleDraftChange((prev) => ({ ...prev, projectId: event.target.value }))}
           >
@@ -1020,7 +1020,7 @@ function RequirementEvidenceEditor({
             ))}
           </select>
           <select
-            className="rounded-lg border border-slate-800/80 bg-slate-950/80 px-3 py-2 text-sm text-white"
+            className="rounded-lg border border-border bg-card/95 px-3 py-2 text-sm text-foreground"
             value={sampleDraft.type}
             onChange={(event) => onSampleDraftChange((prev) => ({ ...prev, type: event.target.value as CodeSampleType }))}
           >
@@ -1033,27 +1033,27 @@ function RequirementEvidenceEditor({
           value={sampleDraft.summary}
           onChange={(event) => onSampleDraftChange((prev) => ({ ...prev, summary: event.target.value }))}
           placeholder="What this sample proves"
-          className="bg-slate-950/80"
+          className="bg-card/95"
         />
         <Textarea
           value={sampleDraft.code}
           onChange={(event) => onSampleDraftChange((prev) => ({ ...prev, code: event.target.value }))}
           rows={4}
           placeholder="Paste code, README excerpt, or commit list notes."
-          className="bg-slate-950/80 text-sm"
+          className="bg-card/95 text-sm"
         />
         <div className="grid gap-2 sm:grid-cols-2">
           <Input
             value={sampleDraft.filePath}
             onChange={(event) => onSampleDraftChange((prev) => ({ ...prev, filePath: event.target.value }))}
             placeholder="file path (optional)"
-            className="bg-slate-950/80"
+            className="bg-card/95"
           />
           <Input
             value={sampleDraft.url}
             onChange={(event) => onSampleDraftChange((prev) => ({ ...prev, url: event.target.value }))}
             placeholder="source URL (optional)"
-            className="bg-slate-950/80"
+            className="bg-card/95"
           />
         </div>
         <div className="grid gap-2 sm:grid-cols-3">
@@ -1061,19 +1061,19 @@ function RequirementEvidenceEditor({
             value={sampleDraft.lineStart}
             onChange={(event) => onSampleDraftChange((prev) => ({ ...prev, lineStart: event.target.value }))}
             placeholder="start line"
-            className="bg-slate-950/80"
+            className="bg-card/95"
           />
           <Input
             value={sampleDraft.lineEnd}
             onChange={(event) => onSampleDraftChange((prev) => ({ ...prev, lineEnd: event.target.value }))}
             placeholder="end line"
-            className="bg-slate-950/80"
+            className="bg-card/95"
           />
           <Input
             value={sampleDraft.tags}
             onChange={(event) => onSampleDraftChange((prev) => ({ ...prev, tags: event.target.value }))}
             placeholder="tags: ml,eval"
-            className="bg-slate-950/80"
+            className="bg-card/95"
           />
         </div>
         <label className="flex items-center gap-2 text-xs text-muted-foreground">
@@ -1107,20 +1107,20 @@ function ShareLinkCallout({
     toast(`${label} copied`, { description: value });
   };
   return (
-    <div className="rounded-2xl border border-slate-800/80 bg-slate-950/60 p-4">
+    <div className="rounded-2xl border border-border bg-card/85 p-4">
       <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
         <div>
           <p className="text-xs uppercase tracking-wide text-muted-foreground">Share links</p>
-          <p className="font-mono text-sm text-white">{profileSlug ? `/u/${profileSlug}` : "Set your proof profile handle first"}</p>
+          <p className="font-mono text-sm text-foreground">{profileSlug ? `/u/${profileSlug}` : "Set your proof profile handle first"}</p>
           {packetShortLink ? (
-            <p className="font-mono text-sm text-white">{packetShortLink.replace(/^https?:\/\/[^/]+/, "")}</p>
+            <p className="font-mono text-sm text-foreground">{packetShortLink.replace(/^https?:\/\/[^/]+/, "")}</p>
           ) : null}
           <p className="text-xs text-muted-foreground">
             This link always reflects the projects you selected, so reviewers know you curated it for their team.
           </p>
           <div className="mt-2">
-            <p className="text-[11px] uppercase tracking-[0.2em] text-slate-500">Where to paste this</p>
-            <p className="mt-1 text-xs text-slate-400">Resume: use your profile link. Application, email, or LinkedIn note: use the packet link.</p>
+            <p className="text-[11px] uppercase tracking-[0.2em] text-muted-foreground">Where to paste this</p>
+            <p className="mt-1 text-xs text-muted-foreground">Resume: use your profile link. Application, email, or LinkedIn note: use the packet link.</p>
           </div>
           {!profileSlug && (
             <p className="text-xs text-amber-400">

@@ -44,25 +44,25 @@ export function PublicProfilePage() {
   return (
     <PublicShareLayout>
       {profileQuery.isLoading ? (
-        <div className="h-40 animate-pulse rounded-2xl bg-slate-900/60" />
+        <div className="h-40 animate-pulse rounded-2xl bg-card/85" />
       ) : profileQuery.isError ? (
         <ErrorState />
       ) : profileQuery.data ? (
         <div className="space-y-8">
-          <header className="rounded-3xl border border-slate-700/80 bg-slate-900/85 p-6">
+          <header className="rounded-3xl border border-border bg-card/95 p-6">
             <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
               <div className="flex items-center gap-4">
-                <Avatar className="h-16 w-16 border border-slate-800">
+                <Avatar className="h-16 w-16 border border-border">
                   <AvatarImage src={profileQuery.data.user.githubAvatarUrl} alt={profileQuery.data.user.githubLogin} />
                   <AvatarFallback>{profileQuery.data.user.githubLogin.slice(0, 2).toUpperCase()}</AvatarFallback>
                 </Avatar>
                 <div>
-                  <p className="text-sm uppercase tracking-wide text-slate-300">Public profile</p>
-                  <h1 className="text-2xl font-semibold text-white">@{profileQuery.data.user.profileSlug}</h1>
-                  <p className="text-base text-slate-200">Skimmable technical proof with linked evidence.</p>
+                  <p className="text-sm uppercase tracking-wide text-muted-foreground">Public profile</p>
+                  <h1 className="text-2xl font-semibold text-foreground">@{profileQuery.data.user.profileSlug}</h1>
+                  <p className="text-base text-foreground">Skimmable technical proof with linked evidence.</p>
                 </div>
               </div>
-              <div className="rounded-xl border border-slate-700/80 bg-slate-900/70 px-4 py-3 text-sm text-slate-200">
+              <div className="rounded-xl border border-border bg-card/90 px-4 py-3 text-sm text-foreground">
                 Connected via GitHub OAuth
               </div>
             </div>
@@ -70,19 +70,19 @@ export function PublicProfilePage() {
 
           <section className="space-y-4">
             <div>
-              <p className="text-sm font-semibold uppercase tracking-wide text-slate-300">Featured samples</p>
-              <p className="text-sm text-slate-300">Code, README, and commit evidence. Expand any card to inspect details.</p>
+              <p className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">Featured samples</p>
+              <p className="text-sm text-muted-foreground">Code, README, and commit evidence. Expand any card to inspect details.</p>
             </div>
             <FeaturedProofSection projects={profileQuery.data.projects} />
           </section>
 
           <section className="space-y-4">
             <div>
-              <p className="text-sm font-semibold uppercase tracking-wide text-slate-300">Featured projects</p>
-              <p className="text-sm text-slate-300">Public sources and concise project context.</p>
+              <p className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">Featured projects</p>
+              <p className="text-sm text-muted-foreground">Public sources and concise project context.</p>
             </div>
             {profileQuery.data.projects.length === 0 ? (
-                <div className="rounded-2xl border border-dashed border-slate-700/80 bg-slate-900/55 p-6 text-sm text-slate-300">
+                <div className="rounded-2xl border border-dashed border-border bg-card/85 p-6 text-sm text-muted-foreground">
                   The candidate hasn’t showcased any projects publicly yet.
                 </div>
             ) : (
@@ -104,11 +104,11 @@ function ProjectCard({ project }: { project: Project }) {
   const aiUsage = formatAiUsage(project);
   const proofTypes = getProjectProofTypes(project);
   return (
-    <div className="rounded-2xl border border-slate-700/80 bg-slate-900/75 p-5 space-y-3">
+    <div className="rounded-2xl border border-border bg-card/90 p-5 space-y-3">
       <div className="flex items-start justify-between gap-3">
         <div>
-          <p className="text-base font-semibold text-white">{project.fullName}</p>
-          {project.description && <p className="text-sm text-slate-200">{project.description}</p>}
+          <p className="text-base font-semibold text-foreground">{project.fullName}</p>
+          {project.description && <p className="text-sm text-foreground">{project.description}</p>}
         </div>
         <Badge variant={project.sourceType === "link" ? "outline" : "default"} className="text-[10px] uppercase tracking-wide">
           {project.sourceType === "link" ? "External" : "GitHub"}
@@ -126,19 +126,19 @@ function ProjectCard({ project }: { project: Project }) {
           </Badge>
         ) : null}
       </div>
-      <div className="flex flex-wrap gap-3 text-sm text-slate-300">
+      <div className="flex flex-wrap gap-3 text-sm text-muted-foreground">
         {project.context && <span>{project.context}</span>}
         {formatProjectYearRange(project) && <span>{formatProjectYearRange(project)}</span>}
         {project.primaryLanguage && <span>{project.primaryLanguage}</span>}
       </div>
-      {project.whyItMatters ? <p className="text-sm text-slate-200">Why it matters: {project.whyItMatters}</p> : null}
-      {aiUsage ? <p className="text-sm text-slate-300">{aiUsage}</p> : null}
+      {project.whyItMatters ? <p className="text-sm text-foreground">Why it matters: {project.whyItMatters}</p> : null}
+      {aiUsage ? <p className="text-sm text-muted-foreground">{aiUsage}</p> : null}
       {highlights.length > 0 ? (
-        <div className="rounded-xl border border-slate-700/70 bg-slate-900/70 p-3">
-          <p className="text-xs uppercase tracking-[0.2em] text-slate-400">Proof highlights</p>
+        <div className="rounded-xl border border-border bg-card/90 p-3">
+          <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground">Proof highlights</p>
           <ul className="mt-2 space-y-1">
             {highlights.map((sample) => (
-              <li key={sample.id} className="text-sm text-slate-200">
+              <li key={sample.id} className="text-sm text-foreground">
                 {sample.summary}
               </li>
             ))}
@@ -181,7 +181,7 @@ function FeaturedProofSection({ projects }: { projects: Project[] }) {
 
   if (featured.length === 0) {
     return (
-        <div className="rounded-2xl border border-dashed border-slate-700/80 bg-slate-900/55 p-4 text-sm text-slate-300">
+        <div className="rounded-2xl border border-dashed border-border bg-card/85 p-4 text-sm text-muted-foreground">
           No featured proof yet. Ask the candidate to feature their strongest samples.
         </div>
     );
@@ -208,9 +208,9 @@ function FeaturedProofSection({ projects }: { projects: Project[] }) {
     }>
   ) => (
     <div className="space-y-2">
-      <p className="text-xs uppercase tracking-[0.2em] text-slate-400">{title}</p>
+      <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground">{title}</p>
       {items.length === 0 ? (
-        <p className="text-sm text-slate-300">None featured.</p>
+        <p className="text-sm text-muted-foreground">None featured.</p>
       ) : (
         items.map((sample) => <FeaturedProofCard key={sample.id} sample={sample} />)
       )}
@@ -251,24 +251,24 @@ function FeaturedProofCard({
   const [openCommitSha, setOpenCommitSha] = useState<string | null>(null);
   const isCode = !sample.type || sample.type === "code";
   return (
-    <div className="rounded-xl border border-slate-700/80 bg-slate-900/75 p-3">
+    <div className="rounded-xl border border-border bg-card/90 p-3">
       <button
         type="button"
         className="flex w-full items-center justify-between gap-2 text-left"
         onClick={() => setOpen((prev) => !prev)}
       >
         <div>
-          <p className="text-sm text-white">{sample.summary}</p>
-          <p className="mt-1 text-sm text-slate-300">{sample.projectFullName}</p>
-          <p className="text-sm text-slate-400">
+          <p className="text-sm text-foreground">{sample.summary}</p>
+          <p className="mt-1 text-sm text-muted-foreground">{sample.projectFullName}</p>
+          <p className="text-sm text-muted-foreground">
             {(sample.filePath || "snippet") + (sample.lineStart && sample.lineEnd ? ` #L${sample.lineStart}-${sample.lineEnd}` : "")}
           </p>
         </div>
-        <ChevronRight className={cn("h-4 w-4 text-slate-500 transition-transform", open ? "rotate-90" : "")} />
+        <ChevronRight className={cn("h-4 w-4 text-muted-foreground transition-transform", open ? "rotate-90" : "")} />
       </button>
       {sample.type === "commit" && sample.commitEntries && sample.commitEntries.length > 0 ? (
-        <div className="mt-2 rounded-md border border-slate-700/70 bg-slate-900/70 p-2 text-sm text-slate-200">
-          <p className="text-xs uppercase tracking-[0.3em] text-slate-400">Commit titles</p>
+        <div className="mt-2 rounded-md border border-border bg-card/90 p-2 text-sm text-foreground">
+          <p className="text-xs uppercase tracking-[0.3em] text-muted-foreground">Commit titles</p>
           <ul className="mt-1 space-y-1">
             {sample.commitEntries.slice(0, 3).map((entry) => (
               <li key={`${sample.id}-${entry.sha}`} className="truncate">
@@ -290,19 +290,19 @@ function FeaturedProofCard({
       {open ? (
         <div className="mt-3 space-y-2">
           {sample.type === "commit" && sample.commitEntries && sample.commitEntries.length > 0 ? (
-            <div className="rounded-lg border border-slate-900/70 bg-slate-900/40 p-2 text-[11px] text-slate-300">
-              <p className="text-[10px] uppercase tracking-[0.3em] text-slate-500">Commit trail</p>
+            <div className="rounded-lg border border-border bg-card/80 p-2 text-[11px] text-muted-foreground">
+              <p className="text-[10px] uppercase tracking-[0.3em] text-muted-foreground">Commit trail</p>
               <div className="mt-1 space-y-2">
                 {sample.commitEntries.slice(0, 5).map((entry) => {
                   const title = entry.message.split("\n")[0];
                   const isOpen = openCommitSha === entry.sha;
                   return (
-                    <div key={entry.sha} className="rounded-md border border-slate-800/80 bg-slate-950/40 p-2">
+                    <div key={entry.sha} className="rounded-md border border-border bg-card/80 p-2">
                       <div className="flex items-center justify-between gap-2">
                         <button
                           type="button"
                           onClick={() => setOpenCommitSha((prev) => (prev === entry.sha ? null : entry.sha))}
-                          className="truncate text-left text-slate-200"
+                          className="truncate text-left text-foreground"
                         >
                           {title}
                         </button>
@@ -311,7 +311,7 @@ function FeaturedProofCard({
                             #{entry.sha.slice(0, 7)}
                           </a>
                         ) : (
-                          <span className="font-mono text-[10px] text-slate-500">#{entry.sha.slice(0, 7)}</span>
+                          <span className="font-mono text-[10px] text-muted-foreground">#{entry.sha.slice(0, 7)}</span>
                         )}
                       </div>
                       {isOpen && entry.patch ? (
@@ -325,8 +325,8 @@ function FeaturedProofCard({
               </div>
             </div>
           ) : null}
-          {sample.lastCommitDate ? <p className="text-[11px] text-slate-400">Updated {formatDate(sample.lastCommitDate)}</p> : null}
-          {sample.sourceCommitSha ? <p className="text-[11px] font-mono text-slate-500">Snapshot #{sample.sourceCommitSha.slice(0, 7)}</p> : null}
+          {sample.lastCommitDate ? <p className="text-[11px] text-muted-foreground">Updated {formatDate(sample.lastCommitDate)}</p> : null}
+          {sample.sourceCommitSha ? <p className="text-[11px] font-mono text-muted-foreground">Snapshot #{sample.sourceCommitSha.slice(0, 7)}</p> : null}
           {isCode ? (
             <CodeSnippet code={sample.code} language={sample.language || inferLanguage(sample.filePath) || "tsx"} />
           ) : sample.type === "commit" ? (
@@ -340,7 +340,7 @@ function FeaturedProofCard({
           ) : (
             <CodeSnippet code={sample.code} language={sample.language || inferLanguage(sample.filePath) || "markdown"} />
           )}
-          {sample.readmeHeading ? <p className="text-[11px] text-slate-400">README section: {sample.readmeHeading}</p> : null}
+          {sample.readmeHeading ? <p className="text-[11px] text-muted-foreground">README section: {sample.readmeHeading}</p> : null}
           {sample.url ? (
             <Button asChild variant="outline" size="sm">
               <a href={sample.url} target="_blank" rel="noopener noreferrer nofollow">
@@ -350,7 +350,7 @@ function FeaturedProofCard({
           ) : null}
         </div>
       ) : (
-      <p className="mt-2 text-sm text-slate-300">Collapsed for quick scan.</p>
+      <p className="mt-2 text-sm text-muted-foreground">Collapsed for quick scan.</p>
       )}
     </div>
   );
@@ -453,7 +453,7 @@ function getProjectProofTypes(project: Project): string[] {
 
 function ErrorState() {
   return (
-    <div className="rounded-2xl border border-slate-700/80 bg-slate-900/80 p-10 text-center text-sm text-slate-300">
+    <div className="rounded-2xl border border-border bg-card/95 p-10 text-center text-sm text-muted-foreground">
       Proof profile not available. The candidate may have turned off public access or shared an outdated link.
     </div>
   );

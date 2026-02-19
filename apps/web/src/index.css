@@ -3,32 +3,35 @@
 @tailwind utilities;
 
 :root {
-  --background: 222 43% 6%;
-  --foreground: 210 40% 99%;
+  --background: 222 36% 10%;
+  --foreground: 210 22% 93%;
 
-  --primary: 217 91% 62%;
-  --primary-foreground: 210 40% 98%;
+  --primary: 212 91% 58%;
+  --primary-foreground: 0 0% 100%;
 
-  --secondary: 222 30% 16%;
-  --secondary-foreground: 210 40% 98%;
+  --secondary: 215 20% 20%;
+  --secondary-foreground: 210 22% 93%;
 
-  --muted: 217 30% 17%;
-  --muted-foreground: 210 25% 82%;
+  --muted: 215 20% 20%;
+  --muted-foreground: 214 13% 74%;
 
-  --accent: 200 89% 63%;
-  --accent-foreground: 222 47% 7%;
+  --accent: 215 20% 22%;
+  --accent-foreground: 210 22% 93%;
 
-  --destructive: 0 84% 60%;
-  --destructive-foreground: 210 40% 98%;
+  --destructive: 4 93% 63%;
+  --destructive-foreground: 0 0% 100%;
 
-  --border: 219 32% 28%;
-  --input: 219 32% 28%;
-  --ring: 200 89% 63%;
+  --border: 215 14% 34%;
+  --input: 215 14% 34%;
+  --ring: 212 91% 58%;
 
-  --card: 222 30% 12%;
-  --card-foreground: 210 40% 99%;
+  --card: 216 24% 16%;
+  --card-foreground: 210 22% 93%;
 
-  --radius: 0.75rem;
+  --popover: 216 24% 16%;
+  --popover-foreground: 210 22% 93%;
+
+  --radius: 0.625rem;
 }
 
 @layer base {
@@ -51,11 +54,11 @@
   .token.prolog,
   .token.doctype,
   .token.cdata {
-    color: rgba(148, 163, 184, 0.9);
+    color: #8b949e;
   }
 
   .token.punctuation {
-    color: #94a3b8;
+    color: #c9d1d9;
   }
 
   .token.property,
@@ -64,7 +67,7 @@
   .token.number,
   .token.constant,
   .token.symbol {
-    color: #fbbf24;
+    color: #79c0ff;
   }
 
   .token.selector,
@@ -73,7 +76,7 @@
   .token.char,
   .token.builtin,
   .token.inserted {
-    color: #4ade80;
+    color: #a5d6ff;
   }
 
   .token.operator,
@@ -82,27 +85,27 @@
   .language-css .token.string,
   .style .token.string,
   .token.variable {
-    color: #f472b6;
+    color: #ffa657;
   }
 
   .token.atrule,
   .token.attr-value,
   .token.function,
   .token.class-name {
-    color: #60a5fa;
+    color: #d2a8ff;
   }
 
   .token.keyword {
-    color: #c084fc;
+    color: #ff7b72;
   }
 
   .token.regex,
   .token.important {
-    color: #f97316;
+    color: #7ee787;
   }
 
   .token.deleted {
-    color: #f87171;
+    color: #f85149;
   }
 }
 

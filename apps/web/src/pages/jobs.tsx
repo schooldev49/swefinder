@@ -76,13 +76,13 @@ export function JobsPage() {
 
   if (!sessionLoading && !isAuthenticated) {
     return (
-      <Card className="border-slate-800/80 bg-slate-950/40">
+      <Card className="border-border bg-card/80">
         <CardHeader>
-          <CardTitle className="text-white">Job tracker</CardTitle>
+          <CardTitle className="text-foreground">Job tracker</CardTitle>
           <CardDescription>Log in to view and track your saved roles.</CardDescription>
         </CardHeader>
         <CardContent>
-          <div className="rounded-xl border border-dashed border-slate-800/80 p-6 text-center">
+          <div className="rounded-xl border border-dashed border-border p-6 text-center">
             <p className="text-sm text-muted-foreground">Sign in with GitHub to access jobs and Proof Packets.</p>
             <Button className="mt-4" onClick={handleGitHubLogin}>
               Sign in with GitHub
@@ -94,10 +94,10 @@ export function JobsPage() {
   }
 
   return (
-    <Card className="border-slate-800/80 bg-slate-950/40">
+    <Card className="border-border bg-card/80">
       <CardHeader className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
         <div>
-          <CardTitle className="text-white">Job tracker</CardTitle>
+          <CardTitle className="text-foreground">Job tracker</CardTitle>
           <CardDescription>Track packet status and move faster on follow-up actions.</CardDescription>
         </div>
         <Button asChild>
@@ -119,7 +119,7 @@ export function JobsPage() {
           </Button>
         </div>
         {isLoading ? (
-          <div className="h-32 animate-pulse rounded-xl bg-slate-900/60" />
+          <div className="h-32 animate-pulse rounded-xl bg-card/85" />
         ) : jobs && jobs.length > 0 ? (
           <Table>
             <TableHeader>
@@ -135,19 +135,19 @@ export function JobsPage() {
                 <TableRow key={job.id}>
                   <TableCell>
                     <div>
-                      <p className="font-semibold text-white">{job.title}</p>
+                      <p className="font-semibold text-foreground">{job.title}</p>
                       <p className="text-xs text-muted-foreground">{job.company ?? "Unknown company"}</p>
                     </div>
                   </TableCell>
                   <TableCell>
                     <select
-                      className="w-full min-w-[140px] rounded-lg border border-slate-800/80 bg-slate-950/60 px-3 py-1 text-sm text-white focus:border-accent focus:outline-none"
+                      className="w-full min-w-[140px] rounded-lg border border-border bg-card/85 px-3 py-1 text-sm text-foreground focus:border-accent focus:outline-none"
                       value={job.status}
                       disabled={statusTarget === job.id && statusMutation.isPending}
                       onChange={(event) => handleStatusChange(job.id, event.target.value as Job["status"])}
                     >
                       {STATUS_OPTIONS.map((status) => (
-                        <option key={status} value={status} className="bg-slate-900 text-white">
+                        <option key={status} value={status} className="bg-card text-foreground">
                           {STATUS_LABELS[status]}
                         </option>
                       ))}
@@ -175,7 +175,7 @@ export function JobsPage() {
             </TableBody>
           </Table>
         ) : (
-          <div className="rounded-xl border border-dashed border-slate-800/80 p-8 text-center">
+          <div className="rounded-xl border border-dashed border-border p-8 text-center">
             <p className="text-sm text-muted-foreground">No jobs yet. Start by adding the JD you care about most.</p>
             <Button asChild className="mt-4">
               <Link to="/jobs/new">Add your first job</Link>

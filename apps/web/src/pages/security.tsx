@@ -18,45 +18,45 @@ export function SecurityPage() {
     <div className="mx-auto max-w-4xl space-y-6 px-4 py-10">
       <div>
         <p className="text-xs uppercase tracking-[0.35em] text-muted-foreground">Security & access</p>
-        <h1 className="mt-2 text-3xl font-semibold text-white">How Evidensify uses GitHub</h1>
+        <h1 className="mt-2 text-3xl font-semibold text-foreground">How Evidensify uses GitHub</h1>
         <p className="mt-3 text-sm text-muted-foreground">
           We stick to least-privilege scopes, never push commits, and give you a single place to revoke access or delete imported data.
         </p>
       </div>
-      <Card className="border-slate-800/80 bg-slate-950/60">
+      <Card className="border-border bg-card/85">
         <CardHeader>
-          <CardTitle className="text-white">GitHub scopes requested</CardTitle>
+          <CardTitle className="text-foreground">GitHub scopes requested</CardTitle>
         </CardHeader>
-        <CardContent className="space-y-3 text-sm text-slate-200">
+        <CardContent className="space-y-3 text-sm text-foreground">
           {scopes.map((item) => (
-            <div key={item.scope} className="rounded-xl border border-slate-800/60 bg-slate-950/60 px-4 py-3">
-              <p className="font-semibold text-white">{item.scope}</p>
-              <p className="text-slate-400">{item.usage}</p>
+            <div key={item.scope} className="rounded-xl border border-border bg-card/85 px-4 py-3">
+              <p className="font-semibold text-foreground">{item.scope}</p>
+              <p className="text-muted-foreground">{item.usage}</p>
             </div>
           ))}
           <p className="text-xs text-muted-foreground">Only public repositories and public links are supported in Proof Packets.</p>
         </CardContent>
       </Card>
-      <Card className="border-slate-800/80 bg-slate-950/60">
+      <Card className="border-border bg-card/85">
         <CardHeader>
-          <CardTitle className="text-white">Revoke or delete access</CardTitle>
+          <CardTitle className="text-foreground">Revoke or delete access</CardTitle>
         </CardHeader>
-        <CardContent className="space-y-4 text-sm text-slate-200">
+        <CardContent className="space-y-4 text-sm text-foreground">
           <div>
-            <p className="font-semibold text-white">Revoke OAuth</p>
-            <p className="text-slate-400">
+            <p className="font-semibold text-foreground">Revoke OAuth</p>
+            <p className="text-muted-foreground">
               Visit <a className="text-primary underline" href="https://github.com/settings/connections/applications" target="_blank" rel="noreferrer">GitHub &gt; Settings &gt; Applications</a>, find Evidensify, and click <em>Revoke</em>.
             </p>
           </div>
           <div>
-            <p className="font-semibold text-white">Delete imported data</p>
-            <p className="text-slate-400">Open Settings → Danger zone in the app and hit “Delete all projects & jobs”. This wipes repos, JDs, and packets from our KV store.</p>
+            <p className="font-semibold text-foreground">Delete imported data</p>
+            <p className="text-muted-foreground">Open Settings → Danger zone in the app and hit “Delete all projects & jobs”. This wipes repos, JDs, and packets from our KV store.</p>
           </div>
           <div>
-            <p className="font-semibold text-white">Questions?</p>
-            <p className="text-slate-400">Email security@Evidensify.app any time. We publish updates and SOC-style summaries on our changelog.</p>
+            <p className="font-semibold text-foreground">Questions?</p>
+            <p className="text-muted-foreground">Email security@Evidensify.app any time. We publish updates and SOC-style summaries on our changelog.</p>
           </div>
-          <Button asChild variant="outline" size="sm" className="text-white">
+          <Button asChild variant="outline" size="sm" className="text-foreground">
             <Link to="/projects">Back to projects</Link>
           </Button>
         </CardContent>

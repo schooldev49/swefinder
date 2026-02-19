@@ -621,11 +621,11 @@ export function ProjectsPage() {
 
   return (
     <div className="space-y-6 pb-16">
-      <div className="sticky top-3 z-20 rounded-2xl border border-slate-700/80 bg-slate-900/95 p-4 shadow-lg backdrop-blur">
+      <div className="sticky top-3 z-20 rounded-2xl border border-border bg-card/95 p-4 shadow-lg backdrop-blur">
         <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
           <div>
-            <p className="text-sm font-semibold text-white">Projects workspace</p>
-            <p className="text-sm text-slate-300">
+            <p className="text-sm font-semibold text-foreground">Projects workspace</p>
+            <p className="text-sm text-muted-foreground">
               {hasUnsavedChanges ? "Unsaved changes" : "All changes saved"}
             </p>
           </div>
@@ -643,24 +643,24 @@ export function ProjectsPage() {
           </div>
         </div>
       </div>
-      <div className="rounded-2xl border border-slate-700/70 bg-slate-900/70 p-5">
-        <p className="text-sm font-semibold text-slate-100">Quick setup</p>
+      <div className="rounded-2xl border border-border bg-card/90 p-5">
+        <p className="text-sm font-semibold text-foreground">Quick setup</p>
         <div className="mt-3 grid gap-3 md:grid-cols-2">
           {PROJECTS_CHECKLIST.map((step, index) => (
-            <div key={step.title} className="rounded-xl border border-slate-700/70 bg-slate-900/60 p-4">
+            <div key={step.title} className="rounded-xl border border-border bg-card/85 p-4">
               <div className="text-sm font-semibold text-accent">Step {index + 1}</div>
-              <p className="mt-1 text-sm font-semibold text-white">{step.title}</p>
-              <p className="mt-1 text-sm text-slate-300">{step.detail}</p>
+              <p className="mt-1 text-sm font-semibold text-foreground">{step.title}</p>
+              <p className="mt-1 text-sm text-muted-foreground">{step.detail}</p>
             </div>
           ))}
         </div>
       </div>
-      <Card className="border-slate-700/80 bg-slate-900/70">
+      <Card className="border-border bg-card/90">
         <CardHeader className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
           <div>
-            <CardTitle className="text-white">Saved projects</CardTitle>
-            <CardDescription className="text-sm text-slate-300">These projects power your public profile.</CardDescription>
-            <p className="text-sm text-slate-300 mt-1">
+            <CardTitle className="text-foreground">Saved projects</CardTitle>
+            <CardDescription className="text-sm text-muted-foreground">These projects power your public profile.</CardDescription>
+            <p className="text-sm text-muted-foreground mt-1">
               Showcased projects: {showcasedCount}/{MAX_SHOWCASED}
             </p>
           </div>
@@ -671,11 +671,11 @@ export function ProjectsPage() {
           </div>
         </CardHeader>
         <CardContent className="space-y-4">
-          {isLoading && <div className="h-24 animate-pulse rounded-xl bg-slate-900/60" />}
+          {isLoading && <div className="h-24 animate-pulse rounded-xl bg-card/85" />}
           {emptyState && <p className="text-sm text-muted-foreground">No projects yet. Import a few GitHub repos to get started.</p>}
           {showExternalForm && (
-            <div className="rounded-2xl border border-dashed border-slate-700 bg-slate-950/60 p-5">
-              <h3 className="text-sm font-semibold text-white">Add external project</h3>
+            <div className="rounded-2xl border border-dashed border-border bg-card/85 p-5">
+              <h3 className="text-sm font-semibold text-foreground">Add external project</h3>
               <p className="text-xs text-muted-foreground">
                 Link to a live demo, notebook, or write-up that proves your work. These links appear on your public profile.
               </p>
@@ -739,7 +739,7 @@ export function ProjectsPage() {
                     >
                       <option value="">Select</option>
                       {CONTEXT_OPTIONS.map((option) => (
-                        <option key={option} className="bg-slate-900" value={option}>
+                        <option key={option} className="bg-card" value={option}>
                           {option}
                         </option>
                       ))}
@@ -791,7 +791,7 @@ export function ProjectsPage() {
               </div>
             </div>
           ) : null}
-          <div className="rounded-xl border border-slate-700/70 bg-slate-900/60 p-3">
+          <div className="rounded-xl border border-border bg-card/85 p-3">
             <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
               <div className="flex flex-wrap gap-2">
                 {[
@@ -833,18 +833,18 @@ export function ProjectsPage() {
                 ))}
               </div>
             ) : (
-              <p className="text-sm text-slate-300">No private repositories are currently blocked.</p>
+              <p className="text-sm text-muted-foreground">No private repositories are currently blocked.</p>
             )
           ) : (
             <div className="grid gap-4">
               {visibleProjects.map((project) => {
                 const isExpanded = expandedProjectId === project.id;
                 return (
-              <div key={project.id} className="rounded-2xl border border-slate-700/80 bg-slate-900/60 p-5">
+              <div key={project.id} className="rounded-2xl border border-border bg-card/85 p-5">
                 <div className="flex flex-wrap items-center justify-between gap-3">
                   <div>
                     <div className="flex flex-wrap items-center gap-2">
-                      <p className="text-base font-semibold text-white">{project.fullName}</p>
+                      <p className="text-base font-semibold text-foreground">{project.fullName}</p>
                       <Badge variant={project.sourceType === "link" ? "outline" : "default"}>
                         {project.sourceType === "link" ? "Link" : "GitHub"}
                       </Badge>
@@ -859,11 +859,11 @@ export function ProjectsPage() {
                           </Badge>
                         ))}
                     </div>
-                    <p className="text-sm text-slate-300">
+                    <p className="text-sm text-muted-foreground">
                       Updated {formatUpdated(project.lastUpdated)}
                       {project.htmlUrl ? ` • ${getProjectHost(project.htmlUrl)}` : ""}
                     </p>
-                    {formatProjectYearRange(project) ? <p className="text-sm text-slate-300">Project range: {formatProjectYearRange(project)}</p> : null}
+                    {formatProjectYearRange(project) ? <p className="text-sm text-muted-foreground">Project range: {formatProjectYearRange(project)}</p> : null}
                   </div>
                   <div className="flex flex-wrap gap-2">
                     <Button
@@ -895,7 +895,7 @@ export function ProjectsPage() {
                     >
                       <option value="">Select</option>
                       {CONTEXT_OPTIONS.map((option) => (
-                        <option key={option} className="bg-slate-900" value={option}>
+                        <option key={option} className="bg-card" value={option}>
                           {option}
                         </option>
                       ))}
@@ -979,8 +979,8 @@ export function ProjectsPage() {
                     onChange={(samples: ProjectCodeSample[]) => updateProject(project.id, { codeSamples: samples })}
                   />
                 </div>
-                <div className="mt-4 rounded-2xl border border-slate-800/70 bg-slate-950/50 p-4 text-xs text-muted-foreground">
-                  <p className="text-[11px] uppercase tracking-[0.3em] text-slate-500">Featured proof for public profile</p>
+                <div className="mt-4 rounded-2xl border border-border bg-card/80 p-4 text-xs text-muted-foreground">
+                  <p className="text-[11px] uppercase tracking-[0.3em] text-muted-foreground">Featured proof for public profile</p>
                   <p className="mt-2">
                     Feature only your best proof. Public profile caps: code {featuredSampleCounts.code}/{MAX_FEATURED_CODE}, commit {featuredSampleCounts.commit}/{MAX_FEATURED_COMMIT}, readme {featuredSampleCounts.readme}/{MAX_FEATURED_README}.
                   </p>
@@ -989,15 +989,15 @@ export function ProjectsPage() {
                   ) : (
                     <div className="mt-3 space-y-2">
                       {(project.codeSamples || []).map((sample) => (
-                        <div key={sample.id} className="flex flex-col gap-2 rounded-lg border border-slate-800/70 bg-slate-950/60 p-3 sm:flex-row sm:items-center sm:justify-between">
+                        <div key={sample.id} className="flex flex-col gap-2 rounded-lg border border-border bg-card/85 p-3 sm:flex-row sm:items-center sm:justify-between">
                           <div>
                             <div className="flex items-center gap-2">
-                              <p className="text-sm text-white">{sample.summary}</p>
+                              <p className="text-sm text-foreground">{sample.summary}</p>
                               <Badge variant="outline" className="text-[10px] uppercase tracking-wide">
                                 {SAMPLE_TYPE_LABELS[sample.type || "code"]}
                               </Badge>
                             </div>
-                            <p className="text-[11px] text-slate-400">
+                            <p className="text-[11px] text-muted-foreground">
                               {(sample.filePath || "snippet") +
                                 (sample.lineStart && sample.lineEnd ? ` #L${sample.lineStart}-${sample.lineEnd}` : "")}
                             </p>
@@ -1015,8 +1015,8 @@ export function ProjectsPage() {
                     </div>
                   )}
                 </div>
-                 <div className="mt-4 rounded-2xl border border-slate-800/70 bg-slate-950/50 p-4 text-xs text-muted-foreground">
-                  <p className="text-[11px] uppercase tracking-[0.3em] text-slate-500">AI usage (optional)</p>
+                 <div className="mt-4 rounded-2xl border border-border bg-card/80 p-4 text-xs text-muted-foreground">
+                  <p className="text-[11px] uppercase tracking-[0.3em] text-muted-foreground">AI usage (optional)</p>
                   <p className="mt-2">
                     Recruiters care less about whether you used AI and more about how you used it. Be specific and honest. It's fine if a project used no AI at all.
                   </p>
@@ -1024,13 +1024,13 @@ export function ProjectsPage() {
                     <label className="space-y-1 text-xs text-muted-foreground">
                       Role
                       <select
-                        className="w-full rounded-lg border border-border bg-transparent px-3 py-2 text-sm text-white"
+                        className="w-full rounded-lg border border-border bg-transparent px-3 py-2 text-sm text-foreground"
                         value={project.aiRole || ""}
                         onChange={(event) => updateProject(project.id, { aiRole: event.target.value as AIRole || undefined })}
                       >
                         <option value="">Select</option>
                         {AI_ROLE_OPTIONS.map((option) => (
-                          <option key={option.value} className="bg-slate-900" value={option.value}>
+                          <option key={option.value} className="bg-card" value={option.value}>
                             {option.label}
                           </option>
                         ))}
@@ -1062,7 +1062,7 @@ export function ProjectsPage() {
               </div>
                 );
               })}
-              {visibleProjects.length === 0 ? <p className="text-sm text-slate-300">No projects match this filter yet.</p> : null}
+              {visibleProjects.length === 0 ? <p className="text-sm text-muted-foreground">No projects match this filter yet.</p> : null}
             </div>
           )}
         </CardContent>
@@ -1074,9 +1074,9 @@ export function ProjectsPage() {
       </Card>
 
       {filteredRepos.length > 0 && (
-        <Card className="border-slate-800/80 bg-slate-950/40">
+        <Card className="border-border bg-card/80">
           <CardHeader>
-            <CardTitle className="text-white">Imported GitHub repos</CardTitle>
+            <CardTitle className="text-foreground">Imported GitHub repos</CardTitle>
             <CardDescription>Select public repos then add them to your project list.</CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
@@ -1102,14 +1102,14 @@ export function ProjectsPage() {
               </TableHeader>
               <TableBody>
                 {pagedRepos.map((repo) => (
-                  <TableRow key={repo.id} className={cn(selectedRepoIds.has(repo.id) && "bg-slate-900/60")}
+                  <TableRow key={repo.id} className={cn(selectedRepoIds.has(repo.id) && "bg-card/85")}
                   >
                     <TableCell>
                       <Checkbox checked={selectedRepoIds.has(repo.id)} onCheckedChange={(checked) => toggleRepoSelection(repo.id, Boolean(checked))} />
                     </TableCell>
                     <TableCell>
                       <div>
-                        <p className="font-medium text-white">{repo.fullName}</p>
+                        <p className="font-medium text-foreground">{repo.fullName}</p>
                         <p className="text-xs text-muted-foreground">{repo.description}</p>
                       </div>
                     </TableCell>
@@ -1413,10 +1413,10 @@ export function ProjectCodeSamplesEditor({
     tagsMutation.mutate({ summary: draft.summary, code: draft.code });
   };
   return (
-    <div className="space-y-3 rounded-2xl border border-slate-900/60 bg-slate-950/40 p-4">
+    <div className="space-y-3 rounded-2xl border border-border bg-card/80 p-4">
       <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <p className="text-sm font-semibold text-white">Samples (code, README, commit)</p>
+          <p className="text-sm font-semibold text-foreground">Samples (code, README, commit)</p>
           <p className="text-xs text-muted-foreground">
             Capture short snippets or doc excerpts with commentary. Keep them easy to skim and verify.
           </p>
@@ -1435,20 +1435,20 @@ export function ProjectCodeSamplesEditor({
       ) : (
         <div className="space-y-3">
           {samples.map((sample) => (
-            <div key={sample.id} className="rounded-2xl border border-slate-900/80 bg-slate-950/60 p-3 text-xs text-muted-foreground">
+            <div key={sample.id} className="rounded-2xl border border-border bg-card/85 p-3 text-xs text-muted-foreground">
                 <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                   <div>
                     <div className="flex flex-wrap items-center gap-2">
-                      <p className="text-sm font-semibold text-white line-clamp-2">{sample.summary}</p>
+                      <p className="text-sm font-semibold text-foreground line-clamp-2">{sample.summary}</p>
                       <Badge variant="outline" className="border-accent/60 text-[10px] uppercase tracking-wide text-accent">
                         {SAMPLE_TYPE_LABELS[sample.type || "code"]}
                       </Badge>
                     </div>
-                    <p className="text-[11px] uppercase tracking-[0.3em] text-slate-500">
+                    <p className="text-[11px] uppercase tracking-[0.3em] text-muted-foreground">
                       {sample.filePath || 'snippet'} {formatLineRange(sample.lineStart, sample.lineEnd)}
                     </p>
                     {sample.authorshipContext ? (
-                      <p className="mt-1 text-[11px] text-slate-400">What to notice: {sample.authorshipContext}</p>
+                      <p className="mt-1 text-[11px] text-muted-foreground">What to notice: {sample.authorshipContext}</p>
                     ) : null}
                   {sample.tags && sample.tags.length > 0 && (
                     <div className="mt-1 flex flex-wrap gap-1">
@@ -1544,15 +1544,15 @@ function SampleEditorModal({
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 px-4 py-6" role="dialog" aria-modal="true" onClick={onClose}>
       <div
-        className="max-h-[90vh] w-full max-w-3xl overflow-y-auto rounded-3xl border border-slate-800 bg-slate-950 p-6 text-sm text-muted-foreground shadow-2xl"
+        className="max-h-[90vh] w-full max-w-3xl overflow-y-auto rounded-3xl border border-border bg-card p-6 text-sm text-muted-foreground shadow-2xl"
         onClick={(event) => event.stopPropagation()}
       >
         <div className="flex items-center justify-between">
           <div>
             <p className="text-xs uppercase tracking-[0.35em] text-muted-foreground">{mode === "edit" ? "Edit sample" : "New sample"}</p>
-            <h3 className="text-base font-semibold text-white">{draft.summary || "Untitled snippet"}</h3>
+            <h3 className="text-base font-semibold text-foreground">{draft.summary || "Untitled snippet"}</h3>
           </div>
-          <button type="button" className="rounded-full border border-slate-700 p-2 text-slate-400 hover:text-white" onClick={onClose}>
+          <button type="button" className="rounded-full border border-border p-2 text-muted-foreground hover:text-foreground" onClick={onClose}>
             <X className="h-4 w-4" />
           </button>
         </div>
@@ -1572,9 +1572,9 @@ function SampleEditorModal({
             <Input value={draft.summary} onChange={onDraftChange("summary")} className="mt-2" placeholder="What does this snippet show?" required />
             {summaryNudge ? <p className="mt-1 text-[11px] text-amber-400">{summaryNudge}</p> : null}
             {summarySuggestion && (
-              <div className="mt-2 rounded-xl border border-slate-800/80 bg-slate-950/70 p-3 text-xs text-muted-foreground">
-                <p className="text-[11px] uppercase tracking-[0.3em] text-slate-500">AI suggestion</p>
-                <p className="text-sm text-white">{summarySuggestion}</p>
+              <div className="mt-2 rounded-xl border border-border bg-card/90 p-3 text-xs text-muted-foreground">
+                <p className="text-[11px] uppercase tracking-[0.3em] text-muted-foreground">AI suggestion</p>
+                <p className="text-sm text-foreground">{summarySuggestion}</p>
                 <p className="mt-2 text-[11px] text-muted-foreground">Copy in the phrasing you like before saving.</p>
               </div>
             )}
@@ -1595,7 +1595,7 @@ function SampleEditorModal({
               <Input
                 value={draft.filePath}
                 onChange={onDraftChange("filePath")}
-                className={cn("mt-2", draft.sourceLocked && "bg-slate-900/60 text-slate-400")}
+                className={cn("mt-2", draft.sourceLocked && "bg-card/85 text-muted-foreground")}
                 placeholder="src/pipelines/features.py"
                 readOnly={draft.sourceLocked}
                 aria-readonly={draft.sourceLocked}
@@ -1616,7 +1616,7 @@ function SampleEditorModal({
                     min={1}
                     value={draft.lineStart}
                     onChange={onDraftChange("lineStart")}
-                    className={cn("mt-2", draft.sourceLocked && "bg-slate-900/60 text-slate-400")}
+                    className={cn("mt-2", draft.sourceLocked && "bg-card/85 text-muted-foreground")}
                     readOnly={draft.sourceLocked}
                     aria-readonly={draft.sourceLocked}
                   />
@@ -1628,7 +1628,7 @@ function SampleEditorModal({
                     min={1}
                     value={draft.lineEnd}
                     onChange={onDraftChange("lineEnd")}
-                    className={cn("mt-2", draft.sourceLocked && "bg-slate-900/60 text-slate-400")}
+                    className={cn("mt-2", draft.sourceLocked && "bg-card/85 text-muted-foreground")}
                     readOnly={draft.sourceLocked}
                     aria-readonly={draft.sourceLocked}
                   />
@@ -1639,7 +1639,7 @@ function SampleEditorModal({
                 <Input
                   value={draft.url}
                   onChange={onDraftChange("url")}
-                  className={cn("mt-2", draft.sourceLocked && "bg-slate-900/60 text-slate-400")}
+                  className={cn("mt-2", draft.sourceLocked && "bg-card/85 text-muted-foreground")}
                   placeholder="https://github.com/demo/file#L1-L20"
                   readOnly={draft.sourceLocked}
                   aria-readonly={draft.sourceLocked}
@@ -1652,7 +1652,7 @@ function SampleEditorModal({
               <Input
                 value={draft.url}
                 onChange={onDraftChange("url")}
-                className={cn("mt-2", draft.sourceLocked && "bg-slate-900/60 text-slate-400")}
+                className={cn("mt-2", draft.sourceLocked && "bg-card/85 text-muted-foreground")}
                 placeholder="https://github.com/demo/file#L1-L20"
                 readOnly={draft.sourceLocked}
                 aria-readonly={draft.sourceLocked}
@@ -1677,8 +1677,8 @@ function SampleEditorModal({
             <Input value={draft.tags} onChange={onDraftChange("tags")} className="mt-2" placeholder="ml, evaluation, guardrails" />
             <p className="mt-1 text-[11px] text-muted-foreground">Comma-separated, up to 5 tags.</p>
             {tagSuggestions && tagSuggestions.length > 0 && (
-              <div className="mt-2 rounded-xl border border-slate-800/80 bg-slate-950/70 p-3 text-xs text-muted-foreground">
-                <p className="text-[11px] uppercase tracking-[0.3em] text-slate-500">Suggested tags</p>
+              <div className="mt-2 rounded-xl border border-border bg-card/90 p-3 text-xs text-muted-foreground">
+                <p className="text-[11px] uppercase tracking-[0.3em] text-muted-foreground">Suggested tags</p>
                 <div className="mt-1 flex flex-wrap gap-1">
                   {tagSuggestions.map((tag) => (
                     <Badge key={tag} variant="outline" className="text-[10px]">
@@ -1698,7 +1698,7 @@ function SampleEditorModal({
               className={cn(
                 "mt-2 text-xs",
                 draft.type === "code" ? "font-mono" : "font-sans",
-                draft.sourceLocked && "bg-slate-900/60 text-slate-400"
+                draft.sourceLocked && "bg-card/85 text-muted-foreground"
               )}
               rows={draft.type === "code" ? 6 : 5}
               placeholder={codePlaceholder}
@@ -2136,10 +2136,10 @@ function CodeSamplePicker({ project, initialTab = "code", onClose, onSelect }: C
     <div className="space-y-3">
       <div className="flex items-center justify-between">
         <div>
-          <p className="text-sm font-medium text-white">
+          <p className="text-sm font-medium text-foreground">
             {filePreview ? filePreview.path : "Select a file"}
           </p>
-          <p className="text-[11px] uppercase tracking-[0.3em] text-slate-500">{filePreview ? filePreview.ref : ""}</p>
+          <p className="text-[11px] uppercase tracking-[0.3em] text-muted-foreground">{filePreview ? filePreview.ref : ""}</p>
         </div>
         {filePreview ? (
           <button
@@ -2155,7 +2155,7 @@ function CodeSamplePicker({ project, initialTab = "code", onClose, onSelect }: C
         ) : null}
       </div>
       {fileError ? <p className="text-xs text-red-400">{fileError}</p> : null}
-      <div className="h-72 overflow-y-auto rounded-2xl border border-slate-800/80 bg-slate-950/60">
+      <div className="h-72 overflow-y-auto rounded-2xl border border-border bg-card/85">
         {fileLoading ? (
           <div className="flex h-full items-center justify-center text-sm text-muted-foreground">
             <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Loading file…
@@ -2169,13 +2169,13 @@ function CodeSamplePicker({ project, initialTab = "code", onClose, onSelect }: C
                 <div
                   key={lineNumber}
                   className={cn(
-                    "flex border-b border-slate-900/40",
-                    isSelected ? "bg-slate-800/60 text-white" : "text-slate-300"
+                    "flex border-b border-border",
+                    isSelected ? "bg-accent/60 text-foreground" : "text-muted-foreground"
                   )}
                 >
                   <button
                     type="button"
-                    className="w-12 flex-shrink-0 border-r border-slate-900/40 px-2 text-right text-[11px] text-slate-500 hover:text-white"
+                    className="w-12 flex-shrink-0 border-r border-border px-2 text-right text-[11px] text-muted-foreground hover:text-foreground"
                     onClick={() => handleLineClick(lineNumber)}
                   >
                     {lineNumber}
@@ -2218,16 +2218,16 @@ function CodeSamplePicker({ project, initialTab = "code", onClose, onSelect }: C
               Clear selection
             </Button>
           </div>
-          <div className="text-xs text-slate-300">
+          <div className="text-xs text-muted-foreground">
             <p>
               Lines:{" "}
-              <span className={selectionTooLong ? "text-red-400" : "text-white"}>
+              <span className={selectionTooLong ? "text-red-400" : "text-foreground"}>
                 {selectedLineCount} / {MAX_SAMPLE_LINES}
               </span>
             </p>
             <p>
               Characters:{" "}
-              <span className={selectedCharCount > MAX_SAMPLE_CODE_CHARS ? "text-red-400" : "text-white"}>
+              <span className={selectedCharCount > MAX_SAMPLE_CODE_CHARS ? "text-red-400" : "text-foreground"}>
                 {selectedCharCount} / {MAX_SAMPLE_CODE_CHARS}
               </span>
             </p>
@@ -2258,29 +2258,29 @@ function CodeSamplePicker({ project, initialTab = "code", onClose, onSelect }: C
       onClick={handleOverlayClick}
     >
       <div
-        className="relative max-h-[90vh] w-full max-w-5xl overflow-hidden rounded-3xl border border-slate-800 bg-slate-950 shadow-2xl"
+        className="relative max-h-[90vh] w-full max-w-5xl overflow-hidden rounded-3xl border border-border bg-card shadow-2xl"
         onClick={(event) => event.stopPropagation()}
       >
-        <header className="flex items-center justify-between border-b border-slate-800 px-6 py-4">
+        <header className="flex items-center justify-between border-b border-border px-6 py-4">
           <div>
-            <p className="text-sm uppercase tracking-[0.4em] text-slate-500">Select proof sample</p>
-            <p className="text-base font-semibold text-white">{project.fullName}</p>
+            <p className="text-sm uppercase tracking-[0.4em] text-muted-foreground">Select proof sample</p>
+            <p className="text-base font-semibold text-foreground">{project.fullName}</p>
           </div>
           <button
             type="button"
             onClick={handleOverlayClick}
-            className="rounded-full border border-slate-700 p-2 text-slate-400 hover:text-white"
+            className="rounded-full border border-border p-2 text-muted-foreground hover:text-foreground"
           >
             <X className="h-4 w-4" />
           </button>
         </header>
-        <div className="border-b border-slate-800 px-6 py-3">
-          <div className="inline-flex rounded-full border border-slate-800 bg-slate-950 p-1 text-xs font-medium text-white">
+        <div className="border-b border-border px-6 py-3">
+          <div className="inline-flex rounded-full border border-border bg-card p-1 text-xs font-medium text-foreground">
             <button
               type="button"
               className={cn(
                 "rounded-full px-3 py-1 transition-colors",
-                activeTab === "code" ? "bg-slate-800 text-white" : "text-slate-400"
+                activeTab === "code" ? "bg-accent text-foreground" : "text-muted-foreground"
               )}
               onClick={() => setActiveTab("code")}
             >
@@ -2290,7 +2290,7 @@ function CodeSamplePicker({ project, initialTab = "code", onClose, onSelect }: C
               type="button"
               className={cn(
                 "rounded-full px-3 py-1 transition-colors",
-                activeTab === "docs" ? "bg-slate-800 text-white" : "text-slate-400"
+                activeTab === "docs" ? "bg-accent text-foreground" : "text-muted-foreground"
               )}
               onClick={() => setActiveTab("docs")}
             >
@@ -2302,9 +2302,9 @@ function CodeSamplePicker({ project, initialTab = "code", onClose, onSelect }: C
         <div className="space-y-4 overflow-y-auto px-6 py-4">
           {activeTab === "code" ? (
             <div className="grid gap-4 md:grid-cols-[280px_1fr]">
-              <div className="rounded-2xl border border-slate-800/80 bg-slate-950/60 p-3">
-                <div className="flex items-center gap-2 rounded-xl border border-slate-800 bg-slate-900/60 px-3">
-                  <Search className="h-4 w-4 text-slate-500" />
+              <div className="rounded-2xl border border-border bg-card/85 p-3">
+                <div className="flex items-center gap-2 rounded-xl border border-border bg-card/85 px-3">
+                  <Search className="h-4 w-4 text-muted-foreground" />
                   <Input
                     value={searchTerm}
                     onChange={(event) => setSearchTerm(event.target.value)}
@@ -2330,11 +2330,11 @@ function CodeSamplePicker({ project, initialTab = "code", onClose, onSelect }: C
                               onClick={() => handleFetchFile(file.path)}
                               className={cn(
                                 "w-full rounded-xl border px-3 py-2 text-left text-xs transition-colors",
-                                active ? "border-accent/60 bg-accent/10 text-white" : "border-slate-800 bg-slate-900/40 text-slate-300"
+                                active ? "border-accent/60 bg-accent/10 text-foreground" : "border-border bg-card/80 text-muted-foreground"
                               )}
                             >
-                              <p className="font-semibold text-white">{file.path.split("/").pop()}</p>
-                              <p className="text-[11px] text-slate-400">{file.path}</p>
+                              <p className="font-semibold text-foreground">{file.path.split("/").pop()}</p>
+                              <p className="text-[11px] text-muted-foreground">{file.path}</p>
                             </button>
                           </li>
                         );
@@ -2351,10 +2351,10 @@ function CodeSamplePicker({ project, initialTab = "code", onClose, onSelect }: C
             </div>
           ) : activeTab === "docs" ? (
             <div className="grid gap-4 md:grid-cols-2">
-              <div className="rounded-2xl border border-slate-800/80 bg-slate-950/60 p-4">
+              <div className="rounded-2xl border border-border bg-card/85 p-4">
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className="text-sm font-semibold text-white">README highlight</p>
+                    <p className="text-sm font-semibold text-foreground">README highlight</p>
                     <p className="text-xs text-muted-foreground">Preview the markdown and capture exact line ranges.</p>
                   </div>
                   <Button type="button" variant="ghost" size="sm" onClick={loadReadme} disabled={readmeLoading}>
@@ -2374,7 +2374,7 @@ function CodeSamplePicker({ project, initialTab = "code", onClose, onSelect }: C
                   </div>
                 ) : readmeLines.length > 0 ? (
                   <div className="mt-3 space-y-3">
-                    <div className="h-64 overflow-y-auto rounded-2xl border border-slate-800/80 bg-slate-950/50">
+                    <div className="h-64 overflow-y-auto rounded-2xl border border-border bg-card/80">
                       <div className="text-xs font-mono">
                         {readmeLines.map((line, index) => {
                           const lineNumber = index + 1;
@@ -2384,13 +2384,13 @@ function CodeSamplePicker({ project, initialTab = "code", onClose, onSelect }: C
                             <div
                               key={lineNumber}
                               className={cn(
-                                "flex border-b border-slate-900/40",
-                                isSelected ? "bg-slate-800/60 text-white" : "text-slate-300"
+                                "flex border-b border-border",
+                                isSelected ? "bg-accent/60 text-foreground" : "text-muted-foreground"
                               )}
                             >
                               <button
                                 type="button"
-                                className="w-12 flex-shrink-0 border-r border-slate-900/40 px-2 text-right text-[11px] text-slate-500 hover:text-white"
+                                className="w-12 flex-shrink-0 border-r border-border px-2 text-right text-[11px] text-muted-foreground hover:text-foreground"
                                 onClick={() => handleReadmeLineClick(lineNumber)}
                               >
                                 {lineNumber}
@@ -2427,16 +2427,16 @@ function CodeSamplePicker({ project, initialTab = "code", onClose, onSelect }: C
                           Clear
                         </Button>
                       </div>
-                      <div className="text-xs text-slate-300">
+                      <div className="text-xs text-muted-foreground">
                         <p>
                           Lines: {" "}
-                          <span className={readmeSelectionTooLong ? "text-red-400" : "text-white"}>
+                          <span className={readmeSelectionTooLong ? "text-red-400" : "text-foreground"}>
                             {readmeSelectedLineCount} / {MAX_SAMPLE_LINES}
                           </span>
                         </p>
                         <p>
                           Characters: {" "}
-                          <span className={readmeSelectedCode.length > MAX_SAMPLE_CODE_CHARS ? "text-red-400" : "text-white"}>
+                          <span className={readmeSelectedCode.length > MAX_SAMPLE_CODE_CHARS ? "text-red-400" : "text-foreground"}>
                             {readmeSelectedCode.length} / {MAX_SAMPLE_CODE_CHARS}
                           </span>
                         </p>
@@ -2458,10 +2458,10 @@ function CodeSamplePicker({ project, initialTab = "code", onClose, onSelect }: C
                   <p className="mt-3 text-xs text-muted-foreground">Load the README to capture a documentation excerpt.</p>
                 )}
               </div>
-              <div className="rounded-2xl border border-slate-800/80 bg-slate-950/60 p-4">
+              <div className="rounded-2xl border border-border bg-card/85 p-4">
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className="text-sm font-semibold text-white">Commit trail</p>
+                    <p className="text-sm font-semibold text-foreground">Commit trail</p>
                     <p className="text-xs text-muted-foreground">Select 2–5 commits that show progress or debugging.</p>
                   </div>
                   <Button type="button" variant="ghost" size="sm" onClick={loadCommits} disabled={commitsLoading}>
@@ -2484,12 +2484,12 @@ function CodeSamplePicker({ project, initialTab = "code", onClose, onSelect }: C
                       return (
                         <label
                           key={commit.sha}
-                          className="flex cursor-pointer items-start gap-3 rounded-xl border border-slate-800/70 bg-slate-950/60 p-3 text-xs text-muted-foreground"
+                          className="flex cursor-pointer items-start gap-3 rounded-xl border border-border bg-card/85 p-3 text-xs text-muted-foreground"
                         >
                           <Checkbox checked={checked} onCheckedChange={(value) => toggleCommitSelection(commit.sha, Boolean(value))} />
                           <div className="space-y-1">
-                            <p className="text-sm font-semibold text-white">{preview}</p>
-                            <p className="text-[11px] text-slate-500">
+                            <p className="text-sm font-semibold text-foreground">{preview}</p>
+                            <p className="text-[11px] text-muted-foreground">
                               {commit.sha.slice(0, 7)} · {formatCommitDate(commit.date)}
                             </p>
                             {commit.htmlUrl && (
@@ -2544,8 +2544,8 @@ function CodeSamplePicker({ project, initialTab = "code", onClose, onSelect }: C
             </div>
           )}
         </div>
-        <div className="flex items-center justify-between border-t border-slate-800 px-6 py-4">
-          <div className="text-xs text-slate-400">
+        <div className="flex items-center justify-between border-t border-border px-6 py-4">
+          <div className="text-xs text-muted-foreground">
             Snippets are capped at {MAX_SAMPLE_LINES} lines and {MAX_SAMPLE_CODE_CHARS} characters to keep packets readable.
           </div>
           <div className="flex gap-2">

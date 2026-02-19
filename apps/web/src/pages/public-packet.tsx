@@ -45,7 +45,7 @@ export function PublicPacketPage() {
   return (
     <PublicShareLayout>
       {packetQuery.isLoading ? (
-        <div className="h-40 animate-pulse rounded-2xl bg-slate-900/60" />
+        <div className="h-40 animate-pulse rounded-2xl bg-card/85" />
       ) : packetQuery.isError ? (
         <PacketError />
       ) : packetQuery.data ? (
@@ -69,15 +69,15 @@ function PacketView({
   return (
     <div className="space-y-6">
       
-      <Card className="border-slate-700/80 bg-slate-900/85">
+      <Card className="border-border bg-card/95">
           <CardHeader className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
           <div className="flex items-center gap-4">
-            <Avatar className="h-14 w-14 border border-slate-800">
+            <Avatar className="h-14 w-14 border border-border">
               <AvatarImage src={data.user.githubAvatarUrl} alt={data.user.githubLogin} />
               <AvatarFallback>{data.user.githubLogin.slice(0, 2).toUpperCase()}</AvatarFallback>
             </Avatar>
             <div>
-              <CardTitle className="text-white">{proof?.title ?? `Job-specific packet: ${data.job.title}`}</CardTitle>
+              <CardTitle className="text-foreground">{proof?.title ?? `Job-specific packet: ${data.job.title}`}</CardTitle>
               <CardDescription>
                 @{data.user.profileSlug} → {data.job.title}
                 {data.job.company ? ` @ ${data.job.company}` : ""}
@@ -89,14 +89,14 @@ function PacketView({
               )}
             </div>
           </div>
-          <div className="rounded-xl border border-slate-700/80 bg-slate-900/70 px-4 py-3 text-sm text-slate-200">
+          <div className="rounded-xl border border-border bg-card/90 px-4 py-3 text-sm text-foreground">
             This job-specific packet links to verifiable repos or docs supplied by the candidate.
-            {snapshotDate ? <p className="mt-1 text-slate-400">Evidence snapshot: {formatPublicDate(snapshotDate)}</p> : null}
+            {snapshotDate ? <p className="mt-1 text-muted-foreground">Evidence snapshot: {formatPublicDate(snapshotDate)}</p> : null}
           </div>
           </CardHeader>
           {proof?.summary ? (
             <CardContent className="pt-0">
-              <p className="rounded-xl border border-slate-700/80 bg-slate-900/70 px-3 py-2 text-base text-slate-100">{proof.summary}</p>
+              <p className="rounded-xl border border-border bg-card/90 px-3 py-2 text-base text-foreground">{proof.summary}</p>
               <div className="mt-3 grid gap-2 md:grid-cols-3">
                 <Button variant="outline" size="sm" asChild>
                   <a href="#packet-requirements">Requirements</a>
@@ -121,13 +121,13 @@ function PacketView({
       </Card>
 
       {proof ? (
-        <Card className="border-slate-700/80 bg-slate-900/85">
+        <Card className="border-border bg-card/95">
           <CardHeader>
-            <CardTitle className="text-white">Packet contents</CardTitle>
+            <CardTitle className="text-foreground">Packet contents</CardTitle>
             <CardDescription>Skim requirements first, then open links for verification.</CardDescription>
           </CardHeader>
           <CardContent className="space-y-8">
-            <section id="packet-requirements">
+            <section id="packet-requirements" className="rounded-2xl border border-border bg-background/60 p-4 sm:p-5">
               <SectionHeading title="Key requirements" subtitle="Each mapped to concrete repos or docs." />
               <div className="mt-4 grid gap-4 md:grid-cols-2">
                 {proof.requirements.slice(0, 5).map((requirement) => (
@@ -146,15 +146,15 @@ function PacketView({
             )}
            
             
-            <section id="packet-citations">
+            <section id="packet-citations" className="rounded-2xl border border-border bg-background/60 p-4 sm:p-5">
               <SectionHeading title="Evidence citations" subtitle="Click through to verify code, notebooks, or demos." />
               {citations.length === 0 ? (
-                  <p className="text-sm text-slate-300">No citations available.</p>
+                  <p className="text-sm text-muted-foreground">No citations available.</p>
                 ) : (
                   <div className="mt-3 space-y-3">
                     {citations.map((evidence) => (
-                      <div key={evidence.id} className="rounded-2xl border border-slate-700/80 bg-slate-900/70 p-4 text-sm text-slate-300">
-                      <p className="text-xs uppercase tracking-[0.2em] text-slate-400">{evidence.projectFullName}</p>
+                      <div key={evidence.id} className="rounded-2xl border border-border bg-card/90 p-4 text-sm text-muted-foreground">
+                      <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground">{evidence.projectFullName}</p>
                       <div className="mt-1 flex flex-wrap gap-1">
                         {getEvidenceProofTypes(evidence).map((type) => (
                           <Badge key={`${evidence.id}-${type}`} variant="outline" className="text-[10px] uppercase tracking-wide">
@@ -167,8 +167,8 @@ function PacketView({
                           Warning: this link type is currently not supported for strong verification.
                         </p>
                       ) : null}
-                      {evidence.description && <p className="text-base text-white">{evidence.description}</p>}
-                      {evidence.lastCommitDate ? <p className="text-sm text-slate-300">Updated {formatPublicDate(evidence.lastCommitDate)}</p> : null}
+                      {evidence.description && <p className="text-base text-foreground">{evidence.description}</p>}
+                      {evidence.lastCommitDate ? <p className="text-sm text-muted-foreground">Updated {formatPublicDate(evidence.lastCommitDate)}</p> : null}
                       {evidence.fileUrl && (
                         <a href={evidence.fileUrl} target="_blank" rel="noopener noreferrer nofollow" className="text-primary underline">
                           View source
@@ -182,9 +182,9 @@ function PacketView({
           </CardContent>
         </Card>
       ) : (
-        <Card className="border-slate-700/80 bg-slate-900/85">
+        <Card className="border-border bg-card/95">
           <CardContent>
-            <p className="text-sm text-slate-300">
+            <p className="text-sm text-muted-foreground">
               Job-specific packet not available yet. Ask the candidate to regenerate and resend the link.
             </p>
           </CardContent>
@@ -216,10 +216,10 @@ function RequirementPublicCard({
   }, [selectedSample]);
 
   return (
-    <div className="rounded-2xl border border-slate-700/80 bg-slate-900/70 p-4 space-y-3">
+    <div className="rounded-2xl border border-border bg-card/90 p-4 space-y-3">
       <div>
-        <p className="text-sm font-semibold text-white">{requirement.text}</p>
-        <div className="flex items-center gap-2 text-sm text-slate-300">
+        <p className="text-sm font-semibold text-foreground">{requirement.text}</p>
+        <div className="flex items-center gap-2 text-sm text-muted-foreground">
           <Badge variant="outline" className="text-[10px] uppercase tracking-wide">
             Priority {requirement.priority}
           </Badge>
@@ -228,11 +228,11 @@ function RequirementPublicCard({
       </div>
       <div className="space-y-2">
         {trimmedMappings.length === 0 ? (
-          <p className="text-sm text-slate-300">No direct evidence yet.</p>
+          <p className="text-sm text-muted-foreground">No direct evidence yet.</p>
         ) : (
           trimmedMappings.map((mapping) => (
-            <div key={mapping.id} className="rounded-xl border border-slate-700/80 bg-slate-900/65 p-3 text-sm text-slate-300">
-              <p className="font-semibold text-white">{mapping.evidence.projectFullName}</p>
+            <div key={mapping.id} className="rounded-xl border border-border bg-card/85 p-3 text-sm text-muted-foreground">
+              <p className="font-semibold text-foreground">{mapping.evidence.projectFullName}</p>
               <div className="mt-1 flex flex-wrap gap-1">
                 {getEvidenceProofTypes(mapping.evidence).map((type) => (
                   <Badge key={`${mapping.id}-${type}`} variant="outline" className="text-[10px] uppercase tracking-wide">
@@ -248,10 +248,10 @@ function RequirementPublicCard({
               {mapping.evidence.isPrivate ? <PrivateRepoBadgePublic /> : null}
               {mapping.rationale && <p>{mapping.rationale}</p>}
               {mapping.evidence.lastCommitDate ? (
-                <p className="text-sm text-slate-300">Updated {formatPublicDate(mapping.evidence.lastCommitDate)}</p>
+                <p className="text-sm text-muted-foreground">Updated {formatPublicDate(mapping.evidence.lastCommitDate)}</p>
               ) : null}
               {mapping.evidence.sourceCommitSha ? (
-                <p className="font-mono text-[10px] text-slate-500">Snapshot #{mapping.evidence.sourceCommitSha.slice(0, 7)}</p>
+                <p className="font-mono text-[10px] text-muted-foreground">Snapshot #{mapping.evidence.sourceCommitSha.slice(0, 7)}</p>
               ) : null}
               {mapping.evidence.fileUrl && (
                 <a
@@ -264,7 +264,7 @@ function RequirementPublicCard({
                 </a>
               )}
               {formatAiUsagePublic(mapping.evidence) && (
-                <p className="text-sm text-slate-300 mt-1">{formatAiUsagePublic(mapping.evidence)}</p>
+                <p className="text-sm text-muted-foreground mt-1">{formatAiUsagePublic(mapping.evidence)}</p>
               )}
               {mapping.evidence.codeSnippet ? <EvidenceSnippetBlock snippet={mapping.evidence.codeSnippet} /> : null}
             </div>
@@ -272,14 +272,16 @@ function RequirementPublicCard({
         )}
       </div>
       {selectedSample && (
-        <div className="space-y-2 rounded-xl border border-slate-700/80 bg-slate-900/75 p-3 text-sm text-slate-300">
-          <div className="flex items-center justify-between">
+      <div className="space-y-2 rounded-xl border border-border bg-card p-3 text-sm text-muted-foreground">
+        <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-[11px] uppercase tracking-[0.3em] text-slate-500">{getPublicSampleLabel(selectedSample)}</p>
-                  <p className="text-sm font-semibold text-white">{selectedSample.summary}</p>
-                  <p>{formatPublicLineLabel(selectedSample.filePath, selectedSample.lineStart, selectedSample.lineEnd)}</p>
+                  <p className="text-[11px] uppercase tracking-[0.3em] text-muted-foreground">{getPublicSampleLabel(selectedSample)}</p>
+                  <p className="text-sm font-semibold text-foreground">{selectedSample.summary}</p>
+                  <p className="mt-1 inline-flex max-w-full items-center rounded-md border border-border bg-background/75 px-2 py-1 font-mono text-xs text-muted-foreground">
+                    {formatPublicLineLabel(selectedSample.filePath, selectedSample.lineStart, selectedSample.lineEnd)}
+                  </p>
                   {selectedSample.authorshipContext ? (
-                  <p className="mt-1 text-sm text-slate-300">Evidence note: {selectedSample.authorshipContext}</p>
+                  <p className="mt-1 text-sm text-muted-foreground">Evidence note: {selectedSample.authorshipContext}</p>
                   ) : null}
                   {selectedSample.isPrivate ? <PrivateRepoBadgePublic /> : null}
                   <SampleHighlightMetaPublic sample={selectedSample} />
@@ -293,8 +295,14 @@ function RequirementPublicCard({
                 </div>
               ) : null}
             </div>
-            <Button variant="secondary" size="sm" onClick={() => setOpenSample((prev) => !prev)}>
-              {openSample ? "Hide sample" : "View sample"}
+            <Button
+              variant="secondary"
+              size="sm"
+              className="min-h-10 min-w-[170px] justify-between border border-border bg-accent/70 px-3 text-foreground hover:bg-accent"
+              onClick={() => setOpenSample((prev) => !prev)}
+            >
+              <span>{openSample ? "Hide sample" : "Tap to expand sample"}</span>
+              <ChevronRight className={cn("h-4 w-4 transition-transform", openSample ? "rotate-90" : "")} />
             </Button>
           </div>
           {openSample ? (
@@ -321,7 +329,9 @@ function RequirementPublicCard({
               </>
             )
           ) : (
-            <p className="text-sm text-slate-300">Collapsed until a reviewer chooses to dive in.</p>
+            <p className="rounded-md border border-border bg-background/70 px-2 py-1.5 text-xs text-muted-foreground">
+              Collapsed for quick scan.
+            </p>
           )}
         </div>
       )}
@@ -341,26 +351,27 @@ function PublicCodeSamples({ samples }: { samples: ProofPacketCodeSample[] }) {
   };
 
   return (
-    <section>
+    <section className="rounded-2xl border border-border bg-background/60 p-4 sm:p-5">
       <SectionHeading title="Evidence samples" subtitle="Optional deep dives for engineers, code docs or commits." />
       <div className="mt-4 space-y-3">
         {samples.map((sample) => {
           const open = expanded.has(sample.id);
           return (
-            <div key={sample.id} className="rounded-2xl border border-slate-700/80 bg-slate-900/70 p-4 text-sm text-slate-300">
+            <div key={sample.id} className="rounded-2xl border border-border bg-card p-4 text-sm text-muted-foreground">
               <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
                 <div>
                   <div className="flex flex-wrap items-center gap-2">
-                    <p className="text-sm font-semibold text-white">{sample.summary}</p>
+                    <p className="text-sm font-semibold text-foreground">{sample.summary}</p>
                     <Badge variant="outline" className="border-accent/60 text-[10px] uppercase tracking-wide text-accent">
                       {getPublicSampleLabel(sample)}
                     </Badge>
                     {sample.isPrivate ? <PrivateRepoBadgePublic /> : null}
                   </div>
-                  <p className="text-xs uppercase tracking-[0.3em] text-slate-400">
-                    {sample.projectFullName} {formatPublicLineLabel(sample.filePath, sample.lineStart, sample.lineEnd)}
+                  <p className="text-xs uppercase tracking-[0.3em] text-muted-foreground">{sample.projectFullName}</p>
+                  <p className="mt-1 inline-flex max-w-full items-center rounded-md border border-border bg-background/75 px-2 py-1 font-mono text-xs text-muted-foreground">
+                    {formatPublicLineLabel(sample.filePath, sample.lineStart, sample.lineEnd)}
                   </p>
-                  {sample.authorshipContext ? <p className="mt-1 text-sm text-slate-300">Evidence note: {sample.authorshipContext}</p> : null}
+                  {sample.authorshipContext ? <p className="mt-1 text-sm text-muted-foreground">Evidence note: {sample.authorshipContext}</p> : null}
                   <SampleHighlightMetaPublic sample={sample} />
                   {sample.tags && sample.tags.length > 0 ? (
                     <div className="mt-1 flex flex-wrap gap-1">
@@ -378,8 +389,14 @@ function PublicCodeSamples({ samples }: { samples: ProofPacketCodeSample[] }) {
                       View on GitHub
                     </a>
                   )}
-                  <Button variant="ghost" size="sm" className="text-xs" onClick={() => toggle(sample.id)}>
-                    {open ? "Hide sample" : "Preview sample"}
+                  <Button
+                    variant="secondary"
+                    size="sm"
+                    className="min-h-10 min-w-[165px] justify-between border border-border bg-accent/70 text-xs text-foreground hover:bg-accent"
+                    onClick={() => toggle(sample.id)}
+                  >
+                    <span>{open ? "Hide sample" : "Tap to expand"}</span>
+                    <ChevronRight className={cn("h-4 w-4 transition-transform", open ? "rotate-90" : "")} />
                   </Button>
                 </div>
               </div>
@@ -387,7 +404,7 @@ function PublicCodeSamples({ samples }: { samples: ProofPacketCodeSample[] }) {
                 <div className="mt-3">
                   {sample.type && sample.type !== "code" ? (
                     sample.type === "commit" ? (
-                      <p className="text-sm text-slate-300">Use Open diff links in commit trail.</p>
+                      <p className="text-sm text-muted-foreground">Use Open diff links in commit trail.</p>
                     ) : (
                       <CodeSnippet code={sample.code} language={sample.language || inferLanguage(sample.filePath) || "markdown"} />
                     )
@@ -424,9 +441,9 @@ function SampleHighlightMetaPublic({
   if (!showHeading && entries.length === 0 && !dateLabel && !commitSha) return null;
   return (
     <div className="mt-1 space-y-2">
-      {dateLabel ? <p className="text-[11px] text-slate-400">Updated {dateLabel}</p> : null}
-      {commitSha ? <p className="text-[11px] text-slate-500 font-mono">Snapshot #{commitSha}</p> : null}
-      {showHeading ? <p className="text-[11px] text-slate-400">README section: {sample.readmeHeading}</p> : null}
+      {dateLabel ? <p className="text-[11px] text-muted-foreground">Updated {dateLabel}</p> : null}
+      {commitSha ? <p className="text-[11px] text-muted-foreground font-mono">Snapshot #{commitSha}</p> : null}
+      {showHeading ? <p className="text-[11px] text-muted-foreground">README section: {sample.readmeHeading}</p> : null}
       {entries.length > 0 ? <PublicCommitTrail entries={entries} /> : null}
     </div>
   );
@@ -436,28 +453,28 @@ function PublicCommitTrail({ entries }: { entries: CommitEntry[] }) {
   if (!entries.length) return null;
   const trimmed = entries.slice(0, 5);
   return (
-    <div className="mt-2 rounded-lg border border-slate-900/70 bg-slate-900/40 p-2 text-[11px] text-slate-300">
-      <p className="text-[10px] uppercase tracking-[0.3em] text-slate-500">Commit trail · {trimmed.length} entr{trimmed.length === 1 ? "y" : "ies"}</p>
+    <div className="mt-2 rounded-lg border border-border bg-card/80 p-2 text-[11px] text-muted-foreground">
+      <p className="text-[10px] uppercase tracking-[0.3em] text-muted-foreground">Commit trail · {trimmed.length} entr{trimmed.length === 1 ? "y" : "ies"}</p>
       <ul className="mt-1 space-y-2">
         {trimmed.map((entry) => {
           const label = truncateTextPublic(entry.message?.split("\n")[0] || entry.sha, 90);
           const shortSha = entry.sha ? entry.sha.slice(0, 7) : "commit";
           return (
-            <li key={entry.sha} className="rounded-md border border-slate-800/80 bg-slate-950/40 p-2">
+            <li key={entry.sha} className="rounded-md border border-border bg-card/80 p-2">
               <div className="flex items-center gap-2">
                 <span className="flex-1 truncate text-left">{label}</span>
-                {entry.date ? <span className="text-[10px] text-slate-500">{formatPublicDate(entry.date)}</span> : null}
+                {entry.date ? <span className="text-[10px] text-muted-foreground">{formatPublicDate(entry.date)}</span> : null}
                 {entry.htmlUrl ? (
                   <a
                     href={entry.htmlUrl}
                     target="_blank"
                     rel="noopener noreferrer nofollow"
-                    className="rounded border border-slate-700 px-2 py-0.5 text-[10px] text-primary hover:border-slate-500"
+                    className="rounded border border-border px-2 py-0.5 text-[10px] text-primary hover:border-primary/60"
                   >
                     Open diff
                   </a>
                 ) : (
-                  <span className="font-mono text-[10px] text-slate-500">#{shortSha}</span>
+                  <span className="font-mono text-[10px] text-muted-foreground">#{shortSha}</span>
                 )}
               </div>
             </li>
@@ -503,8 +520,8 @@ function buildCitationList(mappings: EvidenceMappingWithEvidence[]): Evidence[] 
 function SectionHeading({ title, subtitle }: { title: string; subtitle?: string }) {
   return (
     <div>
-      <h3 className="text-sm font-semibold uppercase tracking-wide text-slate-300">{title}</h3>
-      {subtitle && <p className="text-sm text-slate-300">{subtitle}</p>}
+      <h3 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">{title}</h3>
+      {subtitle && <p className="text-sm text-muted-foreground">{subtitle}</p>}
     </div>
   );
 }
@@ -548,10 +565,10 @@ function EvidenceSnippetBlock({
   const isCodeSample = !snippet.type || snippet.type === "code";
 
   return (
-    <div className="mt-2 rounded-xl border border-slate-900/80 bg-slate-950/30 p-3 text-[11px] text-slate-300">
+    <div className="mt-2 rounded-xl border border-border bg-card/80 p-3 text-[11px] text-muted-foreground">
       <button
         type="button"
-        className="flex w-full items-center justify-between gap-2 text-left font-semibold uppercase tracking-[0.3em] text-slate-400"
+        className="flex w-full items-center justify-between gap-2 text-left font-semibold uppercase tracking-[0.3em] text-muted-foreground"
         onClick={() => setOpen((prev) => !prev)}
         aria-expanded={open}
       >
@@ -559,9 +576,9 @@ function EvidenceSnippetBlock({
         <ChevronRight className={cn("h-3.5 w-3.5 transition-transform duration-200", open ? "rotate-90" : "")} aria-hidden="true" />
       </button>
       {open && (
-        <div className="mt-3 space-y-2 text-xs text-slate-300">
-          <p className="text-slate-100">{snippet.summary}</p>
-          <p className="font-mono text-[11px] text-slate-500">
+        <div className="mt-3 space-y-2 text-xs text-muted-foreground">
+          <p className="text-foreground">{snippet.summary}</p>
+          <p className="font-mono text-[11px] text-muted-foreground">
             {snippet.filePath}
             {snippet.lineStart && snippet.lineEnd ? ` · L${snippet.lineStart}-${snippet.lineEnd}` : ""}
           </p>
@@ -591,7 +608,7 @@ function EvidenceSnippetBlock({
 
 function PacketError() {
   return (
-    <div className="rounded-2xl border border-slate-700/80 bg-slate-900/80 p-10 text-center text-sm text-slate-300">
+    <div className="rounded-2xl border border-border bg-card/95 p-10 text-center text-sm text-muted-foreground">
       Job-specific packet not found. Double-check the link with the candidate.
     </div>
   );

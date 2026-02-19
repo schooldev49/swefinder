@@ -75,7 +75,7 @@ export function CodeSnippet({ code, language = "tsx", wrap = false, className, .
     return (
       <pre
         className={cn(
-          "relative w-full max-h-64 overflow-auto rounded-xl bg-slate-950/80 p-3 font-mono text-xs leading-relaxed text-slate-100",
+          "relative w-full max-h-64 overflow-auto rounded-xl bg-card/95 p-3 font-mono text-xs leading-relaxed text-foreground",
           wrap ? "whitespace-pre-wrap break-words" : "whitespace-pre",
           className
         )}
@@ -91,7 +91,7 @@ export function CodeSnippet({ code, language = "tsx", wrap = false, className, .
   return (
     <pre
       className={cn(
-        "relative w-full max-h-64 overflow-auto rounded-xl bg-slate-950/80 p-3 font-mono text-xs leading-relaxed text-slate-100",
+        "relative w-full max-h-64 overflow-auto rounded-xl bg-card/95 p-3 font-mono text-xs leading-relaxed text-foreground",
         wrap ? "whitespace-pre-wrap break-words" : "whitespace-pre",
         className
       )}
@@ -128,7 +128,7 @@ function renderDiffLines(code: string): ReactNode {
           "block px-1",
           isInsert && "bg-emerald-500/10 text-emerald-200",
           isDelete && "bg-rose-500/10 text-rose-200",
-          isMeta && "text-slate-400"
+          isMeta && "text-muted-foreground"
         )}
       >
         {line || " "}

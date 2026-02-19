@@ -31,7 +31,7 @@ export class PostHogErrorBoundary extends Component<Props, State> {
     if (this.state.hasError) {
       return (
         this.props.fallback ?? (
-          <div className="rounded-2xl border border-slate-800/80 bg-slate-950/60 p-6 text-sm text-slate-300">
+          <div className="rounded-2xl border border-border bg-card/85 p-6 text-sm text-muted-foreground">
             Something went wrong while rendering this page.
           </div>
         )

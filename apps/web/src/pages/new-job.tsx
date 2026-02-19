@@ -299,10 +299,10 @@ export function NewJobPage() {
   };
 
   return (
-    <Card className="border-slate-800/80 bg-slate-950/40">
+    <Card className="border-border bg-card/80">
       <CardHeader>
         <div className="flex flex-wrap items-center gap-2">
-          <CardTitle className="text-white">Create optional job packet</CardTitle>
+          <CardTitle className="text-foreground">Create optional job packet</CardTitle>
           <Badge variant="outline">Optional step</Badge>
         </div>
         <CardDescription>Use this when you want a role-specific packet. Your public profile remains your default share link.</CardDescription>
@@ -311,17 +311,17 @@ export function NewJobPage() {
         <form className="space-y-6" onSubmit={handleSubmit}>
           <div className="grid gap-4 md:grid-cols-2">
             <div>
-              <label className="text-sm font-semibold text-white">Job title</label>
+              <label className="text-sm font-semibold text-foreground">Job title</label>
               <Input name="title" placeholder="e.g. ML Research Intern" className="mt-2" required />
             </div>
             <div>
-              <label className="text-sm font-semibold text-white">Company</label>
+              <label className="text-sm font-semibold text-foreground">Company</label>
               <Input name="company" placeholder="Company" className="mt-2" />
             </div>
            
           </div>
           <div>
-            <label className="text-sm font-semibold text-white">Job description</label>
+            <label className="text-sm font-semibold text-foreground">Job description</label>
             <Textarea
               name="description"
               value={jobDescription}
@@ -334,7 +334,7 @@ export function NewJobPage() {
           </div>
           <div>
             <div className="flex flex-wrap items-center justify-between gap-2">
-              <label className="text-sm font-semibold text-white">Suggested requirements</label>
+              <label className="text-sm font-semibold text-foreground">Suggested requirements</label>
               <Button type="button" variant="outline" size="sm" onClick={() => handleSuggestRequirements()} disabled={isSuggestingRequirements}>
                 {isSuggestingRequirements ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
                 Suggest requirements
@@ -343,14 +343,14 @@ export function NewJobPage() {
             <p className="mt-1 text-xs text-muted-foreground">We suggest up to 5. Edit only if needed.</p>
             <div className="mt-3 space-y-2">
               {requirements.length === 0 ? (
-                <p className="rounded-xl border border-slate-800/80 bg-slate-950/60 px-3 py-3 text-xs text-muted-foreground">
+                <p className="rounded-xl border border-border bg-card/85 px-3 py-3 text-xs text-muted-foreground">
                   No requirements yet. Click “Suggest requirements”.
                 </p>
               ) : (
                 requirements.map((entry, index) => (
-                  <div key={entry.id} className="rounded-xl border border-slate-800/80 bg-slate-950/60 p-3">
+                  <div key={entry.id} className="rounded-xl border border-border bg-card/85 p-3">
                     <div className="mb-2 flex items-center justify-between">
-                      <p className="text-[11px] uppercase tracking-[0.2em] text-slate-500">Requirement {index + 1}</p>
+                      <p className="text-[11px] uppercase tracking-[0.2em] text-muted-foreground">Requirement {index + 1}</p>
                       <Button type="button" variant="ghost" size="sm" onClick={() => handleRemoveRequirement(entry.id)}>
                         Remove
                       </Button>
@@ -370,7 +370,7 @@ export function NewJobPage() {
           </div>
           <div>
             <div className="flex flex-wrap items-center justify-between gap-2">
-              <label className="text-sm font-semibold text-white">Projects to use</label>
+              <label className="text-sm font-semibold text-foreground">Projects to use</label>
               <div className="flex items-center gap-2">
                 <p className="text-xs text-muted-foreground">{selectedProjects.size} selected</p>
                 {featuredProjectIds.length > 0 ? (
@@ -384,7 +384,7 @@ export function NewJobPage() {
               Featured proof in Projects auto-fills this step. You can still customize mapping below.
             </p>
             {isLoading ? (
-              <div className="mt-3 h-24 animate-pulse rounded-xl bg-slate-900/60" />
+              <div className="mt-3 h-24 animate-pulse rounded-xl bg-card/85" />
             ) : publicProjects.length > 0 ? (
               <div className="mt-3 grid gap-3">
                 {publicProjects.map((project) => (
@@ -406,23 +406,23 @@ export function NewJobPage() {
               </p>
             ) : null}
           </div>
-          <div className="rounded-2xl border border-slate-800/80 bg-slate-950/40 p-4">
+          <div className="rounded-2xl border border-border bg-card/80 p-4">
             <div className="flex flex-wrap items-center justify-between gap-2">
               <div>
-                <p className="text-sm font-semibold text-white">Evidence mapping</p>
+                <p className="text-sm font-semibold text-foreground">Evidence mapping</p>
                 <p className="text-xs text-muted-foreground">Back what you can verify. You do not need to map everything.</p>
               </div>
               <Button type="button" variant="outline" size="sm" onClick={() => setShowAdvancedMapping((prev) => !prev)}>
                 {showAdvancedMapping ? "Hide customize mapping" : "Customize mapping"}
               </Button>
             </div>
-            <div className="mt-3 rounded-xl border border-slate-800/80 bg-slate-950/70 px-3 py-2 text-xs">
+            <div className="mt-3 rounded-xl border border-border bg-card/90 px-3 py-2 text-xs">
               <p className={quickReady ? "text-emerald-300" : "text-amber-300"}>
                 {quickReady
                   ? "Good enough to generate now: 2+ mapped requirements and 1+ sample attached."
                   : "For a stronger first draft, map at least 2 requirements and attach 1 sample."}
               </p>
-              <p className="mt-1 text-slate-400">
+              <p className="mt-1 text-muted-foreground">
                 You can generate now and improve mappings later on the job detail page.
               </p>
             </div>
@@ -459,11 +459,11 @@ function ProjectRow({ project, checked, onCheckedChange }: { project: Project; c
     }
   })();
   return (
-    <div className="flex items-start gap-3 rounded-2xl border border-slate-800/80 bg-slate-950/40 p-4">
+    <div className="flex items-start gap-3 rounded-2xl border border-border bg-card/80 p-4">
       <Checkbox checked={checked} onCheckedChange={(value) => onCheckedChange(Boolean(value))} className="mt-1" />
       <div className="flex-1">
         <div className="flex flex-wrap items-center gap-2">
-          <p className="font-medium text-white">{project.fullName}</p>
+          <p className="font-medium text-foreground">{project.fullName}</p>
           <Badge variant={project.sourceType === "link" ? "outline" : "default"}>{project.sourceType === "link" ? "Link" : "GitHub"}</Badge>
           {project.primaryLanguage && <Badge variant="outline">{project.primaryLanguage}</Badge>}
         </div>
@@ -549,17 +549,17 @@ function RequirementEvidenceMapper({
   };
 
   return (
-    <div className="rounded-2xl border border-slate-800/80 bg-slate-950/40 p-4">
+    <div className="rounded-2xl border border-border bg-card/80 p-4">
       <div className="flex flex-col gap-1 md:flex-row md:items-center md:justify-between">
         <div>
-          <label className="text-sm font-semibold text-white">Code suggestions and mapping</label>
+          <label className="text-sm font-semibold text-foreground">Code suggestions and mapping</label>
           <p className="text-xs text-muted-foreground">Pick explicit evidence per requirement. Suggestions help you scan faster.</p>
         </div>
         <p className="text-xs text-muted-foreground">
           {backedCount}/{requirements.length || 0} backed • {attachedSampleCount} sample{attachedSampleCount === 1 ? "" : "s"} attached
         </p>
       </div>
-      <div className="mt-3 rounded-xl border border-slate-800/80 bg-slate-950/70 px-3 py-2 text-xs">
+      <div className="mt-3 rounded-xl border border-border bg-card/90 px-3 py-2 text-xs">
         {backedCount >= 3 && attachedSampleCount >= 1 ? (
           <p className="text-emerald-300">
             Strong packet. You backed 3+ requirements and attached at least one sample.
@@ -569,13 +569,13 @@ function RequirementEvidenceMapper({
             Why this may be weak: map at least 3 requirements and attach 1 sample (code, README, or commit).
           </p>
         )}
-        <p className="mt-1 text-slate-400">
+        <p className="mt-1 text-muted-foreground">
           You do not need to map every requirement. Map only what you can verify clearly.
         </p>
       </div>
       <div className="mt-3 space-y-4">
         {requirements.length === 0 ? (
-          <p className="rounded-xl border border-slate-800/80 bg-slate-950/60 px-3 py-3 text-xs text-muted-foreground">
+          <p className="rounded-xl border border-border bg-card/85 px-3 py-3 text-xs text-muted-foreground">
             Suggest requirements first to map evidence.
           </p>
         ) : (
@@ -588,24 +588,24 @@ function RequirementEvidenceMapper({
             const isMapped = coverage.projectIds.length > 0 || Boolean(coverage.sampleId) || coverage.rationale.trim().length > 0;
             const isWeak = isMapped && (!hasAnchor || coverage.rationale.trim().length < 16 || Boolean(buzzwordNudge));
             return (
-              <div key={requirement.id} className="rounded-xl border border-slate-800/80 bg-slate-950/60 p-3 text-xs text-muted-foreground">
+              <div key={requirement.id} className="rounded-xl border border-border bg-card/85 p-3 text-xs text-muted-foreground">
                 <div className="flex flex-wrap items-center gap-2">
-                  <p className="text-sm font-semibold text-white">{requirement.text}</p>
+                  <p className="text-sm font-semibold text-foreground">{requirement.text}</p>
                   {isWeak ? (
                     <Badge variant="warning" className="text-[10px] uppercase tracking-wide">
                       Weak signal
                     </Badge>
                   ) : null}
                 </div>
-                <p className="mt-1 text-[11px] text-slate-400">Select 1-2 projects, then choose one sample if relevant.</p>
+                <p className="mt-1 text-[11px] text-muted-foreground">Select 1-2 projects, then choose one sample if relevant.</p>
                 <div className="mt-2 flex flex-wrap gap-2">
                   {projects.map((project) => (
-                    <label key={`${requirement.id}-${project.id}`} className="inline-flex items-center gap-2 rounded-lg border border-slate-800/70 px-2 py-1">
+                    <label key={`${requirement.id}-${project.id}`} className="inline-flex items-center gap-2 rounded-lg border border-border px-2 py-1">
                       <Checkbox
                         checked={coverage.projectIds.includes(project.id)}
                         onCheckedChange={(value) => toggleProjectForRequirement(requirement.id, project.id, Boolean(value))}
                       />
-                      <span className="text-[11px] text-slate-200">{project.fullName}</span>
+                      <span className="text-[11px] text-foreground">{project.fullName}</span>
                     </label>
                   ))}
                 </div>
@@ -616,11 +616,11 @@ function RequirementEvidenceMapper({
                     suggestions.map((suggestion) => {
                       const isExpanded = expandedId === suggestion.id;
                       return (
-                        <div key={suggestion.id} className="rounded-lg border border-slate-800/70 bg-slate-950/70 p-2">
+                        <div key={suggestion.id} className="rounded-lg border border-border bg-card/90 p-2">
                           <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
                             <div className="space-y-1">
-                              <p className="text-sm font-semibold text-white">{suggestion.summary}</p>
-                              <p className="text-[11px] uppercase tracking-[0.3em] text-slate-500">
+                              <p className="text-sm font-semibold text-foreground">{suggestion.summary}</p>
+                              <p className="text-[11px] uppercase tracking-[0.3em] text-muted-foreground">
                                 {suggestion.projectFullName} {formatLineLabel(suggestion.filePath, suggestion.lineStart, suggestion.lineEnd)}
                               </p>
                               <div className="flex flex-wrap gap-1">
@@ -656,7 +656,7 @@ function RequirementEvidenceMapper({
                   )}
                 </div>
                 <div className="mt-3">
-                  <label className="text-[11px] uppercase tracking-[0.2em] text-slate-500">What did you build and why does it matter?</label>
+                  <label className="text-[11px] uppercase tracking-[0.2em] text-muted-foreground">What did you build and why does it matter?</label>
                   <Textarea
                     value={coverage.rationale}
                     onChange={(event) => updateRationale(requirement.id, event.target.value)}
@@ -664,7 +664,7 @@ function RequirementEvidenceMapper({
                     className="mt-1"
                     placeholder="What changed? What tradeoff did you make? Where can this be verified?"
                   />
-                  <p className="mt-1 text-[11px] text-slate-400">What changed? What tradeoff did you make? Where can this be verified?</p>
+                  <p className="mt-1 text-[11px] text-muted-foreground">What changed? What tradeoff did you make? Where can this be verified?</p>
                 </div>
                 {(coverage.projectIds.length > 0 || coverage.sampleId) && coverage.rationale.trim().length < 8 ? (
                   <p className="mt-2 text-[11px] text-amber-400">Add a short explanation before generating.</p>

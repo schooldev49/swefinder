@@ -70,9 +70,9 @@ export function ProfilePage() {
 
   return (
     <div className="grid gap-6">
-      <Card className="border-slate-800/80 bg-slate-950/40">
+      <Card>
         <CardHeader>
-          <CardTitle className="text-white">Proof profile</CardTitle>
+          <CardTitle>Proof profile</CardTitle>
           <CardDescription>Pick a handle, decide visibility, and share a link that shows you curated the proof yourself.</CardDescription>
         </CardHeader>
         <CardContent className="space-y-6">
@@ -90,7 +90,7 @@ export function ProfilePage() {
               maxLength={20}
             />
             <p className="text-xs text-muted-foreground">
-              Your profile lives at <span className="text-white/80">/u/{trimmedSlug || "<handle>"}</span>
+              Your profile lives at <span className="text-foreground">/u/{trimmedSlug || "<handle>"}</span>
             </p>
             <p className="text-xs text-muted-foreground">3-20 chars. Lowercase letters, numbers, and dashes only.</p>
             {githubLoginTooLong ? (
@@ -101,7 +101,7 @@ export function ProfilePage() {
             {slugInvalidChars && <p className="text-xs text-red-400">Use lowercase letters, numbers, or dashes only.</p>}
           </div>
 
-          <div className="flex items-start gap-3 rounded-xl border border-slate-800/80 bg-slate-950/60 p-4">
+          <div className="flex items-start gap-3 rounded-xl border border-border bg-card p-4">
             <Checkbox
               id="profile-public"
               checked={isPublic}
@@ -109,7 +109,7 @@ export function ProfilePage() {
               className="mt-1"
             />
             <div className="space-y-1">
-              <Label htmlFor="profile-public" className="font-medium text-white">
+              <Label htmlFor="profile-public" className="font-medium text-foreground">
                 Make profile discoverable
               </Label>
               <p className="text-sm text-muted-foreground">
@@ -132,18 +132,18 @@ export function ProfilePage() {
         </CardContent>
       </Card>
 
-      <Card className="border-slate-800/80 bg-slate-950/40">
+      <Card>
         <CardHeader>
-          <CardTitle className="text-white">Shareable links</CardTitle>
+          <CardTitle>Shareable links</CardTitle>
           <CardDescription>
             Use `/u/:handle` on your resume. Use `/p/:token` in applications and recruiter email.
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-8">
-          <div className="rounded-2xl border border-slate-800/80 bg-slate-950/60 p-4">
+          <div className="rounded-2xl border border-border bg-card p-4">
             <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
               <div>
-                <p className="text-sm font-medium text-white">Proof profile</p>
+                <p className="text-sm font-medium text-foreground">Proof profile</p>
                 <p className="text-xs text-muted-foreground">
                   Resume link. Reusable across all roles: /u/{trimmedSlug || "handle"}
                 </p>
@@ -189,7 +189,7 @@ export function ProfilePage() {
               </Button>
             </div>
             {shareableJobs.length === 0 ? (
-              <div className="rounded-xl border border-dashed border-slate-800/80 p-6 text-sm text-muted-foreground">
+              <div className="rounded-xl border border-dashed border-border p-6 text-sm text-muted-foreground">
                 Generate a Proof Packet to unlock share links for a job. You’ll see them here immediately.
               </div>
             ) : (
@@ -209,7 +209,7 @@ export function ProfilePage() {
                       <TableRow key={job.id}>
                         <TableCell>
                           <div>
-                            <p className="font-semibold text-white">{job.title}</p>
+                            <p className="font-semibold text-foreground">{job.title}</p>
                             <p className="text-xs text-muted-foreground">{job.company ?? "Unknown company"}</p>
                           </div>
                         </TableCell>

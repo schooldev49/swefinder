@@ -47,18 +47,18 @@ export function AppLayout() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-slate-950 via-slate-950 to-slate-900">
-      <div className="mx-auto flex max-w-6xl flex-col gap-6 px-4 pb-10 pt-6 sm:px-6">
-        <header className="rounded-2xl border border-slate-800/80 bg-slate-900/50 px-6 py-4 backdrop-blur">
+    <div className="min-h-screen bg-background">
+      <div className="mx-auto flex max-w-6xl flex-col gap-5 px-4 pb-10 pt-4 sm:px-6">
+        <header className="sticky top-3 z-30 rounded-xl border border-border bg-card/95 px-4 py-3 backdrop-blur sm:px-6 sm:py-4">
           <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
             <div className="flex items-center justify-between gap-3">
               <img src="/Evidensify.png" alt="Evidensify logo" className="h-8 w-8" />
-              <Link to="/" className="text-lg font-semibold tracking-tight text-white">
+              <Link to="/" className="text-lg font-semibold tracking-tight text-foreground">
                 Evidensify
               </Link>
               <button
                 type="button"
-                className="flex h-10 w-10 items-center justify-center rounded-xl border border-slate-800 bg-slate-900/60 text-muted-foreground transition-colors hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white md:hidden"
+                className="flex h-10 w-10 items-center justify-center rounded-md border border-border bg-background text-muted-foreground transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white md:hidden"
                 onClick={() => setIsMenuOpen((open) => !open)}
                 aria-label={isMenuOpen ? "Close navigation" : "Open navigation"}
               >
@@ -71,7 +71,7 @@ export function AppLayout() {
                   key={link.to}
                   to={link.to}
                   className={({ isActive }) =>
-                    cn("transition-colors hover:text-white", isActive ? "text-white" : "text-muted-foreground")
+                    cn("transition-colors hover:text-foreground", isActive ? "text-foreground" : "text-muted-foreground")
                   }
                 >
                   {link.label}
@@ -80,20 +80,20 @@ export function AppLayout() {
             </nav>
             <div className="flex items-center gap-3">
               {isLoading ? (
-                <div className="h-8 w-28 animate-pulse rounded-full bg-slate-800" />
+                <div className="h-8 w-28 animate-pulse rounded-full bg-muted" />
               ) : isAuthenticated && user ? (
                 <div className="flex items-center gap-3">
-                  <p className="hidden text-sm text-slate-300 md:block">Hi {user.githubLogin}</p>
+                  <p className="hidden text-sm text-muted-foreground md:block">Hi {user.githubLogin}</p>
                   <Button
                     variant="ghost"
                     size="sm"
                     onClick={handleLogout}
-                    className="text-muted-foreground hover:text-white"
+                    className="text-muted-foreground hover:text-foreground"
                   >
                     Log out
                   </Button>
                   <NavLink to="/projects" className="hidden md:block">
-                    <Button size="sm">Dashboard</Button>
+                    <Button size="sm">Workspace</Button>
                   </NavLink>
                   <Avatar className="h-10 w-10">
                     <AvatarImage src={user.githubAvatarUrl} alt={user.githubLogin} />
@@ -112,10 +112,7 @@ export function AppLayout() {
                   key={link.to}
                   to={link.to}
                   className={({ isActive }) =>
-                    cn(
-                      "rounded-xl px-3 py-2 transition-colors hover:bg-slate-800 hover:text-white",
-                      isActive ? "bg-slate-800 text-white" : "text-muted-foreground"
-                    )
+                    cn("rounded-md px-3 py-2 transition-colors hover:bg-accent hover:text-foreground", isActive ? "bg-accent text-foreground" : "text-muted-foreground")
                   }
                   onClick={() => setIsMenuOpen(false)}
                 >
@@ -125,7 +122,7 @@ export function AppLayout() {
               {isAuthenticated ? (
                 <NavLink
                   to="/projects"
-                  className="rounded-xl px-3 py-2 text-left text-white transition-colors hover:bg-slate-800 md:hidden"
+                  className="rounded-md px-3 py-2 text-left text-foreground transition-colors hover:bg-accent md:hidden"
                   onClick={() => setIsMenuOpen(false)}
                 >
                   Go to dashboard
