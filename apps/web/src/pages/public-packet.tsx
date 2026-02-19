@@ -69,7 +69,7 @@ function PacketView({
   return (
     <div className="space-y-6">
       
-      <Card className="border-slate-900/80 bg-slate-950/80">
+      <Card className="border-slate-700/80 bg-slate-900/85">
           <CardHeader className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
           <div className="flex items-center gap-4">
             <Avatar className="h-14 w-14 border border-slate-800">
@@ -89,14 +89,14 @@ function PacketView({
               )}
             </div>
           </div>
-          <div className="rounded-xl border border-slate-800/80 bg-slate-950/50 px-4 py-3 text-xs text-muted-foreground">
+          <div className="rounded-xl border border-slate-700/80 bg-slate-900/70 px-4 py-3 text-sm text-slate-200">
             This job-specific packet links to verifiable repos or docs supplied by the candidate.
             {snapshotDate ? <p className="mt-1 text-slate-400">Evidence snapshot: {formatPublicDate(snapshotDate)}</p> : null}
           </div>
           </CardHeader>
           {proof?.summary ? (
             <CardContent className="pt-0">
-              <p className="rounded-xl border border-slate-900/80 bg-slate-950/60 px-3 py-2 text-sm text-slate-200">{proof.summary}</p>
+              <p className="rounded-xl border border-slate-700/80 bg-slate-900/70 px-3 py-2 text-base text-slate-100">{proof.summary}</p>
               <div className="mt-3 grid gap-2 md:grid-cols-3">
                 <Button variant="outline" size="sm" asChild>
                   <a href="#packet-requirements">Requirements</a>
@@ -121,7 +121,7 @@ function PacketView({
       </Card>
 
       {proof ? (
-        <Card className="border-slate-900/80 bg-slate-950/80">
+        <Card className="border-slate-700/80 bg-slate-900/85">
           <CardHeader>
             <CardTitle className="text-white">Packet contents</CardTitle>
             <CardDescription>Skim requirements first, then open links for verification.</CardDescription>
@@ -149,12 +149,12 @@ function PacketView({
             <section id="packet-citations">
               <SectionHeading title="Evidence citations" subtitle="Click through to verify code, notebooks, or demos." />
               {citations.length === 0 ? (
-                <p className="text-xs text-muted-foreground">No citations available.</p>
-              ) : (
-                <div className="mt-3 space-y-3">
-                  {citations.map((evidence) => (
-                    <div key={evidence.id} className="rounded-2xl border border-slate-900/80 bg-slate-950/60 p-4 text-xs text-muted-foreground">
-                      <p className="text-[11px] uppercase tracking-[0.2em] text-slate-500">{evidence.projectFullName}</p>
+                  <p className="text-sm text-slate-300">No citations available.</p>
+                ) : (
+                  <div className="mt-3 space-y-3">
+                    {citations.map((evidence) => (
+                      <div key={evidence.id} className="rounded-2xl border border-slate-700/80 bg-slate-900/70 p-4 text-sm text-slate-300">
+                      <p className="text-xs uppercase tracking-[0.2em] text-slate-400">{evidence.projectFullName}</p>
                       <div className="mt-1 flex flex-wrap gap-1">
                         {getEvidenceProofTypes(evidence).map((type) => (
                           <Badge key={`${evidence.id}-${type}`} variant="outline" className="text-[10px] uppercase tracking-wide">
@@ -167,8 +167,8 @@ function PacketView({
                           Warning: this link type is currently not supported for strong verification.
                         </p>
                       ) : null}
-                      {evidence.description && <p className="text-sm text-white">{evidence.description}</p>}
-                      {evidence.lastCommitDate ? <p className="text-[11px] text-slate-400">Updated {formatPublicDate(evidence.lastCommitDate)}</p> : null}
+                      {evidence.description && <p className="text-base text-white">{evidence.description}</p>}
+                      {evidence.lastCommitDate ? <p className="text-sm text-slate-300">Updated {formatPublicDate(evidence.lastCommitDate)}</p> : null}
                       {evidence.fileUrl && (
                         <a href={evidence.fileUrl} target="_blank" rel="noopener noreferrer nofollow" className="text-primary underline">
                           View source
@@ -182,9 +182,9 @@ function PacketView({
           </CardContent>
         </Card>
       ) : (
-        <Card className="border-slate-900/80 bg-slate-950/80">
+        <Card className="border-slate-700/80 bg-slate-900/85">
           <CardContent>
-            <p className="text-sm text-muted-foreground">
+            <p className="text-sm text-slate-300">
               Job-specific packet not available yet. Ask the candidate to regenerate and resend the link.
             </p>
           </CardContent>
@@ -216,10 +216,10 @@ function RequirementPublicCard({
   }, [selectedSample]);
 
   return (
-    <div className="rounded-2xl border border-slate-900/80 bg-slate-950/60 p-4 space-y-3">
+    <div className="rounded-2xl border border-slate-700/80 bg-slate-900/70 p-4 space-y-3">
       <div>
         <p className="text-sm font-semibold text-white">{requirement.text}</p>
-        <div className="flex items-center gap-2 text-xs text-muted-foreground">
+        <div className="flex items-center gap-2 text-sm text-slate-300">
           <Badge variant="outline" className="text-[10px] uppercase tracking-wide">
             Priority {requirement.priority}
           </Badge>
@@ -228,10 +228,10 @@ function RequirementPublicCard({
       </div>
       <div className="space-y-2">
         {trimmedMappings.length === 0 ? (
-          <p className="text-xs text-muted-foreground">No direct evidence yet.</p>
+          <p className="text-sm text-slate-300">No direct evidence yet.</p>
         ) : (
           trimmedMappings.map((mapping) => (
-            <div key={mapping.id} className="rounded-xl border border-slate-900/80 p-3 text-xs text-muted-foreground">
+            <div key={mapping.id} className="rounded-xl border border-slate-700/80 bg-slate-900/65 p-3 text-sm text-slate-300">
               <p className="font-semibold text-white">{mapping.evidence.projectFullName}</p>
               <div className="mt-1 flex flex-wrap gap-1">
                 {getEvidenceProofTypes(mapping.evidence).map((type) => (
@@ -248,7 +248,7 @@ function RequirementPublicCard({
               {mapping.evidence.isPrivate ? <PrivateRepoBadgePublic /> : null}
               {mapping.rationale && <p>{mapping.rationale}</p>}
               {mapping.evidence.lastCommitDate ? (
-                <p className="text-[11px] text-slate-400">Updated {formatPublicDate(mapping.evidence.lastCommitDate)}</p>
+                <p className="text-sm text-slate-300">Updated {formatPublicDate(mapping.evidence.lastCommitDate)}</p>
               ) : null}
               {mapping.evidence.sourceCommitSha ? (
                 <p className="font-mono text-[10px] text-slate-500">Snapshot #{mapping.evidence.sourceCommitSha.slice(0, 7)}</p>
@@ -264,7 +264,7 @@ function RequirementPublicCard({
                 </a>
               )}
               {formatAiUsagePublic(mapping.evidence) && (
-                <p className="text-[11px] text-slate-500 mt-1">{formatAiUsagePublic(mapping.evidence)}</p>
+                <p className="text-sm text-slate-300 mt-1">{formatAiUsagePublic(mapping.evidence)}</p>
               )}
               {mapping.evidence.codeSnippet ? <EvidenceSnippetBlock snippet={mapping.evidence.codeSnippet} /> : null}
             </div>
@@ -272,14 +272,14 @@ function RequirementPublicCard({
         )}
       </div>
       {selectedSample && (
-        <div className="space-y-2 rounded-xl border border-slate-900/80 bg-slate-950/70 p-3 text-xs text-muted-foreground">
+        <div className="space-y-2 rounded-xl border border-slate-700/80 bg-slate-900/75 p-3 text-sm text-slate-300">
           <div className="flex items-center justify-between">
                 <div>
                   <p className="text-[11px] uppercase tracking-[0.3em] text-slate-500">{getPublicSampleLabel(selectedSample)}</p>
                   <p className="text-sm font-semibold text-white">{selectedSample.summary}</p>
                   <p>{formatPublicLineLabel(selectedSample.filePath, selectedSample.lineStart, selectedSample.lineEnd)}</p>
                   {selectedSample.authorshipContext ? (
-                    <p className="mt-1 text-[11px] text-slate-400">Evidence note: {selectedSample.authorshipContext}</p>
+                  <p className="mt-1 text-sm text-slate-300">Evidence note: {selectedSample.authorshipContext}</p>
                   ) : null}
                   {selectedSample.isPrivate ? <PrivateRepoBadgePublic /> : null}
                   <SampleHighlightMetaPublic sample={selectedSample} />
@@ -321,7 +321,7 @@ function RequirementPublicCard({
               </>
             )
           ) : (
-            <p className="text-[11px] text-muted-foreground">Collapsed until a reviewer chooses to dive in.</p>
+            <p className="text-sm text-slate-300">Collapsed until a reviewer chooses to dive in.</p>
           )}
         </div>
       )}
@@ -347,7 +347,7 @@ function PublicCodeSamples({ samples }: { samples: ProofPacketCodeSample[] }) {
         {samples.map((sample) => {
           const open = expanded.has(sample.id);
           return (
-            <div key={sample.id} className="rounded-2xl border border-slate-900/80 bg-slate-950/60 p-4 text-xs text-muted-foreground">
+            <div key={sample.id} className="rounded-2xl border border-slate-700/80 bg-slate-900/70 p-4 text-sm text-slate-300">
               <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
                 <div>
                   <div className="flex flex-wrap items-center gap-2">
@@ -357,10 +357,10 @@ function PublicCodeSamples({ samples }: { samples: ProofPacketCodeSample[] }) {
                     </Badge>
                     {sample.isPrivate ? <PrivateRepoBadgePublic /> : null}
                   </div>
-                  <p className="text-[11px] uppercase tracking-[0.3em] text-slate-500">
+                  <p className="text-xs uppercase tracking-[0.3em] text-slate-400">
                     {sample.projectFullName} {formatPublicLineLabel(sample.filePath, sample.lineStart, sample.lineEnd)}
                   </p>
-                  {sample.authorshipContext ? <p className="mt-1 text-[11px] text-slate-400">Evidence note: {sample.authorshipContext}</p> : null}
+                  {sample.authorshipContext ? <p className="mt-1 text-sm text-slate-300">Evidence note: {sample.authorshipContext}</p> : null}
                   <SampleHighlightMetaPublic sample={sample} />
                   {sample.tags && sample.tags.length > 0 ? (
                     <div className="mt-1 flex flex-wrap gap-1">
@@ -374,7 +374,7 @@ function PublicCodeSamples({ samples }: { samples: ProofPacketCodeSample[] }) {
                 </div>
                 <div className="flex items-center gap-2">
                   {sample.url && sample.type !== "commit" && (
-                    <a href={sample.url} target="_blank" rel="noopener noreferrer nofollow" className="text-[11px] text-primary underline">
+                    <a href={sample.url} target="_blank" rel="noopener noreferrer nofollow" className="text-sm text-primary underline">
                       View on GitHub
                     </a>
                   )}
@@ -387,7 +387,7 @@ function PublicCodeSamples({ samples }: { samples: ProofPacketCodeSample[] }) {
                 <div className="mt-3">
                   {sample.type && sample.type !== "code" ? (
                     sample.type === "commit" ? (
-                      <p className="text-[11px] text-muted-foreground">Use Open diff links in commit trail.</p>
+                      <p className="text-sm text-slate-300">Use Open diff links in commit trail.</p>
                     ) : (
                       <CodeSnippet code={sample.code} language={sample.language || inferLanguage(sample.filePath) || "markdown"} />
                     )
@@ -503,8 +503,8 @@ function buildCitationList(mappings: EvidenceMappingWithEvidence[]): Evidence[] 
 function SectionHeading({ title, subtitle }: { title: string; subtitle?: string }) {
   return (
     <div>
-      <h3 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">{title}</h3>
-      {subtitle && <p className="text-xs text-muted-foreground">{subtitle}</p>}
+      <h3 className="text-sm font-semibold uppercase tracking-wide text-slate-300">{title}</h3>
+      {subtitle && <p className="text-sm text-slate-300">{subtitle}</p>}
     </div>
   );
 }
@@ -591,7 +591,7 @@ function EvidenceSnippetBlock({
 
 function PacketError() {
   return (
-    <div className="rounded-2xl border border-slate-900/80 bg-slate-950/80 p-10 text-center text-sm text-muted-foreground">
+    <div className="rounded-2xl border border-slate-700/80 bg-slate-900/80 p-10 text-center text-sm text-slate-300">
       Job-specific packet not found. Double-check the link with the candidate.
     </div>
   );

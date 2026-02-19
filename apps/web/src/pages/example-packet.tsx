@@ -161,7 +161,7 @@ export function ExamplePacketPage() {
   return (
     <PublicShareLayout>
       <div className="space-y-8">
-        <header className="rounded-3xl border border-slate-900/80 bg-slate-950/80 p-6">
+        <header className="rounded-3xl border border-slate-700/80 bg-slate-900/85 p-6">
           <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
             <div className="flex items-center gap-4">
               <Avatar className="h-16 w-16 border border-slate-800">
@@ -169,12 +169,12 @@ export function ExamplePacketPage() {
                 <AvatarFallback>DS</AvatarFallback>
               </Avatar>
               <div>
-                <p className="text-sm uppercase tracking-wide text-muted-foreground">Example profile</p>
+                <p className="text-sm uppercase tracking-wide text-slate-300">Example profile</p>
                 <h1 className="text-2xl font-semibold text-white">@demo-student</h1>
-                <p className="text-sm text-muted-foreground">Static preview of the actual public profile layout.</p>
+                <p className="text-base text-slate-200">Static preview of the actual public profile layout.</p>
               </div>
             </div>
-            <div className="rounded-xl border border-slate-800/80 bg-slate-950/60 px-4 py-3 text-xs text-muted-foreground">
+            <div className="rounded-xl border border-slate-700/80 bg-slate-900/70 px-4 py-3 text-sm text-slate-200">
               Demo view only. Links are intentionally disabled.
             </div>
           </div>
@@ -182,8 +182,8 @@ export function ExamplePacketPage() {
 
         <section className="space-y-4">
           <div>
-            <p className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">Featured samples</p>
-            <p className="text-xs text-muted-foreground">Code, README, and commit evidence. Expand cards to inspect details.</p>
+            <p className="text-sm font-semibold uppercase tracking-wide text-slate-300">Featured samples</p>
+            <p className="text-sm text-slate-300">Code, README, and commit evidence. Expand cards to inspect details.</p>
           </div>
           <div className="grid gap-3 md:grid-cols-3">
             <FeaturedGroup title="Code samples (max 3)" items={code} />
@@ -194,8 +194,8 @@ export function ExamplePacketPage() {
 
         <section className="space-y-4">
           <div>
-            <p className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">Featured projects</p>
-            <p className="text-xs text-muted-foreground">Public-source project context for quick recruiter scan.</p>
+            <p className="text-sm font-semibold uppercase tracking-wide text-slate-300">Featured projects</p>
+            <p className="text-sm text-slate-300">Public-source project context for quick recruiter scan.</p>
           </div>
           <div className="grid gap-4 md:grid-cols-2">
             {exampleProjects.map((project) => (
@@ -211,9 +211,9 @@ export function ExamplePacketPage() {
 function FeaturedGroup({ title, items }: { title: string; items: ExampleSample[] }) {
   return (
     <div className="space-y-2">
-      <p className="text-[11px] uppercase tracking-[0.2em] text-slate-500">{title}</p>
+      <p className="text-xs uppercase tracking-[0.2em] text-slate-400">{title}</p>
       {items.length === 0 ? (
-        <p className="text-xs text-muted-foreground">None featured.</p>
+        <p className="text-sm text-slate-300">None featured.</p>
       ) : (
         items.map((sample) => <FeaturedProofCard key={sample.id} sample={sample} />)
       )}
@@ -226,13 +226,13 @@ function FeaturedProofCard({ sample }: { sample: ExampleSample }) {
   const isCode = sample.type === "code";
 
   return (
-    <div className="rounded-xl border border-slate-900/80 bg-slate-950/70 p-3">
+    <div className="rounded-xl border border-slate-700/80 bg-slate-900/75 p-3">
       <button type="button" className="flex w-full items-center justify-between gap-2 text-left" onClick={() => setOpen((prev) => !prev)}>
         <div>
           <p className="text-sm text-white">{sample.summary}</p>
-          {sample.evidenceNote ? <p className="mt-1 text-[11px] text-slate-400">Evidence note: {sample.evidenceNote}</p> : null}
-          <p className="mt-1 text-[11px] text-slate-400">{sample.projectFullName}</p>
-          <p className="text-[11px] text-slate-500">{formatLineLabel(sample.filePath, sample.lineStart, sample.lineEnd)}</p>
+          {sample.evidenceNote ? <p className="mt-1 text-sm text-slate-300">Evidence note: {sample.evidenceNote}</p> : null}
+          <p className="mt-1 text-sm text-slate-300">{sample.projectFullName}</p>
+          <p className="text-sm text-slate-400">{formatLineLabel(sample.filePath, sample.lineStart, sample.lineEnd)}</p>
         </div>
         <ChevronRight className={cn("h-4 w-4 text-slate-500 transition-transform", open ? "rotate-90" : "")} />
       </button>
@@ -250,7 +250,7 @@ function FeaturedProofCard({ sample }: { sample: ExampleSample }) {
 
           {sample.type === "commit" && sample.commitEntries && sample.commitEntries.length > 0 ? (
             <div className="rounded-lg border border-slate-900/70 bg-slate-900/40 p-2 text-[11px] text-slate-300">
-              <p className="text-[10px] uppercase tracking-[0.3em] text-slate-500">Commit trail</p>
+              <p className="text-xs uppercase tracking-[0.3em] text-slate-400">Commit trail</p>
               <div className="mt-1 space-y-2">
                 {sample.commitEntries.map((entry) => {
                   return (
@@ -279,7 +279,7 @@ function FeaturedProofCard({ sample }: { sample: ExampleSample }) {
           {isCode ? (
             <CodeSnippet code={sample.code || ""} language={sample.language || "tsx"} />
           ) : sample.type === "commit" ? (
-            <p className="text-[11px] text-muted-foreground">Use Open diff to view each commit in a new tab.</p>
+            <p className="text-sm text-slate-300">Use Open diff to view each commit in a new tab.</p>
           ) : (
             <CodeSnippet code={sample.code || ""} language={sample.language || "markdown"} />
           )}
@@ -289,7 +289,7 @@ function FeaturedProofCard({ sample }: { sample: ExampleSample }) {
           </Button>
         </div>
       ) : (
-        <p className="mt-2 text-[11px] text-muted-foreground">Collapsed for quick scan.</p>
+        <p className="mt-2 text-sm text-slate-300">Collapsed for quick scan.</p>
       )}
     </div>
   );
@@ -298,12 +298,12 @@ function FeaturedProofCard({ sample }: { sample: ExampleSample }) {
 function ProjectCard({ project }: { project: ExampleProject }) {
   const proofTypes = getProjectProofTypes(project);
   return (
-    <Card className="rounded-2xl border border-slate-900/80 bg-slate-950/80">
+    <Card className="rounded-2xl border border-slate-700/80 bg-slate-900/80">
       <CardContent className="space-y-2 p-5">
         <div className="flex items-start justify-between gap-3">
           <div>
             <p className="text-base font-semibold text-white">{project.fullName}</p>
-            <p className="text-sm text-muted-foreground">{project.description}</p>
+            <p className="text-sm text-slate-200">{project.description}</p>
           </div>
           <Badge variant={project.sourceType === "link" ? "outline" : "default"} className="text-[10px] uppercase tracking-wide">
             {project.sourceType === "link" ? "External" : "GitHub"}
@@ -321,13 +321,13 @@ function ProjectCard({ project }: { project: ExampleProject }) {
             </Badge>
           ) : null}
         </div>
-        <div className="flex flex-wrap gap-3 text-xs text-muted-foreground">
+        <div className="flex flex-wrap gap-3 text-sm text-slate-300">
           {project.context ? <span>{project.context}</span> : null}
           {formatProjectYearRange(project) ? <span>{formatProjectYearRange(project)}</span> : null}
           {project.primaryLanguage ? <span>{project.primaryLanguage}</span> : null}
         </div>
-        {project.whyItMatters ? <p className="text-[11px] text-slate-300">Why it matters: {project.whyItMatters}</p> : null}
-        {project.aiUsage ? <p className="text-[11px] text-slate-400">{project.aiUsage}</p> : null}
+        {project.whyItMatters ? <p className="text-sm text-slate-200">Why it matters: {project.whyItMatters}</p> : null}
+        {project.aiUsage ? <p className="text-sm text-slate-300">{project.aiUsage}</p> : null}
         <Button variant="outline" size="sm" disabled>
           Source link disabled in demo
         </Button>

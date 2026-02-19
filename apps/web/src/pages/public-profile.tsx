@@ -49,7 +49,7 @@ export function PublicProfilePage() {
         <ErrorState />
       ) : profileQuery.data ? (
         <div className="space-y-8">
-          <header className="rounded-3xl border border-slate-900/80 bg-slate-950/80 p-6">
+          <header className="rounded-3xl border border-slate-700/80 bg-slate-900/85 p-6">
             <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
               <div className="flex items-center gap-4">
                 <Avatar className="h-16 w-16 border border-slate-800">
@@ -57,12 +57,12 @@ export function PublicProfilePage() {
                   <AvatarFallback>{profileQuery.data.user.githubLogin.slice(0, 2).toUpperCase()}</AvatarFallback>
                 </Avatar>
                 <div>
-                  <p className="text-sm uppercase tracking-wide text-muted-foreground">Public profile</p>
+                  <p className="text-sm uppercase tracking-wide text-slate-300">Public profile</p>
                   <h1 className="text-2xl font-semibold text-white">@{profileQuery.data.user.profileSlug}</h1>
-                  <p className="text-sm text-muted-foreground">Skimmable technical proof with linked evidence.</p>
+                  <p className="text-base text-slate-200">Skimmable technical proof with linked evidence.</p>
                 </div>
               </div>
-              <div className="rounded-xl border border-slate-800/80 bg-slate-950/60 px-4 py-3 text-xs text-muted-foreground">
+              <div className="rounded-xl border border-slate-700/80 bg-slate-900/70 px-4 py-3 text-sm text-slate-200">
                 Connected via GitHub OAuth
               </div>
             </div>
@@ -70,21 +70,21 @@ export function PublicProfilePage() {
 
           <section className="space-y-4">
             <div>
-              <p className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">Featured samples</p>
-              <p className="text-xs text-muted-foreground">Code, README, and commit evidence. Expand any card to inspect details.</p>
+              <p className="text-sm font-semibold uppercase tracking-wide text-slate-300">Featured samples</p>
+              <p className="text-sm text-slate-300">Code, README, and commit evidence. Expand any card to inspect details.</p>
             </div>
             <FeaturedProofSection projects={profileQuery.data.projects} />
           </section>
 
           <section className="space-y-4">
             <div>
-              <p className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">Featured projects</p>
-              <p className="text-xs text-muted-foreground">Public sources and concise project context.</p>
+              <p className="text-sm font-semibold uppercase tracking-wide text-slate-300">Featured projects</p>
+              <p className="text-sm text-slate-300">Public sources and concise project context.</p>
             </div>
             {profileQuery.data.projects.length === 0 ? (
-              <div className="rounded-2xl border border-dashed border-slate-800/80 p-6 text-sm text-muted-foreground">
-                The candidate hasn’t showcased any projects publicly yet.
-              </div>
+                <div className="rounded-2xl border border-dashed border-slate-700/80 bg-slate-900/55 p-6 text-sm text-slate-300">
+                  The candidate hasn’t showcased any projects publicly yet.
+                </div>
             ) : (
               <div className="grid gap-4 md:grid-cols-2">
                 {profileQuery.data.projects.map((project) => (
@@ -104,11 +104,11 @@ function ProjectCard({ project }: { project: Project }) {
   const aiUsage = formatAiUsage(project);
   const proofTypes = getProjectProofTypes(project);
   return (
-    <div className="rounded-2xl border border-slate-900/80 bg-slate-950/80 p-5 space-y-2">
+    <div className="rounded-2xl border border-slate-700/80 bg-slate-900/75 p-5 space-y-3">
       <div className="flex items-start justify-between gap-3">
         <div>
           <p className="text-base font-semibold text-white">{project.fullName}</p>
-          {project.description && <p className="text-sm text-muted-foreground">{project.description}</p>}
+          {project.description && <p className="text-sm text-slate-200">{project.description}</p>}
         </div>
         <Badge variant={project.sourceType === "link" ? "outline" : "default"} className="text-[10px] uppercase tracking-wide">
           {project.sourceType === "link" ? "External" : "GitHub"}
@@ -126,19 +126,19 @@ function ProjectCard({ project }: { project: Project }) {
           </Badge>
         ) : null}
       </div>
-      <div className="flex flex-wrap gap-3 text-xs text-muted-foreground">
+      <div className="flex flex-wrap gap-3 text-sm text-slate-300">
         {project.context && <span>{project.context}</span>}
         {formatProjectYearRange(project) && <span>{formatProjectYearRange(project)}</span>}
         {project.primaryLanguage && <span>{project.primaryLanguage}</span>}
       </div>
-      {project.whyItMatters ? <p className="text-[11px] text-slate-300">Why it matters: {project.whyItMatters}</p> : null}
-      {aiUsage ? <p className="text-[11px] text-slate-400">{aiUsage}</p> : null}
+      {project.whyItMatters ? <p className="text-sm text-slate-200">Why it matters: {project.whyItMatters}</p> : null}
+      {aiUsage ? <p className="text-sm text-slate-300">{aiUsage}</p> : null}
       {highlights.length > 0 ? (
-        <div className="rounded-xl border border-slate-800/70 bg-slate-950/60 p-3">
-          <p className="text-[11px] uppercase tracking-[0.2em] text-slate-500">Proof highlights</p>
+        <div className="rounded-xl border border-slate-700/70 bg-slate-900/70 p-3">
+          <p className="text-xs uppercase tracking-[0.2em] text-slate-400">Proof highlights</p>
           <ul className="mt-2 space-y-1">
             {highlights.map((sample) => (
-              <li key={sample.id} className="text-xs text-slate-300">
+              <li key={sample.id} className="text-sm text-slate-200">
                 {sample.summary}
               </li>
             ))}
@@ -181,9 +181,9 @@ function FeaturedProofSection({ projects }: { projects: Project[] }) {
 
   if (featured.length === 0) {
     return (
-      <div className="rounded-2xl border border-dashed border-slate-800/80 p-4 text-sm text-muted-foreground">
-        No featured proof yet. Ask the candidate to feature their strongest samples.
-      </div>
+        <div className="rounded-2xl border border-dashed border-slate-700/80 bg-slate-900/55 p-4 text-sm text-slate-300">
+          No featured proof yet. Ask the candidate to feature their strongest samples.
+        </div>
     );
   }
 
@@ -208,9 +208,9 @@ function FeaturedProofSection({ projects }: { projects: Project[] }) {
     }>
   ) => (
     <div className="space-y-2">
-      <p className="text-[11px] uppercase tracking-[0.2em] text-slate-500">{title}</p>
+      <p className="text-xs uppercase tracking-[0.2em] text-slate-400">{title}</p>
       {items.length === 0 ? (
-        <p className="text-xs text-muted-foreground">None featured.</p>
+        <p className="text-sm text-slate-300">None featured.</p>
       ) : (
         items.map((sample) => <FeaturedProofCard key={sample.id} sample={sample} />)
       )}
@@ -251,7 +251,7 @@ function FeaturedProofCard({
   const [openCommitSha, setOpenCommitSha] = useState<string | null>(null);
   const isCode = !sample.type || sample.type === "code";
   return (
-    <div className="rounded-xl border border-slate-900/80 bg-slate-950/70 p-3">
+    <div className="rounded-xl border border-slate-700/80 bg-slate-900/75 p-3">
       <button
         type="button"
         className="flex w-full items-center justify-between gap-2 text-left"
@@ -259,16 +259,16 @@ function FeaturedProofCard({
       >
         <div>
           <p className="text-sm text-white">{sample.summary}</p>
-          <p className="mt-1 text-[11px] text-slate-400">{sample.projectFullName}</p>
-          <p className="text-[11px] text-slate-500">
+          <p className="mt-1 text-sm text-slate-300">{sample.projectFullName}</p>
+          <p className="text-sm text-slate-400">
             {(sample.filePath || "snippet") + (sample.lineStart && sample.lineEnd ? ` #L${sample.lineStart}-${sample.lineEnd}` : "")}
           </p>
         </div>
         <ChevronRight className={cn("h-4 w-4 text-slate-500 transition-transform", open ? "rotate-90" : "")} />
       </button>
       {sample.type === "commit" && sample.commitEntries && sample.commitEntries.length > 0 ? (
-        <div className="mt-2 rounded-md border border-slate-800/70 bg-slate-950/40 p-2 text-[11px] text-slate-300">
-          <p className="text-[10px] uppercase tracking-[0.3em] text-slate-500">Commit titles</p>
+        <div className="mt-2 rounded-md border border-slate-700/70 bg-slate-900/70 p-2 text-sm text-slate-200">
+          <p className="text-xs uppercase tracking-[0.3em] text-slate-400">Commit titles</p>
           <ul className="mt-1 space-y-1">
             {sample.commitEntries.slice(0, 3).map((entry) => (
               <li key={`${sample.id}-${entry.sha}`} className="truncate">
@@ -350,7 +350,7 @@ function FeaturedProofCard({
           ) : null}
         </div>
       ) : (
-        <p className="mt-2 text-[11px] text-muted-foreground">Collapsed for quick scan.</p>
+      <p className="mt-2 text-sm text-slate-300">Collapsed for quick scan.</p>
       )}
     </div>
   );
@@ -453,7 +453,7 @@ function getProjectProofTypes(project: Project): string[] {
 
 function ErrorState() {
   return (
-    <div className="rounded-2xl border border-slate-900/80 bg-slate-950/80 p-10 text-center text-sm text-muted-foreground">
+    <div className="rounded-2xl border border-slate-700/80 bg-slate-900/80 p-10 text-center text-sm text-slate-300">
       Proof profile not available. The candidate may have turned off public access or shared an outdated link.
     </div>
   );

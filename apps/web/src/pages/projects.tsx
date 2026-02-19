@@ -220,6 +220,7 @@ function getConcreteNudge(text?: string): string | null {
 }
 
 type EditableProject = ProjectPayload & { draft?: boolean };
+type ProjectFilter = "all" | "featured" | "needs-edits" | "private-blocked";
 
 type PageItem = { type: "page"; value: number } | { type: "ellipsis"; key: string };
 
@@ -287,6 +288,9 @@ export function ProjectsPage() {
   const [isLoadingRepos, setIsLoadingRepos] = useState(false);
   const [showExternalForm, setShowExternalForm] = useState(false);
   const [externalForm, setExternalForm] = useState<ExternalFormState>(() => createEmptyExternalForm());
+  const [projectSearchTerm, setProjectSearchTerm] = useState("");
+  const [projectFilter, setProjectFilter] = useState<ProjectFilter>("all");
+  const [expandedProjectId, setExpandedProjectId] = useState<string | null>(null);
   const showcasedCount = useMemo(() => projects.filter((project) => project.isShowcased).length, [projects]);
   const featuredSampleCounts = useMemo(() => {
     const counts = { code: 0, readme: 0, commit: 0 };
@@ -568,12 +572,29 @@ export function ProjectsPage() {
   };
 
   const emptyState = !isLoading && projects.length === 0;
+  const hasUnsavedChanges = useMemo(() => {
+    const current = JSON.stringify(projects.map((project) => toProjectPayload(project)));
+    const persisted = JSON.stringify((savedProjects || []).map((project) => toProjectPayload(toEditableProject(project))));
+    return current !== persisted;
+  }, [projects, savedProjects]);
   const publicProjects = useMemo(() => projects.filter((project) => !project.isPrivate), [projects]);
   const privateProjects = useMemo(() => projects.filter((project) => project.isPrivate), [projects]);
   const unsupportedProjects = useMemo(
     () => projects.filter((project) => project.sourceType === "link" && getProjectProofTypes(project).includes("Unapproved Link")),
     [projects]
   );
+  const filteredPublicProjects = useMemo(() => {
+    const term = projectSearchTerm.trim().toLowerCase();
+    return publicProjects.filter((project) => {
+      if (term && !project.fullName.toLowerCase().includes(term)) return false;
+      if (projectFilter === "featured") return Boolean(project.isShowcased);
+      if (projectFilter === "needs-edits") {
+        return Boolean(getConcreteNudge(project.description)) || !project.context || !project.description;
+      }
+      return true;
+    });
+  }, [projectFilter, projectSearchTerm, publicProjects]);
+  const visibleProjects = projectFilter === "private-blocked" ? [] : filteredPublicProjects;
   const reposPerPage = 15;
   const filteredRepos = useMemo(() => {
     const publicRepos = repos.filter((repo) => !repo.isPrivate);
@@ -599,59 +620,53 @@ export function ProjectsPage() {
   }, [repoSearchTerm, repos]);
 
   return (
-    <div className="space-y-6">
-      <div className="rounded-2xl border border-slate-800/70 bg-slate-950/60 p-4">
-        <div className="grid gap-2 md:grid-cols-3">
-          <Button asChild className="justify-between">
-            <Link to="/profile">
-              Open public profile
-              <span>Go</span>
-            </Link>
-          </Button>
-          <Button asChild variant="outline" className="justify-between">
-            <Link to="/projects">
-              Manage projects
-              <span>Go</span>
-            </Link>
-          </Button>
-          <Button asChild variant="outline" className="justify-between">
-            <Link to="/example-packet">
-              See example profile
-              <span>Go</span>
-            </Link>
-          </Button>
+    <div className="space-y-6 pb-16">
+      <div className="sticky top-3 z-20 rounded-2xl border border-slate-700/80 bg-slate-900/95 p-4 shadow-lg backdrop-blur">
+        <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+          <div>
+            <p className="text-sm font-semibold text-white">Projects workspace</p>
+            <p className="text-sm text-slate-300">
+              {hasUnsavedChanges ? "Unsaved changes" : "All changes saved"}
+            </p>
+          </div>
+          <div className="flex flex-wrap gap-2">
+            <Button asChild variant="outline">
+              <Link to="/profile">Open public profile</Link>
+            </Button>
+            <Button variant="ghost" onClick={handleImportRepos} disabled={isLoadingRepos}>
+              {isLoadingRepos ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <RefreshCw className="mr-2 h-4 w-4" />}
+              Import GitHub repos
+            </Button>
+            <Button onClick={handleSave} disabled={saveMutation.isPending || unsupportedProjects.length > 0 || !hasUnsavedChanges}>
+              Save changes
+            </Button>
+          </div>
         </div>
       </div>
-      <div className="rounded-2xl border border-slate-800/70 bg-slate-950/50 p-5">
-        <p className="text-xs uppercase tracking-[0.35em] text-muted-foreground">Setup checklist</p>
-        <div className="mt-4 grid gap-4 md:grid-cols-2">
+      <div className="rounded-2xl border border-slate-700/70 bg-slate-900/70 p-5">
+        <p className="text-sm font-semibold text-slate-100">Quick setup</p>
+        <div className="mt-3 grid gap-3 md:grid-cols-2">
           {PROJECTS_CHECKLIST.map((step, index) => (
-            <div key={step.title} className="rounded-xl border border-slate-800/70 bg-slate-950/70 p-4">
+            <div key={step.title} className="rounded-xl border border-slate-700/70 bg-slate-900/60 p-4">
               <div className="text-sm font-semibold text-accent">Step {index + 1}</div>
               <p className="mt-1 text-sm font-semibold text-white">{step.title}</p>
-              <p className="mt-1 text-xs text-muted-foreground">{step.detail}</p>
+              <p className="mt-1 text-sm text-slate-300">{step.detail}</p>
             </div>
           ))}
         </div>
       </div>
-      <Card className="border-slate-800/80 bg-slate-950/40">
+      <Card className="border-slate-700/80 bg-slate-900/70">
         <CardHeader className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
           <div>
             <CardTitle className="text-white">Saved projects</CardTitle>
-            <CardDescription>These projects become your public proof profile and optional job-specific links.</CardDescription>
-            <p className="text-xs text-muted-foreground mt-1">
+            <CardDescription className="text-sm text-slate-300">These projects power your public profile.</CardDescription>
+            <p className="text-sm text-slate-300 mt-1">
               Showcased projects: {showcasedCount}/{MAX_SHOWCASED}
             </p>
           </div>
           <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
-            <Button variant="ghost" onClick={handleImportRepos} disabled={isLoadingRepos}>
-              {isLoadingRepos ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <RefreshCw className="mr-2 h-4 w-4" />}Import GitHub repos
-            </Button>
             <Button variant="outline" onClick={() => setShowExternalForm((prev) => !prev)}>
               {showExternalForm ? "Cancel external project" : "Add external project"}
-            </Button>
-            <Button onClick={handleSave} disabled={saveMutation.isPending || unsupportedProjects.length > 0}>
-              Save changes
             </Button>
           </div>
         </CardHeader>
@@ -755,23 +770,7 @@ export function ProjectsPage() {
             </div>
           )}
           <p className="text-xs text-muted-foreground">Only public links are allowed in profile proof.</p>
-          {privateProjects.length > 0 ? (
-            <div className="space-y-2 rounded-xl border border-amber-700/60 bg-amber-950/20 p-3">
-              <p className="text-xs text-amber-300">
-                {privateProjects.length} private project(s) are blocked. Remove them to continue using public-only mode.
-              </p>
-              <div className="grid gap-2">
-                {privateProjects.map((project) => (
-                  <div key={project.id} className="flex items-center justify-between rounded-lg border border-amber-800/60 bg-amber-950/30 px-3 py-2 text-xs">
-                    <span className="text-amber-200">{project.fullName}</span>
-                    <Button variant="ghost" size="sm" onClick={() => removeProject(project.id)}>
-                      Remove
-                    </Button>
-                  </div>
-                ))}
-              </div>
-            </div>
-          ) : null}
+          {privateProjects.length > 0 ? <p className="text-sm text-amber-300">{privateProjects.length} private project(s) are blocked.</p> : null}
           {unsupportedProjects.length > 0 ? (
             <div className="space-y-2 rounded-xl border border-rose-700/60 bg-rose-950/20 p-3">
               <p className="text-xs text-rose-300">
@@ -792,9 +791,56 @@ export function ProjectsPage() {
               </div>
             </div>
           ) : null}
-          <div className="grid gap-4">
-            {publicProjects.map((project) => (
-              <div key={project.id} className="rounded-2xl border border-slate-800/80 bg-slate-950/60 p-5">
+          <div className="rounded-xl border border-slate-700/70 bg-slate-900/60 p-3">
+            <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+              <div className="flex flex-wrap gap-2">
+                {[
+                  { key: "all", label: `All (${publicProjects.length})` },
+                  { key: "featured", label: `Featured (${publicProjects.filter((project) => project.isShowcased).length})` },
+                  { key: "needs-edits", label: `Needs edits (${publicProjects.filter((project) => Boolean(getConcreteNudge(project.description)) || !project.context || !project.description).length})` },
+                  { key: "private-blocked", label: `Private blocked (${privateProjects.length})` },
+                ].map((item) => (
+                  <Button
+                    key={item.key}
+                    type="button"
+                    size="sm"
+                    variant={projectFilter === item.key ? "secondary" : "outline"}
+                    onClick={() => setProjectFilter(item.key as ProjectFilter)}
+                  >
+                    {item.label}
+                  </Button>
+                ))}
+              </div>
+              <Input
+                value={projectSearchTerm}
+                onChange={(event) => setProjectSearchTerm(event.target.value)}
+                placeholder="Search projects..."
+                className="md:max-w-xs"
+              />
+            </div>
+          </div>
+
+          {projectFilter === "private-blocked" ? (
+            privateProjects.length > 0 ? (
+              <div className="space-y-2 rounded-xl border border-amber-700/60 bg-amber-950/20 p-3">
+                {privateProjects.map((project) => (
+                  <div key={project.id} className="flex items-center justify-between rounded-lg border border-amber-800/60 bg-amber-950/30 px-3 py-2 text-sm">
+                    <span className="text-amber-200">{project.fullName}</span>
+                    <Button variant="ghost" size="sm" onClick={() => removeProject(project.id)}>
+                      Remove
+                    </Button>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <p className="text-sm text-slate-300">No private repositories are currently blocked.</p>
+            )
+          ) : (
+            <div className="grid gap-4">
+              {visibleProjects.map((project) => {
+                const isExpanded = expandedProjectId === project.id;
+                return (
+              <div key={project.id} className="rounded-2xl border border-slate-700/80 bg-slate-900/60 p-5">
                 <div className="flex flex-wrap items-center justify-between gap-3">
                   <div>
                     <div className="flex flex-wrap items-center gap-2">
@@ -803,6 +849,7 @@ export function ProjectsPage() {
                         {project.sourceType === "link" ? "Link" : "GitHub"}
                       </Badge>
                       {project.isFork ? <Badge variant="warning">Fork</Badge> : null}
+                      {project.draft || hasUnsavedChanges ? <Badge variant="outline">Unsaved</Badge> : null}
                       {getProjectProofTypes(project)
                         .filter((type) => type !== "Repo")
                         .slice(0, 2)
@@ -812,11 +859,11 @@ export function ProjectsPage() {
                           </Badge>
                         ))}
                     </div>
-                    <p className="text-xs text-muted-foreground">
+                    <p className="text-sm text-slate-300">
                       Updated {formatUpdated(project.lastUpdated)}
                       {project.htmlUrl ? ` • ${getProjectHost(project.htmlUrl)}` : ""}
                     </p>
-                    {formatProjectYearRange(project) ? <p className="text-xs text-muted-foreground">Project range: {formatProjectYearRange(project)}</p> : null}
+                    {formatProjectYearRange(project) ? <p className="text-sm text-slate-300">Project range: {formatProjectYearRange(project)}</p> : null}
                   </div>
                   <div className="flex flex-wrap gap-2">
                     <Button
@@ -828,16 +875,16 @@ export function ProjectsPage() {
                     >
                       {project.isShowcased ? "Showcased" : "Showcase"}
                     </Button>
-                    {project.topics?.slice(0, 3).map((topic) => (
-                      <Badge key={topic} variant="outline">
-                        {topic}
-                      </Badge>
-                    ))}
+                    <Button variant="outline" size="sm" onClick={() => setExpandedProjectId(isExpanded ? null : project.id)}>
+                      {isExpanded ? "Collapse" : "Edit"}
+                    </Button>
                     <Button variant="ghost" size="sm" onClick={() => removeProject(project.id)}>
                       Remove
                     </Button>
                   </div>
                 </div>
+                {isExpanded ? (
+                  <>
                 <div className="mt-4 grid gap-4 md:grid-cols-4">
                   <div>
                     <Label>Context</Label>
@@ -1010,9 +1057,14 @@ export function ProjectsPage() {
                     />
                   </label>
                 </div>
+                  </>
+                ) : null}
               </div>
-            ))}
-          </div>
+                );
+              })}
+              {visibleProjects.length === 0 ? <p className="text-sm text-slate-300">No projects match this filter yet.</p> : null}
+            </div>
+          )}
         </CardContent>
         <CardFooter>
           <p className="text-xs text-muted-foreground">

@@ -10,10 +10,6 @@ import { logout } from "@/lib/api";
 import { capturePageView, identifyPostHogUser, resetPostHogUser } from "@/lib/analytics";
 import { PostHogErrorBoundary } from "@/components/analytics/posthog-error-boundary";
 import { cn } from "@/lib/utils";
-const navLinks = [
-  { to: "/profile", label: "Profile" },
-  { to: "/projects", label: "Projects" },
-];
 
 export function AppLayout() {
   const { data: user, isLoading } = useSession();
@@ -21,6 +17,12 @@ export function AppLayout() {
   const queryClient = useQueryClient();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const isAuthenticated = Boolean(user);
+  const profilePreviewPath = user?.profileSlug ? `/u/${user.profileSlug}` : "/profile";
+  const navLinks = [
+    { to: profilePreviewPath, label: "Profile" },
+    { to: "/projects", label: "Projects" },
+    { to: "/profile", label: "Settings" },
+  ];
 
   useEffect(() => {
     capturePageView(`${location.pathname}${location.search}`);

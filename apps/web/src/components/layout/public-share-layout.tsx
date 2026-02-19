@@ -13,8 +13,8 @@ export function PublicShareLayout({ children }: { children: ReactNode }) {
   }, [location.pathname, location.search]);
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-slate-950 via-slate-950 to-slate-900 text-white">
-      <header className="border-b border-slate-900/80 bg-slate-950/80">
+    <div className="min-h-screen bg-gradient-to-b from-slate-950 via-slate-900 to-slate-900 text-white">
+      <header className="border-b border-slate-700/80 bg-slate-900/90">
         <div className="mx-auto flex max-w-5xl items-center justify-between px-6 py-4">
           <Link to="/" className="text-lg font-semibold tracking-tight">
             Evidensify
@@ -27,7 +27,7 @@ export function PublicShareLayout({ children }: { children: ReactNode }) {
       <main className="mx-auto w-full max-w-5xl px-6 py-10">
         <PostHogErrorBoundary>{children}</PostHogErrorBoundary>
       </main>
-      <footer className="mx-auto max-w-5xl px-6 pb-10 text-xs text-muted-foreground">
+      <footer className="mx-auto max-w-5xl px-6 pb-10 text-sm text-slate-300">
         Built for evidence-first applications. Links open in new tabs.
       </footer>
     </div>
