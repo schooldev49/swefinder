@@ -190,7 +190,7 @@ const TOOL_TERMS = [
   "prometheus", "grafana", "datadog", "sentry", "opentelemetry",
 
   // auth/payments/comms
-  "oauth", "oidc", "jwt", "auth0", "clerk",
+  "oauth", "oidc", "jwt"  , "auth0", "clerk",
   "stripe", "twilio", "sendgrid"
 ];
 
@@ -1396,7 +1396,7 @@ export function ProjectCodeSamplesEditor({
                       {sample.filePath || 'snippet'} {formatLineRange(sample.lineStart, sample.lineEnd)}
                     </p>
                     {sample.authorshipContext ? (
-                      <p className="mt-1 text-[11px] text-slate-400">Evidence note: {sample.authorshipContext}</p>
+                      <p className="mt-1 text-[11px] text-slate-400">What to notice: {sample.authorshipContext}</p>
                     ) : null}
                   {sample.tags && sample.tags.length > 0 && (
                     <div className="mt-1 flex flex-wrap gap-1">
@@ -1528,13 +1528,13 @@ function SampleEditorModal({
             )}
           </div>
           <div>
-            <Label>Evidence note (optional)</Label>
+            <Label>What to notice (optional)</Label>
             <Input
               value={draft.authorshipContext}
               onChange={onDraftChange("authorshipContext")}
               className="mt-2"
               maxLength={200}
-              placeholder="What changed, why it matters, and where it is verified"
+              placeholder="I wrote X, reviewed Y, integrated Z"
             />
           </div>
           <div className="grid gap-3 md:grid-cols-2">
