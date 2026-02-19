@@ -59,7 +59,7 @@ export function PublicProfilePage() {
                 <div>
                   <p className="text-sm uppercase tracking-wide text-muted-foreground">Public profile</p>
                   <h1 className="text-2xl font-semibold text-foreground">@{profileQuery.data.user.profileSlug}</h1>
-                  <p className="text-base text-foreground">Skimmable technical proof with linked evidence.</p>
+                  <p className="text-base text-foreground">Skimmable technical proof with linked evidence. All descriptions written by candidates.</p>
                 </div>
               </div>
               <div className="rounded-xl border border-border bg-card/90 px-4 py-3 text-sm text-foreground">
