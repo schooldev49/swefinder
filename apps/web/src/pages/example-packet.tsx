@@ -182,7 +182,7 @@ export function ExamplePacketPage() {
 
         <section className="space-y-4">
           <div>
-            <p className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">Featured samples</p>
+            <p className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">Evidence Snapshots</p>
             <p className="text-sm text-muted-foreground">Code, README, and commit evidence. Expand cards to inspect details.</p>
           </div>
           <div className="grid gap-3 md:grid-cols-3">
@@ -243,7 +243,7 @@ function FeaturedProofCard({ sample }: { sample: ExampleSample }) {
           className="mt-2 w-full justify-between border border-border bg-accent/70 text-foreground hover:bg-accent"
           onClick={() => setOpen((prev) => !prev)}
         >
-          <span>{open ? "Hide details" : "Tap to expand details"}</span>
+          <span>{open ? "Hide details" : "Inspect evidence"}</span>
           <ChevronRight className={cn("h-4 w-4 transition-transform", open ? "rotate-90" : "")} />
         </Button>
       </div>

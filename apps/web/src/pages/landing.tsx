@@ -112,7 +112,7 @@ export function LandingPage() {
             <Card>
               <CardContent className="space-y-4">
                 <p className="text-xs uppercase tracking-[0.25em] text-muted-foreground">Evidensify</p>
-                <h1 className="text-3xl font-semibold text-foreground sm:text-4xl">Public proof profile for hiring</h1>
+                <h1 className="text-3xl font-semibold text-foreground sm:text-4xl">Turn GitHub work into fast, checkable proof</h1>
                 <p className="text-base text-muted-foreground">One link on your resume. Public evidence recruiters can verify fast.</p>
                 <div className="flex flex-wrap gap-2">
                   <Button onClick={handleProjectsLogin}>Build evidence profile</Button>

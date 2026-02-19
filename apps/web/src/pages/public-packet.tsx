@@ -395,7 +395,7 @@ function PublicCodeSamples({ samples }: { samples: ProofPacketCodeSample[] }) {
                     className="min-h-10 min-w-[165px] justify-between border border-border bg-accent/70 text-xs text-foreground hover:bg-accent"
                     onClick={() => toggle(sample.id)}
                   >
-                    <span>{open ? "Hide sample" : "Tap to expand"}</span>
+                    <span>{open ? "Hide sample" : "Inspect Evidence"}</span>
                     <ChevronRight className={cn("h-4 w-4 transition-transform", open ? "rotate-90" : "")} />
                   </Button>
                 </div>
