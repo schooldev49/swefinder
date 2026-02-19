@@ -1790,6 +1790,7 @@ function mapProjectSample(project: Project, sample: ProjectCodeSample): ProofPac
     lineEnd: sample.lineEnd,
     url: sample.url,
     tags: sample.tags,
+    authorshipContext: sample.authorshipContext,
     readmeHeading: sample.readmeHeading,
     commitEntries: sample.commitEntries,
     sourceCommitSha: sample.sourceCommitSha,

@@ -278,6 +278,9 @@ function RequirementPublicCard({
                   <p className="text-[11px] uppercase tracking-[0.3em] text-slate-500">{getPublicSampleLabel(selectedSample)}</p>
                   <p className="text-sm font-semibold text-white">{selectedSample.summary}</p>
                   <p>{formatPublicLineLabel(selectedSample.filePath, selectedSample.lineStart, selectedSample.lineEnd)}</p>
+                  {selectedSample.authorshipContext ? (
+                    <p className="mt-1 text-[11px] text-slate-400">Evidence note: {selectedSample.authorshipContext}</p>
+                  ) : null}
                   {selectedSample.isPrivate ? <PrivateRepoBadgePublic /> : null}
                   <SampleHighlightMetaPublic sample={selectedSample} />
               {selectedSample.tags && selectedSample.tags.length > 0 ? (
@@ -357,6 +360,7 @@ function PublicCodeSamples({ samples }: { samples: ProofPacketCodeSample[] }) {
                   <p className="text-[11px] uppercase tracking-[0.3em] text-slate-500">
                     {sample.projectFullName} {formatPublicLineLabel(sample.filePath, sample.lineStart, sample.lineEnd)}
                   </p>
+                  {sample.authorshipContext ? <p className="mt-1 text-[11px] text-slate-400">Evidence note: {sample.authorshipContext}</p> : null}
                   <SampleHighlightMetaPublic sample={sample} />
                   {sample.tags && sample.tags.length > 0 ? (
                     <div className="mt-1 flex flex-wrap gap-1">

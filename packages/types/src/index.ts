@@ -174,6 +174,7 @@ export interface ProofPacketCodeSample extends EvidenceSnippet {
   projectFullName: string;
   type?: CodeSampleType;
   tags?: string[];
+  authorshipContext?: string;
   readmeHeading?: string;
   commitEntries?: CommitEntry[];
   sourceCommitSha?: string;

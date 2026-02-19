@@ -20,6 +20,7 @@ type ExampleSample = {
   id: string;
   type: "code" | "readme" | "commit";
   summary: string;
+  evidenceNote?: string;
   projectFullName: string;
   filePath?: string;
   lineStart?: number;
@@ -66,6 +67,7 @@ const exampleProjects: ExampleProject[] = [
         id: "s-1",
         type: "code",
         summary: "Evaluator adds empty-dataset guard and failure export",
+        evidenceNote: "Prevents silent metric corruption and logs hard failures for release review.",
         projectFullName: "demo-student/ml-research-notebooks",
         filePath: "src/eval/metrics.py",
         lineStart: 42,
@@ -90,6 +92,7 @@ const exampleProjects: ExampleProject[] = [
         id: "s-2",
         type: "readme",
         summary: "README section with known limitations and next iteration",
+        evidenceNote: "Documents current blind spots and the next experiment plan.",
         projectFullName: "demo-student/ml-research-notebooks",
         filePath: "README.md",
         lineStart: 98,
@@ -106,6 +109,7 @@ const exampleProjects: ExampleProject[] = [
         id: "s-3",
         type: "commit",
         summary: "Commit trail: evaluator bug fix and regression tests",
+        evidenceNote: "Fixes a scoring bug and adds tests so the same bug does not return.",
         projectFullName: "demo-student/ml-research-notebooks",
         language: "diff",
         filePath: "Commits (3)",
@@ -226,6 +230,7 @@ function FeaturedProofCard({ sample }: { sample: ExampleSample }) {
       <button type="button" className="flex w-full items-center justify-between gap-2 text-left" onClick={() => setOpen((prev) => !prev)}>
         <div>
           <p className="text-sm text-white">{sample.summary}</p>
+          {sample.evidenceNote ? <p className="mt-1 text-[11px] text-slate-400">Evidence note: {sample.evidenceNote}</p> : null}
           <p className="mt-1 text-[11px] text-slate-400">{sample.projectFullName}</p>
           <p className="text-[11px] text-slate-500">{formatLineLabel(sample.filePath, sample.lineStart, sample.lineEnd)}</p>
         </div>
