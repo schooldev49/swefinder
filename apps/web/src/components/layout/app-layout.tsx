@@ -17,11 +17,12 @@ export function AppLayout() {
   const queryClient = useQueryClient();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const isAuthenticated = Boolean(user);
-  const profilePreviewPath = user?.profileSlug ? `/u/${user.profileSlug}` : "/profile";
+  const hasPublicProfile = Boolean(user?.profileSlug);
+  const profilePreviewPath = hasPublicProfile ? `/u/${user?.profileSlug}` : "/profile";
   const navLinks = [
-    { to: profilePreviewPath, label: "Profile" },
-    { to: "/projects", label: "Projects" },
-    { to: "/profile", label: "Settings" },
+    { id: "profile", to: profilePreviewPath, label: "Profile" },
+    { id: "projects", to: "/projects", label: "Projects" },
+    ...(hasPublicProfile ? [{ id: "settings", to: "/profile", label: "Settings" }] : []),
   ];
 
   useEffect(() => {
@@ -68,7 +69,7 @@ export function AppLayout() {
             <nav className="hidden items-center gap-6 text-sm font-medium text-muted-foreground md:flex">
               {navLinks.map((link) => (
                 <NavLink
-                  key={link.to}
+                  key={link.id}
                   to={link.to}
                   className={({ isActive }) =>
                     cn("transition-colors hover:text-foreground", isActive ? "text-foreground" : "text-muted-foreground")
@@ -109,7 +110,7 @@ export function AppLayout() {
             <nav className="mt-4 flex flex-col gap-1 text-sm font-medium text-muted-foreground md:hidden">
               {navLinks.map((link) => (
                 <NavLink
-                  key={link.to}
+                  key={link.id}
                   to={link.to}
                   className={({ isActive }) =>
                     cn("rounded-md px-3 py-2 transition-colors hover:bg-accent hover:text-foreground", isActive ? "bg-accent text-foreground" : "text-muted-foreground")
