@@ -648,7 +648,7 @@ export function ProjectsPage() {
         <div className="mt-3 grid gap-3 md:grid-cols-2">
           {PROJECTS_CHECKLIST.map((step, index) => (
             <div key={step.title} className="rounded-xl border border-border bg-card/85 p-4">
-              <div className="text-sm font-semibold text-accent">Step {index + 1}</div>
+              <div className="text-sm font-semibold text-foreground">Step {index + 1}</div>
               <p className="mt-1 text-sm font-semibold text-foreground">{step.title}</p>
               <p className="mt-1 text-sm text-muted-foreground">{step.detail}</p>
             </div>
@@ -1757,6 +1757,7 @@ function CodeSamplePicker({ project, initialTab = "code", onClose, onSelect }: C
   const [blobError, setBlobError] = useState<string | null>(null);
   const [blobLoading, setBlobLoading] = useState(false);
   const [readmeContent, setReadmeContent] = useState<string | null>(null);
+  const [readmeLoaded, setReadmeLoaded] = useState(false);
   const [readmeLoading, setReadmeLoading] = useState(false);
   const [readmeError, setReadmeError] = useState<string | null>(null);
   const [readmeSelection, setReadmeSelection] = useState<{ start: number; end: number } | null>(null);
@@ -1804,19 +1805,23 @@ function CodeSamplePicker({ project, initialTab = "code", onClose, onSelect }: C
     setSelection(null);
     setFileError(null);
     setBlobError(null);
+    setReadmeContent(null);
+    setReadmeLoaded(false);
+    setReadmeError(null);
+    setReadmeSelection(null);
     setSelectedCommitShas(new Set());
   }, [initialTab]);
 
   useEffect(() => {
     if (activeTab === "docs" && isGitHubProject) {
-      if (!readmeContent && !readmeLoading) {
+      if (!readmeLoaded && !readmeLoading) {
         void loadReadme();
       }
       if (!commits.length && !commitsLoading) {
         void loadCommits();
       }
     }
-  }, [activeTab, isGitHubProject, readmeContent, readmeLoading, commits.length, commitsLoading]);
+  }, [activeTab, isGitHubProject, readmeLoaded, readmeLoading, commits.length, commitsLoading]);
 
   const readmeLines = useMemo(() => (readmeContent ? readmeContent.replace(/\r\n/g, "\n").split("\n") : []), [readmeContent]);
   const readmeSelectedLineCount = readmeSelection ? readmeSelection.end - readmeSelection.start + 1 : 0;
@@ -1842,10 +1847,15 @@ function CodeSamplePicker({ project, initialTab = "code", onClose, onSelect }: C
     setReadmeSelection(null);
     try {
       const data = await fetchRepoReadmeContent(project.fullName);
-      setReadmeContent(data.content || "");
+      const content = data.content || "";
+      setReadmeContent(content);
+      if (!content.trim()) {
+        setReadmeError("README.md not present.");
+      }
     } catch (error) {
       setReadmeError((error as Error).message);
     } finally {
+      setReadmeLoaded(true);
       setReadmeLoading(false);
     }
   };
@@ -2367,7 +2377,11 @@ function CodeSamplePicker({ project, initialTab = "code", onClose, onSelect }: C
                     )}
                   </Button>
                 </div>
-                {readmeError ? <p className="mt-3 text-xs text-red-400">{readmeError}</p> : null}
+                {readmeError ? (
+                  <p className={cn("mt-3 text-xs", readmeError === "README.md not present." ? "text-muted-foreground" : "text-red-400")}>
+                    {readmeError}
+                  </p>
+                ) : null}
                 {readmeLoading ? (
                   <div className="mt-3 flex h-64 items-center justify-center text-xs text-muted-foreground">
                     <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Fetching README…
