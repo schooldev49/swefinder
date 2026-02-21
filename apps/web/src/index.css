@@ -6,7 +6,7 @@
   --background: 222 36% 10%;
   --foreground: 210 22% 93%;
 
-  --primary: 212 91% 58%;
+  --primary: 157 67% 43%;
   --primary-foreground: 0 0% 100%;
 
   --secondary: 215 20% 20%;
@@ -15,7 +15,7 @@
   --muted: 215 20% 20%;
   --muted-foreground: 214 13% 74%;
 
-  --accent: 215 20% 22%;
+  --accent: 246 23% 24%;
   --accent-foreground: 210 22% 93%;
 
   --destructive: 4 93% 63%;
@@ -23,7 +23,7 @@
 
   --border: 215 14% 34%;
   --input: 215 14% 34%;
-  --ring: 212 91% 58%;
+  --ring: 157 67% 43%;
 
   --card: 216 24% 16%;
   --card-foreground: 210 22% 93%;
@@ -31,7 +31,7 @@
   --popover: 216 24% 16%;
   --popover-foreground: 210 22% 93%;
 
-  --radius: 0.625rem;
+  --radius: 0.75rem;
 }
 
 @layer base {
@@ -41,6 +41,14 @@
 
   body {
     @apply bg-background text-foreground font-sans antialiased;
+    font-family: "Inter", "SF Pro Text", "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  }
+
+  h1,
+  h2,
+  h3,
+  h4 {
+    font-family: "Space Grotesk", "Inter", "SF Pro Display", "Segoe UI", sans-serif;
   }
 
   code[class*="language-"],

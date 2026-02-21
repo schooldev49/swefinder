@@ -5,12 +5,12 @@ export const buttonVariants = cva(
   {
     variants: {
       variant: {
-        default: "bg-[#238636] text-white border border-[#2ea043]/60 hover:bg-[#2ea043]",
-        secondary: "bg-secondary text-secondary-foreground border border-border hover:bg-[#30363d]",
-        outline: "border border-border bg-transparent text-foreground hover:bg-[#21262d]",
-        ghost: "text-muted-foreground hover:bg-[#21262d] hover:text-foreground",
-        destructive: "bg-destructive text-destructive-foreground border border-[#f85149]/60 hover:bg-[#da3633]",
-        subtle: "bg-muted text-muted-foreground border border-border hover:bg-[#30363d]",
+        default: "border border-primary/60 bg-primary text-primary-foreground hover:bg-primary/90",
+        secondary: "border border-border bg-secondary text-secondary-foreground hover:bg-secondary/85",
+        outline: "border border-border bg-transparent text-foreground hover:bg-accent/60",
+        ghost: "text-muted-foreground hover:bg-accent/50 hover:text-foreground",
+        destructive: "border border-destructive/60 bg-destructive text-destructive-foreground hover:bg-destructive/90",
+        subtle: "border border-border bg-muted text-muted-foreground hover:bg-muted/85",
       },
       size: {
         default: "h-10 px-4 py-2",

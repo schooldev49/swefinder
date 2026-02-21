@@ -27,8 +27,9 @@ export function PublicShareLayout({ children }: { children: ReactNode }) {
       <main className="mx-auto w-full max-w-5xl px-4 py-8 sm:px-6 sm:py-10">
         <PostHogErrorBoundary>{children}</PostHogErrorBoundary>
       </main>
-      <footer className="mx-auto max-w-5xl px-4 pb-10 text-sm text-muted-foreground sm:px-6">
-        Built for evidence-first applications. Links open in new tabs.
+      <footer className="mx-auto max-w-5xl space-y-1 px-4 pb-10 text-sm text-muted-foreground sm:px-6">
+        <p>Built for evidence-first applications. Links open in new tabs.</p>
+        <p className="text-xs">Evidensify is an independent tool. GitHub is a trademark of GitHub, Inc.</p>
       </footer>
     </div>
   );

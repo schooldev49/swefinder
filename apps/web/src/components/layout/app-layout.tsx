@@ -137,6 +137,9 @@ export function AppLayout() {
             <Outlet />
           </PostHogErrorBoundary>
         </main>
+        <footer className="px-1 pb-1 text-xs text-muted-foreground">
+          Evidensify is an independent tool. GitHub is a trademark of GitHub, Inc.
+        </footer>
       </div>
     </div>
   );
