@@ -85,7 +85,7 @@ export function LandingPage() {
                 </div>
                 <div className="flex flex-wrap items-center gap-2 pt-1">
                   <Button asChild>
-                    <Link to="/projects">Build evidence profile</Link>
+                    <Link to="/projects">Create proof profile</Link>
                   </Button>
                 </div>
               </CardContent>
@@ -112,10 +112,10 @@ export function LandingPage() {
             <Card>
               <CardContent className="space-y-4">
                 <p className="text-xs uppercase tracking-[0.25em] text-muted-foreground">Evidensify</p>
-                <h1 className="text-3xl font-semibold text-foreground sm:text-4xl">Turn GitHub work into fast, checkable proof</h1>
+                <h1 className="text-3xl font-semibold text-foreground sm:text-4xl">Cut through resume noise. Show code recruiters can verify.</h1>
                 <p className="text-base text-muted-foreground">One link on your resume. Public evidence recruiters can verify fast.</p>
                 <div className="flex flex-wrap gap-2">
-                  <Button onClick={handleProjectsLogin}>Build evidence profile</Button>
+                  <Button onClick={handleProjectsLogin}>Create proof profile</Button>
                   <Button variant="outline" asChild>
                     <Link to="/example-packet">See example profile</Link>
                   </Button>

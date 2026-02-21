@@ -54,7 +54,7 @@ export function SecurityPage() {
           </div>
           <div>
             <p className="font-semibold text-foreground">Questions?</p>
-            <p className="text-muted-foreground">Email security@Evidensify.app any time. We publish updates and SOC-style summaries on our changelog.</p>
+            <p className="text-muted-foreground">Email security@evidensify.com any time. We publish updates and SOC-style summaries on our changelog.</p>
           </div>
           <Button asChild variant="outline" size="sm" className="text-foreground">
             <Link to="/projects">Back to projects</Link>
