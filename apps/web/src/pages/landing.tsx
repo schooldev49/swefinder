@@ -88,6 +88,18 @@ export function LandingPage() {
                     <Link to="/projects">Create proof profile</Link>
                   </Button>
                 </div>
+                <div className="rounded-xl border border-border bg-background/70 p-3 text-sm">
+                  <p className="font-medium text-foreground">Where to use your link</p>
+                  <div className="mt-2 grid gap-1 text-muted-foreground sm:grid-cols-3">
+                    <p>Resume</p>
+                    <p>Portfolio field</p>
+                    <p>Outreach</p>
+                  </div>
+                  <p className="mt-2 text-muted-foreground">
+                    GitHub: <span className="text-foreground">github.com/{user?.githubLogin || "username"}</span> {"  "}
+                    Proof: <span className="text-foreground">evidensify.com/u/{user?.profileSlug || "handle"}</span>
+                  </p>
+                </div>
               </CardContent>
             </Card>
             <Card>

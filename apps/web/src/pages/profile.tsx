@@ -14,7 +14,7 @@ import { useSEO } from "@/lib/seo";
 export function ProfilePage() {
   useSEO({
     title: "Public profile settings",
-    description: "Configure your public profile handle and copy resume and application share links.",
+    description: "Configure your public profile handle and copy your proof link.",
     path: "/profile",
     robots: "noindex,nofollow",
   });
@@ -33,7 +33,7 @@ export function ProfilePage() {
   const saveMutation = useMutation({
     mutationFn: updateProfile,
     onSuccess: async () => {
-      toast("Profile updated", { description: "Your proof links now use the latest slug + visibility." });
+      toast("Profile updated", { description: "Your proof link is ready to share." });
       await queryClient.invalidateQueries({ queryKey: ["profile"] });
     },
     onError: (error: Error) => toast("Could not update profile", { description: error.message }),
@@ -135,21 +135,25 @@ export function ProfilePage() {
       <Card>
         <CardHeader>
           <CardTitle>Shareable links</CardTitle>
-          <CardDescription>
-            Use `/u/:handle` on your resume. Use `/p/:token` in applications and recruiter email.
-          </CardDescription>
+          <CardDescription>Use /u/:handle on resume and applications.</CardDescription>
         </CardHeader>
         <CardContent className="space-y-8">
           <div className="rounded-2xl border border-border bg-card p-4">
             <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
               <div>
-                <p className="text-sm font-medium text-foreground">Proof profile</p>
-                <p className="text-xs text-muted-foreground">
-                  Resume link. Reusable across all roles: /u/{trimmedSlug || "handle"}
-                </p>
+                <p className="text-sm font-medium text-foreground">Resume link (primary)</p>
+                <p className="text-xs text-muted-foreground">/u/{trimmedSlug || "handle"}</p>
                 {!isPublic && (
                   <p className="text-xs text-amber-400">Enable “Make profile discoverable” to share this publicly.</p>
                 )}
+                <p className="mt-2 text-sm font-medium text-foreground">Application link (per role)</p>
+                <p className="text-xs text-muted-foreground">/u/{trimmedSlug || "handle"}</p>
+                <p className="mt-2 text-xs text-muted-foreground">
+                  GitHub: {profileQuery.data?.user.githubLogin ? (
+                    <span className="text-foreground">github.com/{profileQuery.data.user.githubLogin}</span>
+                  ) : "github.com/username"} {"  "}
+                  Proof: <span className="text-foreground">evidensify.com/u/{trimmedSlug || "handle"}</span>
+                </p>
               </div>
               <div className="flex flex-wrap items-center gap-2">
                 {profileUrl ? (
@@ -165,7 +169,7 @@ export function ProfilePage() {
                 <Button
                   variant="outline"
                   size="sm"
-                  onClick={() => copyLink(profileUrl, "Profile link")}
+                  onClick={() => copyLink(profileUrl, "Proof link")}
                   disabled={!profileUrl}
                 >
                   <Copy className="mr-2 h-4 w-4" /> Copy link
