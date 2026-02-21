@@ -48,14 +48,7 @@ export function SecurityPage() {
               Visit <a className="text-primary underline" href="https://github.com/settings/connections/applications" target="_blank" rel="noreferrer">GitHub &gt; Settings &gt; Applications</a>, find Evidensify, and click <em>Revoke</em>.
             </p>
           </div>
-          <div>
-            <p className="font-semibold text-foreground">Delete imported data</p>
-            <p className="text-muted-foreground">Open Settings → Danger zone in the app and hit “Delete all projects & jobs”. This wipes repos, JDs, and packets from our KV store.</p>
-          </div>
-          <div>
-            <p className="font-semibold text-foreground">Questions?</p>
-            <p className="text-muted-foreground">Email security@evidensify.com any time. We publish updates and SOC-style summaries on our changelog.</p>
-          </div>
+          
           <Button asChild variant="outline" size="sm" className="text-foreground">
             <Link to="/projects">Back to projects</Link>
           </Button>
