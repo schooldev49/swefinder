@@ -276,13 +276,12 @@ function RequirementPublicCard({
         <div className="flex items-center justify-between">
                 <div>
                   <p className="text-[11px] uppercase tracking-[0.3em] text-muted-foreground">{getPublicSampleLabel(selectedSample)}</p>
-                  <p className="text-sm font-semibold text-foreground">{selectedSample.summary}</p>
+                  <p className="text-sm font-semibold text-foreground">What changed: {selectedSample.summary}</p>
                   <p className="mt-1 inline-flex max-w-full items-center rounded-md border border-border bg-background/75 px-2 py-1 font-mono text-xs text-muted-foreground">
                     {formatPublicLineLabel(selectedSample.filePath, selectedSample.lineStart, selectedSample.lineEnd)}
                   </p>
-                  {selectedSample.authorshipContext ? (
-                  <p className="mt-1 text-sm text-muted-foreground">Evidence note: {selectedSample.authorshipContext}</p>
-                  ) : null}
+                  {selectedSample.why ? <p className="mt-1 text-xs text-muted-foreground">Why: {selectedSample.why}</p> : null}
+                  {selectedSample.tradeoffLimit ? <p className="mt-1 text-xs text-muted-foreground">Tradeoff/limit: {selectedSample.tradeoffLimit}</p> : null}
                   {selectedSample.isPrivate ? <PrivateRepoBadgePublic /> : null}
                   <SampleHighlightMetaPublic sample={selectedSample} />
               {selectedSample.tags && selectedSample.tags.length > 0 ? (
@@ -361,7 +360,7 @@ function PublicCodeSamples({ samples }: { samples: ProofPacketCodeSample[] }) {
               <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
                 <div>
                   <div className="flex flex-wrap items-center gap-2">
-                    <p className="text-sm font-semibold text-foreground">{sample.summary}</p>
+                    <p className="text-sm font-semibold text-foreground">What changed: {sample.summary}</p>
                     <Badge variant="outline" className="border-accent/60 text-[10px] uppercase tracking-wide text-accent">
                       {getPublicSampleLabel(sample)}
                     </Badge>
@@ -371,7 +370,8 @@ function PublicCodeSamples({ samples }: { samples: ProofPacketCodeSample[] }) {
                   <p className="mt-1 inline-flex max-w-full items-center rounded-md border border-border bg-background/75 px-2 py-1 font-mono text-xs text-muted-foreground">
                     {formatPublicLineLabel(sample.filePath, sample.lineStart, sample.lineEnd)}
                   </p>
-                  {sample.authorshipContext ? <p className="mt-1 text-sm text-muted-foreground">Evidence note: {sample.authorshipContext}</p> : null}
+                  {sample.why ? <p className="mt-1 text-xs text-muted-foreground">Why: {sample.why}</p> : null}
+                  {sample.tradeoffLimit ? <p className="mt-1 text-xs text-muted-foreground">Tradeoff/limit: {sample.tradeoffLimit}</p> : null}
                   <SampleHighlightMetaPublic sample={sample} />
                   {sample.tags && sample.tags.length > 0 ? (
                     <div className="mt-1 flex flex-wrap gap-1">

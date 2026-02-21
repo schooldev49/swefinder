@@ -41,6 +41,8 @@ export interface ProjectCodeSample {
   id: string;
   type?: CodeSampleType;
   summary: string;
+  why?: string;
+  tradeoffLimit?: string;
   code: string;
   language?: string;
   filePath?: string;
@@ -158,6 +160,8 @@ export interface EvidenceMappingWithEvidence extends EvidenceMapping {
 export interface EvidenceSnippet {
   type?: CodeSampleType;
   summary: string;
+  why?: string;
+  tradeoffLimit?: string;
   code: string;
   language?: string;
   filePath?: string;

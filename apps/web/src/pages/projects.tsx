@@ -992,7 +992,7 @@ export function ProjectsPage() {
                         <div key={sample.id} className="flex flex-col gap-2 rounded-lg border border-border bg-card/85 p-3 sm:flex-row sm:items-center sm:justify-between">
                           <div>
                             <div className="flex items-center gap-2">
-                              <p className="text-sm text-foreground">{sample.summary}</p>
+                              <p className="text-sm text-foreground">What changed: {sample.summary}</p>
                               <Badge variant="outline" className="text-[10px] uppercase tracking-wide">
                                 {SAMPLE_TYPE_LABELS[sample.type || "code"]}
                               </Badge>
@@ -1170,7 +1170,8 @@ export function ProjectsPage() {
 type SampleDraft = {
   type: CodeSampleType;
   summary: string;
-  authorshipContext: string;
+  why: string;
+  tradeoffLimit: string;
   filePath: string;
   lineStart: string;
   lineEnd: string;
@@ -1211,7 +1212,8 @@ type FilePreviewState = {
 const createEmptySampleDraft = (): SampleDraft => ({
   type: "code",
   summary: "",
-  authorshipContext: "",
+  why: "",
+  tradeoffLimit: "",
   filePath: "",
   lineStart: "",
   lineEnd: "",
@@ -1267,7 +1269,8 @@ export function ProjectCodeSamplesEditor({
       setDraft({
         type: sample.type || "code",
         summary: sample.summary || "",
-        authorshipContext: sample.authorshipContext || "",
+        why: sample.why || "",
+        tradeoffLimit: sample.tradeoffLimit || "",
         filePath: sample.filePath || "",
         lineStart: sample.lineStart ? sample.lineStart.toString() : "",
         lineEnd: sample.lineEnd ? sample.lineEnd.toString() : "",
@@ -1319,11 +1322,18 @@ export function ProjectCodeSamplesEditor({
   };
   const upsertSample = () => {
     const summary = draft.summary.trim();
+    const why = draft.why.trim();
+    const tradeoffLimit = draft.tradeoffLimit.trim();
     const code = draft.code.trim();
     const sampleType: CodeSampleType = draft.type || "code";
     const hasCommitEntries = sampleType === "commit" && Boolean(draft.commitEntries && draft.commitEntries.length > 0);
-    if (!summary || (!code && !hasCommitEntries)) {
-      toast("Add details", { description: "Summary and evidence content are required." });
+    const hasAnchor = Boolean(draft.url.trim() || draft.filePath.trim() || hasCommitEntries);
+    if (!summary || !why || !tradeoffLimit || (!code && !hasCommitEntries)) {
+      toast("Add details", { description: "What changed, why, tradeoff/limit, and evidence are required." });
+      return;
+    }
+    if (!hasAnchor) {
+      toast("Add proof anchor", { description: "Include a source URL, file + lines, README section, or commit trail." });
       return;
     }
     if (code && code.length > MAX_SAMPLE_CODE_CHARS) {
@@ -1349,8 +1359,9 @@ export function ProjectCodeSamplesEditor({
       id: editingSampleId || generateSampleId(),
       type: sampleType,
       summary: summary.slice(0, 200),
+      why: why.slice(0, 180),
+      tradeoffLimit: tradeoffLimit.slice(0, 180),
       code,
-      authorshipContext: draft.authorshipContext.trim() || undefined,
       filePath: draft.filePath.trim() || undefined,
       lineStart,
       lineEnd,
@@ -1396,18 +1407,18 @@ export function ProjectCodeSamplesEditor({
     }));
     setModalMode((prev) => prev ?? "create");
     setIsPickerOpen(false);
-    toast("Snippet captured", { description: "Review the summary and tags, then save." });
+    toast("Snippet captured", { description: "Add what changed, why, and tradeoff/limit, then save." });
   };
   const handleSuggestSummary = () => {
     if (!draft.summary.trim() || !draft.code.trim()) {
-      toast("Add summary + code", { description: "Enter both summary and code before polishing." });
+      toast("Add what changed + evidence", { description: "Enter what changed and evidence before polishing." });
       return;
     }
     summaryMutation.mutate({ summary: draft.summary, code: draft.code });
   };
   const handleSuggestTags = () => {
     if (!draft.summary.trim() || !draft.code.trim()) {
-      toast("Add summary + code", { description: "Enter both summary and code before suggesting tags." });
+      toast("Add what changed + evidence", { description: "Enter what changed and evidence before suggesting tags." });
       return;
     }
     tagsMutation.mutate({ summary: draft.summary, code: draft.code });
@@ -1439,7 +1450,7 @@ export function ProjectCodeSamplesEditor({
                 <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                   <div>
                     <div className="flex flex-wrap items-center gap-2">
-                      <p className="text-sm font-semibold text-foreground line-clamp-2">{sample.summary}</p>
+                      <p className="text-sm font-semibold text-foreground line-clamp-2">What changed: {sample.summary}</p>
                       <Badge variant="outline" className="border-accent/60 text-[10px] uppercase tracking-wide text-accent">
                         {SAMPLE_TYPE_LABELS[sample.type || "code"]}
                       </Badge>
@@ -1447,9 +1458,8 @@ export function ProjectCodeSamplesEditor({
                     <p className="text-[11px] uppercase tracking-[0.3em] text-muted-foreground">
                       {sample.filePath || 'snippet'} {formatLineRange(sample.lineStart, sample.lineEnd)}
                     </p>
-                    {sample.authorshipContext ? (
-                      <p className="mt-1 text-[11px] text-muted-foreground">What to notice: {sample.authorshipContext}</p>
-                    ) : null}
+                    {sample.why ? <p className="mt-1 text-[11px] text-muted-foreground">Why: {sample.why}</p> : null}
+                    {sample.tradeoffLimit ? <p className="mt-1 text-[11px] text-muted-foreground">Tradeoff/limit: {sample.tradeoffLimit}</p> : null}
                   {sample.tags && sample.tags.length > 0 && (
                     <div className="mt-1 flex flex-wrap gap-1">
                       {sample.tags.map((tag) => (
@@ -1564,12 +1574,19 @@ function SampleEditorModal({
           </div>
           <div>
             <div className="flex items-center justify-between gap-2">
-              <Label>Summary</Label>
+              <Label>What changed</Label>
               <Button type="button" variant="ghost" size="sm" onClick={onSuggestSummary} disabled={summaryPending}>
                 {summaryPending ? "Polishing…" : "Polish summary"}
               </Button>
             </div>
-            <Input value={draft.summary} onChange={onDraftChange("summary")} className="mt-2" placeholder="What does this snippet show?" required />
+            <Input
+              value={draft.summary}
+              onChange={onDraftChange("summary")}
+              className="mt-2"
+              placeholder="Short and concrete. A few words are enough."
+              required
+            />
+            <p className="mt-1 text-[11px] text-muted-foreground">Write it yourself. Keep it concise.</p>
             {summaryNudge ? <p className="mt-1 text-[11px] text-amber-400">{summaryNudge}</p> : null}
             {summarySuggestion && (
               <div className="mt-2 rounded-xl border border-border bg-card/90 p-3 text-xs text-muted-foreground">
@@ -1580,14 +1597,28 @@ function SampleEditorModal({
             )}
           </div>
           <div>
-            <Label>What to notice (optional)</Label>
+            <Label>Why</Label>
             <Input
-              value={draft.authorshipContext}
-              onChange={onDraftChange("authorshipContext")}
+              value={draft.why}
+              onChange={onDraftChange("why")}
               className="mt-2"
-              maxLength={200}
-              placeholder="I wrote X, reviewed Y, integrated Z"
+              maxLength={180}
+              placeholder="Why this change matters."
+              required
             />
+            <p className="mt-1 text-[11px] text-muted-foreground">No paragraphs.</p>
+          </div>
+          <div>
+            <Label>Tradeoff/limit</Label>
+            <Input
+              value={draft.tradeoffLimit}
+              onChange={onDraftChange("tradeoffLimit")}
+              className="mt-2"
+              maxLength={180}
+              placeholder="One tradeoff or limitation."
+              required
+            />
+            <p className="mt-1 text-[11px] text-muted-foreground">No paragraphs.</p>
           </div>
           <div className="grid gap-3 md:grid-cols-2">
             <div>

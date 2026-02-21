@@ -111,6 +111,8 @@ interface CreateJobSamplePayload {
   projectId: string;
   type?: ProjectCodeSample["type"];
   summary: string;
+  why?: string;
+  tradeoffLimit?: string;
   code?: string;
   language?: string;
   filePath?: string;
@@ -875,6 +877,8 @@ async function handleCreateJobSample(request: Request, env: Env, jobId: string):
       id: crypto.randomUUID(),
       type: payload.type || "code",
       summary: payload.summary,
+      why: payload.why,
+      tradeoffLimit: payload.tradeoffLimit,
       code: payload.code || "",
       language: payload.language,
       filePath: payload.filePath,
@@ -1356,6 +1360,8 @@ function normalizeCodeSamples(samples?: ProjectCodeSample[]): ProjectCodeSample[
     const hasCommitEvidence = type === "commit" && commitEntries.length > 0;
     if (!summary || (!code && !hasCommitEvidence)) continue;
     const truncatedSummary = summary.slice(0, MAX_SAMPLE_SUMMARY_CHARS);
+    const why = (sample.why || sample.authorshipContext || "").trim() || "Not provided";
+    const tradeoffLimit = (sample.tradeoffLimit || "").trim() || "Not provided";
     const truncatedCode = code.slice(0, MAX_SAMPLE_CODE_CHARS);
     let lineStart = typeof sample.lineStart === "number" ? Math.max(1, Math.floor(sample.lineStart)) : undefined;
     let lineEnd = typeof sample.lineEnd === "number" ? Math.max(lineStart ?? 1, Math.floor(sample.lineEnd ?? 0)) : undefined;
@@ -1367,6 +1373,8 @@ function normalizeCodeSamples(samples?: ProjectCodeSample[]): ProjectCodeSample[
       id: sample.id || crypto.randomUUID(),
       type,
       summary: truncatedSummary,
+      why: why.slice(0, 180),
+      tradeoffLimit: tradeoffLimit.slice(0, 180),
       code: truncatedCode,
       language: sample.language || undefined,
       filePath: sample.filePath?.trim() || undefined,
@@ -1645,12 +1653,14 @@ function buildMappingsFromCoverage(
           aiRole: project.aiRole,
           aiTools: project.aiTools ?? [],
           aiSupervisionNotes: project.aiSupervisionNotes,
-          codeSnippet: mappedSample
-            ? {
-                type: mappedSample.type,
-                summary: mappedSample.summary,
-                code: mappedSample.code,
-                language: mappedSample.language,
+              codeSnippet: mappedSample
+                ? {
+                    type: mappedSample.type,
+                    summary: mappedSample.summary,
+                    why: mappedSample.why,
+                    tradeoffLimit: mappedSample.tradeoffLimit,
+                    code: mappedSample.code,
+                    language: mappedSample.language,
                 filePath: mappedSample.filePath,
                 lineStart: mappedSample.lineStart,
                 lineEnd: mappedSample.lineEnd,
@@ -1783,6 +1793,8 @@ function mapProjectSample(project: Project, sample: ProjectCodeSample): ProofPac
     projectFullName: project.fullName,
     type: sample.type || "code",
     summary: sample.summary,
+    why: sample.why,
+    tradeoffLimit: sample.tradeoffLimit,
     code: sample.code,
     language: sample.language,
     filePath: sample.filePath,

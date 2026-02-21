@@ -59,7 +59,8 @@ export function PublicProfilePage() {
                 <div>
                   <p className="text-sm uppercase tracking-wide text-muted-foreground">Public profile</p>
                   <h1 className="text-2xl font-semibold text-foreground">@{profileQuery.data.user.profileSlug}</h1>
-                  <p className="text-base text-foreground">Skimmable technical proof with linked evidence. All descriptions written by candidates.</p>
+                  <p className="text-base text-foreground">Skimmable technical proof with linked evidence.</p>
+                  <p className="text-sm text-muted-foreground">All evidence links point to source. No generated claims.</p>
                 </div>
               </div>
               <div className="rounded-xl border border-border bg-card/90 px-4 py-3 text-sm text-foreground">
@@ -192,6 +193,8 @@ function FeaturedProofSection({ projects }: { projects: Project[] }) {
     items: Array<{
       id: string;
       summary: string;
+      why?: string;
+      tradeoffLimit?: string;
       projectFullName: string;
       filePath?: string;
       lineStart?: number;
@@ -232,6 +235,8 @@ function FeaturedProofCard({
   sample: {
     id: string;
     summary: string;
+    why?: string;
+    tradeoffLimit?: string;
     projectFullName: string;
     filePath?: string;
     lineStart?: number;
@@ -258,7 +263,9 @@ function FeaturedProofCard({
         onClick={() => setOpen((prev) => !prev)}
       >
         <div>
-          <p className="text-sm text-foreground">{sample.summary}</p>
+          <p className="text-sm text-foreground">What changed: {sample.summary}</p>
+          {sample.why ? <p className="mt-1 text-xs text-muted-foreground">Why: {sample.why}</p> : null}
+          {sample.tradeoffLimit ? <p className="mt-1 text-xs text-muted-foreground">Tradeoff/limit: {sample.tradeoffLimit}</p> : null}
           <p className="mt-1 text-sm text-muted-foreground">{sample.projectFullName}</p>
           <p className="text-sm text-muted-foreground">
             {(sample.filePath || "snippet") + (sample.lineStart && sample.lineEnd ? ` #L${sample.lineStart}-${sample.lineEnd}` : "")}

@@ -20,7 +20,8 @@ type ExampleSample = {
   id: string;
   type: "code" | "readme" | "commit";
   summary: string;
-  evidenceNote?: string;
+  why: string;
+  tradeoffLimit: string;
   projectFullName: string;
   filePath?: string;
   lineStart?: number;
@@ -67,7 +68,8 @@ const exampleProjects: ExampleProject[] = [
         id: "s-1",
         type: "code",
         summary: "Evaluator adds empty-dataset guard and failure export",
-        evidenceNote: "Prevents silent metric corruption and logs hard failures for release review.",
+        why: "Prevents silent metric corruption and keeps release review reliable.",
+        tradeoffLimit: "Strict guard can stop runs on incomplete datasets.",
         projectFullName: "demo-student/ml-research-notebooks",
         filePath: "src/eval/metrics.py",
         lineStart: 42,
@@ -92,7 +94,8 @@ const exampleProjects: ExampleProject[] = [
         id: "s-2",
         type: "readme",
         summary: "README section with known limitations and next iteration",
-        evidenceNote: "Documents current blind spots and the next experiment plan.",
+        why: "Shows known blind spots and next steps before production rollout.",
+        tradeoffLimit: "Needs regular updates to stay accurate.",
         projectFullName: "demo-student/ml-research-notebooks",
         filePath: "README.md",
         lineStart: 98,
@@ -109,7 +112,8 @@ const exampleProjects: ExampleProject[] = [
         id: "s-3",
         type: "commit",
         summary: "Commit trail: evaluator bug fix and regression tests",
-        evidenceNote: "Fixes a scoring bug and adds tests so the same bug does not return.",
+        why: "Shows root-cause fix plus tests to prevent repeat regressions.",
+        tradeoffLimit: "Covers key regression path, not every edge case.",
         projectFullName: "demo-student/ml-research-notebooks",
         language: "diff",
         filePath: "Commits (3)",
@@ -229,8 +233,9 @@ function FeaturedProofCard({ sample }: { sample: ExampleSample }) {
     <div className="rounded-xl border border-border bg-card p-3">
       <div className="space-y-1.5">
         <div>
-          <p className="text-sm text-foreground">{sample.summary}</p>
-          {sample.evidenceNote ? <p className="mt-1 text-sm text-muted-foreground">Evidence note: {sample.evidenceNote}</p> : null}
+          <p className="text-sm text-foreground">What changed: {sample.summary}</p>
+          <p className="mt-1 text-xs text-muted-foreground">Why: {sample.why}</p>
+          <p className="mt-1 text-xs text-muted-foreground">Tradeoff/limit: {sample.tradeoffLimit}</p>
           <p className="mt-1 text-sm text-foreground">{sample.projectFullName}</p>
           <p className="mt-1 inline-flex max-w-full items-center rounded-md border border-border bg-background/75 px-2 py-1 font-mono text-xs text-muted-foreground">
             {formatLineLabel(sample.filePath, sample.lineStart, sample.lineEnd)}

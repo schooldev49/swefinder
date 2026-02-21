@@ -284,6 +284,8 @@ export function createJobSample(
     projectId: string;
     type?: "code" | "readme" | "commit";
     summary: string;
+    why?: string;
+    tradeoffLimit?: string;
     code?: string;
     language?: string;
     filePath?: string;
@@ -291,7 +293,6 @@ export function createJobSample(
     lineEnd?: number;
     url?: string;
     tags?: string[];
-    authorshipContext?: string;
     readmeHeading?: string;
     commitEntries?: { sha: string; message: string; date?: string | null; htmlUrl?: string; patch?: string; files?: string[] }[];
     saveToProject?: boolean;
