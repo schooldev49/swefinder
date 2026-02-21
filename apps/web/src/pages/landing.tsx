@@ -114,6 +114,15 @@ export function LandingPage() {
                 <p className="text-xs uppercase tracking-[0.25em] text-muted-foreground">Evidensify</p>
                 <h1 className="text-3xl font-semibold text-foreground sm:text-4xl">Cut through resume noise. Show code recruiters can verify.</h1>
                 <p className="text-base text-muted-foreground">One link on your resume. Public evidence recruiters can verify fast.</p>
+                <div className="rounded-xl border border-border bg-background/70 p-3">
+                  <p className="text-sm font-medium text-foreground">Manual proof only</p>
+                  <p className="mt-1 text-sm text-muted-foreground">No auto-generated claims. You choose what to share.</p>
+                  <div className="mt-2 flex flex-wrap gap-1.5">
+                    <span className="rounded-full border border-border bg-card px-2 py-0.5 text-xs text-muted-foreground">Public repos</span>
+                    <span className="rounded-full border border-border bg-card px-2 py-0.5 text-xs text-muted-foreground">README excerpts</span>
+                    <span className="rounded-full border border-border bg-card px-2 py-0.5 text-xs text-muted-foreground">Commit trails</span>
+                  </div>
+                </div>
                 <div className="flex flex-wrap gap-2">
                   <Button onClick={handleProjectsLogin}>Create proof profile</Button>
                   <Button variant="outline" asChild>
