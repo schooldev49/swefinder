@@ -124,15 +124,15 @@ export function LandingPage() {
             <Card>
               <CardContent className="space-y-4">
                 <p className="text-xs uppercase tracking-[0.25em] text-muted-foreground">Evidensify</p>
-                <h1 className="text-3xl font-semibold text-foreground sm:text-4xl">Cut through resume noise. Show code recruiters can verify.</h1>
-                <p className="text-base text-muted-foreground">One link on your resume. Public evidence recruiters can verify fast.</p>
+                <h1 className="text-3xl font-semibold text-foreground sm:text-4xl">Trust infrastructure for technical hiring.</h1>
+                <p className="text-base text-muted-foreground">Verifiable, line-linked proof from public code. No generated claims.</p>
                 <div className="rounded-xl border border-border bg-background/70 p-3">
-                  <p className="text-sm font-medium text-foreground">Manual proof only</p>
-                  <p className="mt-1 text-sm text-muted-foreground">No auto-generated claims. You choose what to share.</p>
+                  <p className="text-sm font-medium text-foreground">Why now</p>
+                  <p className="mt-1 text-sm text-muted-foreground">AI can write polished claims. Recruiters still need evidence they can verify quickly.</p>
                   <div className="mt-2 flex flex-wrap gap-1.5">
-                    <span className="rounded-full border border-border bg-card px-2 py-0.5 text-xs text-muted-foreground">Public repos</span>
-                    <span className="rounded-full border border-border bg-card px-2 py-0.5 text-xs text-muted-foreground">README excerpts</span>
-                    <span className="rounded-full border border-border bg-card px-2 py-0.5 text-xs text-muted-foreground">Commit trails</span>
+                    <span className="rounded-full border border-border bg-card px-2 py-0.5 text-xs text-muted-foreground">Source links</span>
+                    <span className="rounded-full border border-border bg-card px-2 py-0.5 text-xs text-muted-foreground">Line anchors</span>
+                    <span className="rounded-full border border-border bg-card px-2 py-0.5 text-xs text-muted-foreground">Public evidence</span>
                   </div>
                 </div>
                 <div className="flex flex-wrap gap-2">
@@ -145,7 +145,7 @@ export function LandingPage() {
             </Card>
             <Card>
               <CardContent className="space-y-3">
-                <p className="text-sm text-muted-foreground">Profile preview</p>
+                <p className="text-sm text-muted-foreground">Verification preview</p>
                 {previewRequirements.map((req) => (
                   <div key={req.title} className="rounded-md border border-border bg-background p-3 text-sm">
                     <p className="font-medium text-foreground">{req.title}</p>
