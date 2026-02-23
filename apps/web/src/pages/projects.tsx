@@ -1550,6 +1550,22 @@ function SampleEditorModal({
       : draft.type === "readme"
         ? "Paste the README paragraph or doc snippet that proves this requirement."
         : "Paste the commit summary or bullet points explaining what changed.";
+  const changedLabel =
+    draft.type === "commit" ? "Commit outcome" : draft.type === "code" ? "Code focus" : "Excerpt focus";
+  const changedPlaceholder =
+    draft.type === "commit"
+      ? "What shipped in this commit trail."
+      : draft.type === "code"
+        ? "What this code proves."
+        : "What this excerpt proves.";
+  const whyPlaceholder =
+    draft.type === "commit"
+      ? "Why this commit trail matters."
+      : "Why this excerpt matters.";
+  const tradeoffPlaceholder =
+    draft.type === "commit"
+      ? "Known limitation in this change."
+      : "One tradeoff or limitation.";
   const showLineInputs = draft.type === "code";
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 px-4 py-6" role="dialog" aria-modal="true" onClick={onClose}>
@@ -1574,7 +1590,7 @@ function SampleEditorModal({
           </div>
           <div>
             <div className="flex items-center justify-between gap-2">
-              <Label>What changed</Label>
+              <Label>{changedLabel}</Label>
               <Button type="button" variant="ghost" size="sm" onClick={onSuggestSummary} disabled={summaryPending}>
                 {summaryPending ? "Polishing…" : "Polish summary"}
               </Button>
@@ -1583,10 +1599,10 @@ function SampleEditorModal({
               value={draft.summary}
               onChange={onDraftChange("summary")}
               className="mt-2"
-              placeholder="Short and concrete. A few words are enough."
+              placeholder={changedPlaceholder}
               required
             />
-            <p className="mt-1 text-[11px] text-muted-foreground">Write it yourself. Keep it concise.</p>
+            <p className="mt-1 text-[11px] text-muted-foreground">Write it yourself. Keep it short.</p>
             {summaryNudge ? <p className="mt-1 text-[11px] text-amber-400">{summaryNudge}</p> : null}
             {summarySuggestion && (
               <div className="mt-2 rounded-xl border border-border bg-card/90 p-3 text-xs text-muted-foreground">
@@ -1603,10 +1619,10 @@ function SampleEditorModal({
               onChange={onDraftChange("why")}
               className="mt-2"
               maxLength={180}
-              placeholder="Why this change matters."
+              placeholder={whyPlaceholder}
               required
             />
-            <p className="mt-1 text-[11px] text-muted-foreground">No paragraphs.</p>
+            <p className="mt-1 text-[11px] text-muted-foreground">Short sentence.</p>
           </div>
           <div>
             <Label>Tradeoff/limit</Label>
@@ -1615,10 +1631,10 @@ function SampleEditorModal({
               onChange={onDraftChange("tradeoffLimit")}
               className="mt-2"
               maxLength={180}
-              placeholder="One tradeoff or limitation."
+              placeholder={tradeoffPlaceholder}
               required
             />
-            <p className="mt-1 text-[11px] text-muted-foreground">No paragraphs.</p>
+            <p className="mt-1 text-[11px] text-muted-foreground">Short sentence.</p>
           </div>
           <div className="grid gap-3 md:grid-cols-2">
             <div>
