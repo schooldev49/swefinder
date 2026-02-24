@@ -620,7 +620,7 @@ export function ProjectsPage() {
   }, [repoSearchTerm, repos]);
 
   return (
-    <div className="space-y-6 pb-16">
+    <div className="space-y-6 pb-28">
       <div className="sticky top-3 z-20 rounded-2xl border border-border bg-card/95 p-4 shadow-lg backdrop-blur">
         <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
           <div>
@@ -1163,6 +1163,16 @@ export function ProjectsPage() {
           </CardContent>
         </Card>
       )}
+      {hasUnsavedChanges ? (
+        <div className="fixed inset-x-0 bottom-4 z-40 px-4">
+          <div className="mx-auto flex w-full max-w-6xl items-center justify-between gap-3 rounded-2xl border border-border bg-card/95 px-4 py-3 shadow-lg backdrop-blur">
+            <p className="text-sm text-muted-foreground">Unsaved changes</p>
+            <Button onClick={handleSave} disabled={saveMutation.isPending || unsupportedProjects.length > 0}>
+              {saveMutation.isPending ? "Saving..." : "Save changes"}
+            </Button>
+          </div>
+        </div>
+      ) : null}
     </div>
   );
 }

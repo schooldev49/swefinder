@@ -323,9 +323,7 @@ function ProjectCard({ project }: { project: ExampleProject }) {
             <p className="text-base font-semibold text-foreground">{project.fullName}</p>
             <p className="text-sm text-foreground">{project.description}</p>
           </div>
-          <Badge variant={project.sourceType === "link" ? "outline" : "default"} className="text-[10px] uppercase tracking-wide">
-            {project.sourceType === "link" ? "External" : "GitHub"}
-          </Badge>
+          
         </div>
         <div className="flex flex-wrap gap-1">
           {proofTypes.map((type) => (

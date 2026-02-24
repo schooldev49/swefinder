@@ -87,7 +87,7 @@ export function PublicProfilePage() {
                   The candidate hasn’t showcased any projects publicly yet.
                 </div>
             ) : (
-              <div className="grid gap-4 md:grid-cols-2">
+              <div className="grid gap-4 md:grid-cols-3">
                 {profileQuery.data.projects.map((project) => (
                   <ProjectCard key={project.id} project={project} />
                 ))}
@@ -103,7 +103,6 @@ export function PublicProfilePage() {
 function ProjectCard({ project }: { project: Project }) {
   const highlights = (project.codeSamples || []).filter((sample) => sample.isFeaturedProfile).slice(0, 2);
   const aiUsage = formatAiUsage(project);
-  const proofTypes = getProjectProofTypes(project);
   return (
     <div className="rounded-2xl border border-border bg-card/90 p-5 space-y-3">
       <div className="flex items-start justify-between gap-3">
@@ -111,19 +110,21 @@ function ProjectCard({ project }: { project: Project }) {
           <p className="text-base font-semibold text-foreground">{project.fullName}</p>
           {project.description && <p className="text-sm text-foreground">{project.description}</p>}
         </div>
-        <Badge variant={project.sourceType === "link" ? "outline" : "default"} className="text-[10px] uppercase tracking-wide">
-          {project.sourceType === "link" ? "External" : "GitHub"}
-        </Badge>
       </div>
       <div className="flex flex-wrap gap-1">
-        {proofTypes.map((type) => (
-          <Badge key={type} variant="outline" className="text-[10px] uppercase tracking-wide">
-            {type}
+        {project.sourceType === "github" ? (
+          <Badge variant="outline" className="text-[10px] uppercase tracking-wide">
+            Repo
           </Badge>
-        ))}
+        ) : null}
         {project.isFork ? (
           <Badge variant="warning" className="text-[10px] uppercase tracking-wide">
             Fork
+          </Badge>
+        ) : null}
+        {project.demoUrl ? (
+          <Badge variant="outline" className="text-[10px] uppercase tracking-wide">
+            Demo
           </Badge>
         ) : null}
       </div>
@@ -151,7 +152,7 @@ function ProjectCard({ project }: { project: Project }) {
           href={project.htmlUrl}
           target="_blank"
           rel="noopener noreferrer nofollow"
-          className="inline-flex items-center text-sm text-primary underline"
+          className="inline-flex items-center text-sm text-primary underline mr-4"
         >
           Open proof
         </a>
@@ -264,8 +265,6 @@ function FeaturedProofCard({
       >
         <div>
           <p className="text-sm text-foreground">What changed: {sample.summary}</p>
-          {sample.why ? <p className="mt-1 text-xs text-muted-foreground">Why: {sample.why}</p> : null}
-          {sample.tradeoffLimit ? <p className="mt-1 text-xs text-muted-foreground">Tradeoff/limit: {sample.tradeoffLimit}</p> : null}
           <p className="mt-1 text-sm text-muted-foreground">{sample.projectFullName}</p>
           <p className="text-sm text-muted-foreground">
             {(sample.filePath || "snippet") + (sample.lineStart && sample.lineEnd ? ` #L${sample.lineStart}-${sample.lineEnd}` : "")}
@@ -273,18 +272,6 @@ function FeaturedProofCard({
         </div>
         <ChevronRight className={cn("h-4 w-4 text-muted-foreground transition-transform", open ? "rotate-90" : "")} />
       </button>
-      {sample.type === "commit" && sample.commitEntries && sample.commitEntries.length > 0 ? (
-        <div className="mt-2 rounded-md border border-border bg-card/90 p-2 text-sm text-foreground">
-          <p className="text-xs uppercase tracking-[0.3em] text-muted-foreground">Commit titles</p>
-          <ul className="mt-1 space-y-1">
-            {sample.commitEntries.slice(0, 3).map((entry) => (
-              <li key={`${sample.id}-${entry.sha}`} className="truncate">
-                {entry.message.split("\n")[0]}
-              </li>
-            ))}
-          </ul>
-        </div>
-      ) : null}
       {sample.tags && sample.tags.length > 0 ? (
         <div className="mt-2 flex flex-wrap gap-1">
           {sample.tags.map((tag) => (
@@ -296,6 +283,8 @@ function FeaturedProofCard({
       ) : null}
       {open ? (
         <div className="mt-3 space-y-2">
+          {sample.why ? <p className="text-xs text-muted-foreground">Why: {sample.why}</p> : null}
+          {sample.tradeoffLimit ? <p className="text-xs text-muted-foreground">Tradeoff/limit: {sample.tradeoffLimit}</p> : null}
           {sample.type === "commit" && sample.commitEntries && sample.commitEntries.length > 0 ? (
             <div className="rounded-lg border border-border bg-card/80 p-2 text-[11px] text-muted-foreground">
               <p className="text-[10px] uppercase tracking-[0.3em] text-muted-foreground">Commit trail</p>
@@ -412,50 +401,6 @@ function formatProjectYearRange(project: Pick<Project, "year" | "yearStart" | "y
     return String(project.yearStart);
   }
   return project.year ? String(project.year) : "";
-}
-
-function getProjectProofTypes(project: Project): string[] {
-  const labels = new Set<string>();
-  
-  // Normalize all possible signal sources
-  const sourceStr = `${project.htmlUrl || ''} ${project.externalUrl || ''}`.toLowerCase();
-  const demoStr = (project.demoUrl || "").toLowerCase();
-
-  // 1. Explicit Type Checks
-  if (project.sourceType === "github") labels.add("Repo");
-
-  // 2. Pattern Matching for Source
-  if (sourceStr.includes("/pull/")) labels.add("PR");
-  if (sourceStr.includes("/commit/")) labels.add("Commit");
-  
-  const writeupSites = ["notion.so", "medium.com", "docs.google.com", "substack.com", "mirror.xyz"];
-  if (writeupSites.some(site => sourceStr.includes(site))) {
-    labels.add("Writeup");
-  }
-
-  if (sourceStr.includes("case-study") || sourceStr.includes("casestudy")) {
-    labels.add("Case study");
-  }
-
-  // 3. Demo Checks
-  const demoSites = ["youtube.com", "codesandbox.io", "figma.com","youtu.be", "loom.com", "streamlit", "vercel.app", "netlify.app", "azurewebsites"];
-  if (demoSites.some(site => demoStr.includes(site))) {
-    labels.add("Demo");
-  }
-
-  // 4. Fallback Logic
-  // Only auto-label as 'Case study' if it's explicitly marked as a 'link' type
-  if (project.sourceType === "link" && labels.size === 0) {
-    labels.add("Case study");
-  }
-
-  // 5. Final Safety Net: Unapproved Detection
-  // If after all checks the set is still empty, mark it for review
-  if (labels.size === 0) {
-    labels.add("Unapproved Link");
-  }
-
-  return Array.from(labels);
 }
 
 function ErrorState() {
